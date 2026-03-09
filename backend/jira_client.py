@@ -213,13 +213,9 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
 
     time_in_status = _calculate_time_in_status(changelog_histories)
 
-    # Account: customfield_10001 pode ser string, dict {"value":...} ou lista
-    account_raw = fields.get("customfield_10001")
-    logger.debug("Issue %s | customfield_10001 raw: %r", key, account_raw)
-    if isinstance(account_raw, list):
-        account: Optional[str] = _parse_activity_type(account_raw[0]) if account_raw else None
-    else:
-        account = _parse_activity_type(account_raw)
+    # Account: customfield_10113 → dict com chave "value"
+    account_raw = fields.get("customfield_10113")
+    account: Optional[str] = account_raw.get("value") if isinstance(account_raw, dict) else (account_raw if isinstance(account_raw, str) else None)
 
     # Product: primeiro component ou None
     components = _parse_components(fields.get("components") or [])
@@ -276,7 +272,7 @@ async def _fetch_changelog(client: httpx.AsyncClient, key: str) -> list[dict]:
 
 FIELDS = (
     "summary,status,assignee,priority,components,"
-    "customfield_10460,customfield_10015,customfield_10001,duedate,issuetype,created"
+    "customfield_10460,customfield_10015,customfield_10113,duedate,issuetype,created"
 )
 
 
