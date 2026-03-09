@@ -156,7 +156,7 @@ async def get_dashboard(
         dashboard.devs = [d for d in dashboard.devs if d.active_issues and any(i.product == product for i in d.active_issues)]
         dashboard.backlog = [i for i in dashboard.backlog if i.product == product]
     if assignee:
-        dashboard.devs = [d for d in dashboard.devs if d.assignee.display_name == assignee]
+        dashboard.devs = [d for d in dashboard.devs if d.assignee and d.assignee.display_name == assignee]
         dashboard.backlog = [i for i in dashboard.backlog if i.assignee and i.assignee.display_name == assignee]
     if issue_type:
         dashboard.devs = [d for d in dashboard.devs if d.active_issues and any(i.issue_type.name == issue_type for i in d.active_issues)]

@@ -146,6 +146,49 @@ body {
   color: white;
 }
 
+/* ===== Filter Bar ===== */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.filter-bar select {
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.filter-bar select:focus {
+  outline: none;
+  border-color: var(--azul-claro);
+}
+
+.filter-bar .clear-filters-btn {
+  background: transparent;
+  color: var(--rosa);
+  border: 1px solid var(--rosa);
+  border-radius: var(--radius-sm);
+  padding: 5px 12px;
+  font-size: 0.80rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-bar .clear-filters-btn:hover {
+  background: var(--rosa);
+  color: #000;
+}
+
 /* ===== App Body ===== */
 .app-body {
   display: grid;

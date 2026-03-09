@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import KpiBar from './components/KpiBar'
 import DevGrid from './components/DevGrid'
 import BacklogPanel from './components/BacklogPanel'
-import FiltersView from './components/FiltersView'
 import AIInsightsView from './components/AIInsightsView'
 import ProductView from './components/ProductView'
 import KanbanView from './components/KanbanView'
@@ -56,11 +55,9 @@ export default function App() {
     return () => clearInterval(timer)
   }, [])
 
-  const fetchDashboard = useCallback(async (filterParams = {}) => {
+  const fetchDashboard = useCallback(async () => {
     try {
-      const params = new URLSearchParams(filterParams)
-      const url = `${API}/api/dashboard${params.toString() ? '?' + params.toString() : ''}`
-      const res = await fetch(url)
+      const res = await fetch(`${API}/api/dashboard`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setData(await res.json())
       setLastFetch(new Date())
@@ -79,25 +76,64 @@ export default function App() {
         method: 'POST',
         headers: REFRESH_SECRET ? { 'X-Refresh-Secret': REFRESH_SECRET } : {},
       })
-      await fetchDashboard(filters)
+      await fetchDashboard()
     } finally {
       setRefreshing(false)
     }
   }
 
   useEffect(() => {
-    fetchDashboard(filters)
-    const interval = setInterval(() => fetchDashboard(filters), REFRESH_INTERVAL)
+    fetchDashboard()
+    const interval = setInterval(fetchDashboard, REFRESH_INTERVAL)
     return () => clearInterval(interval)
-  }, [fetchDashboard, filters])
+  }, [fetchDashboard])
+
+  // Opções de filtro derivadas dos dados carregados
+  const filterOptions = useMemo(() => {
+    if (!data) return { accounts: [], products: [], assignees: [], issueTypes: [] }
+    const allIssues = [...data.backlog, ...data.devs.flatMap(d => d.active_issues)]
+    return {
+      accounts:   [...new Set(allIssues.map(i => i.account).filter(Boolean))].sort(),
+      products:   [...new Set(allIssues.map(i => i.product).filter(Boolean))].sort(),
+      assignees:  [...new Set(data.devs.map(d => d.assignee?.display_name).filter(Boolean))].sort(),
+      issueTypes: [...new Set(allIssues.map(i => i.issue_type?.name).filter(Boolean))].sort(),
+    }
+  }, [data])
+
+  // Filtragem client-side — não faz re-fetch
+  const filteredData = useMemo(() => {
+    if (!data || !Object.keys(filters).length) return data
+    let devs = data.devs
+    let backlog = data.backlog
+
+    if (filters.account) {
+      devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(i => i.account === filters.account) }))
+                 .filter(d => d.active_issues.length > 0)
+      backlog = backlog.filter(i => i.account === filters.account)
+    }
+    if (filters.product) {
+      devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(i => i.product === filters.product) }))
+                 .filter(d => d.active_issues.length > 0)
+      backlog = backlog.filter(i => i.product === filters.product)
+    }
+    if (filters.assignee) {
+      devs = devs.filter(d => d.assignee?.display_name === filters.assignee)
+      backlog = backlog.filter(i => i.assignee?.display_name === filters.assignee)
+    }
+    if (filters.issue_type) {
+      devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(i => i.issue_type?.name === filters.issue_type) }))
+                 .filter(d => d.active_issues.length > 0)
+      backlog = backlog.filter(i => i.issue_type?.name === filters.issue_type)
+    }
+    return { ...data, devs, backlog }
+  }, [data, filters])
+
+  const setFilter = (key, value) => {
+    setFilters(prev => value ? { ...prev, [key]: value } : Object.fromEntries(Object.entries(prev).filter(([k]) => k !== key)))
+  }
 
   const handleViewChange = (view) => {
     setCurrentView(view)
-  }
-
-  const handleFiltersChange = (newFilters) => {
-    setFilters(newFilters)
-    setCurrentView('dashboard')
   }
 
   if (loading) {
@@ -143,12 +179,6 @@ export default function App() {
             Dashboard
           </button>
           <button
-            className={`view-btn ${currentView === 'filters' ? 'active' : ''}`}
-            onClick={() => handleViewChange('filters')}
-          >
-            Filtros
-          </button>
-          <button
             className={`view-btn ${currentView === 'ai' ? 'active' : ''}`}
             onClick={() => handleViewChange('ai')}
           >
@@ -188,23 +218,42 @@ export default function App() {
         </div>
       </header>
 
-      {currentView === 'dashboard' && data && (
+      {currentView === 'dashboard' && filteredData && (
         <>
           <KpiBar kpis={data.kpis} delta={data.kpi_delta} />
+
+          {/* Barra de filtros inline */}
+          <div className="filter-bar">
+            <select value={filters.assignee || ''} onChange={e => setFilter('assignee', e.target.value)}>
+              <option value="">Responsável</option>
+              {filterOptions.assignees.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <select value={filters.account || ''} onChange={e => setFilter('account', e.target.value)}>
+              <option value="">Account</option>
+              {filterOptions.accounts.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <select value={filters.product || ''} onChange={e => setFilter('product', e.target.value)}>
+              <option value="">Produto</option>
+              {filterOptions.products.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+            <select value={filters.issue_type || ''} onChange={e => setFilter('issue_type', e.target.value)}>
+              <option value="">Tipo</option>
+              {filterOptions.issueTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            {Object.keys(filters).length > 0 && (
+              <button className="clear-filters-btn" onClick={() => setFilters({})}>✕ limpar</button>
+            )}
+          </div>
 
           {data.stale_issues?.length > 0 && (
             <StaleBanner issues={data.stale_issues} jiraBaseUrl={data.jira_base_url} />
           )}
 
           <main className="app-body">
-            <DevGrid devs={data.devs} jiraBaseUrl={data.jira_base_url} />
-            <BacklogPanel issues={data.backlog} jiraBaseUrl={data.jira_base_url} />
+            <DevGrid devs={filteredData.devs} jiraBaseUrl={filteredData.jira_base_url} />
+            <BacklogPanel issues={filteredData.backlog} jiraBaseUrl={filteredData.jira_base_url} />
           </main>
         </>
-      )}
-
-      {currentView === 'filters' && (
-        <FiltersView onFiltersChange={handleFiltersChange} currentFilters={filters} />
       )}
 
       {currentView === 'ai' && data && (
