@@ -98,9 +98,20 @@ class KpiSummary(BaseModel):
     overdue: int = 0
 
 
+class KpiDelta(BaseModel):
+    """Variação em relação ao snapshot de 24h atrás (exceto done: semana anterior)."""
+    total_sprint: int = 0
+    in_progress: int = 0
+    waiting: int = 0
+    done_vs_last_week: int = 0   # done_this_week - done_last_week
+    overdue: int = 0
+
+
 class DashboardResponse(BaseModel):
     devs: List[DevSummary] = []
     backlog: List[Issue] = []             # Todas as issues (para coluna direita)
+    stale_issues: List[Issue] = []        # Issues > 30 dias em progresso
     kpis: KpiSummary = KpiSummary()
+    kpi_delta: KpiDelta = KpiDelta()
     last_updated: str = ""
     jira_base_url: str = ""

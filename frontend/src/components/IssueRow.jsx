@@ -36,6 +36,30 @@ function msToLabel(ms) {
   return `${Math.floor(h / 24)}d`
 }
 
+function SlaBar({ issue }) {
+  const due = issue.due_date
+  if (!due) return null
+
+  const startStr = issue.start_date || issue.created?.slice(0, 10)
+  if (!startStr) return null
+
+  const startMs = new Date(startStr).getTime()
+  const dueMs   = new Date(due).getTime()
+  if (dueMs <= startMs) return null
+
+  const pct   = Math.min(100, Math.max(0, ((Date.now() - startMs) / (dueMs - startMs)) * 100))
+  const color = pct > 85 ? '#FE70BD' : pct > 60 ? '#F2F24B' : '#40EB4F'
+
+  return (
+    <div className="ir-sla">
+      <div className="ir-sla-track">
+        <div className="ir-sla-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span className="ir-sla-pct" style={{ color }}>{Math.round(pct)}% prazo</span>
+    </div>
+  )
+}
+
 export default function IssueRow({ issue, jiraBaseUrl, compact }) {
   const age       = daysAgo(issue.created)
   const progTime  = msToLabel(issue.time_in_status?.in_progress_ms ?? 0)
@@ -91,6 +115,9 @@ export default function IssueRow({ issue, jiraBaseUrl, compact }) {
         {component && <span className="ir-component">{component}</span>}
         {issue.activity_type && <span className="ir-meta">{issue.activity_type}</span>}
       </div>
+
+      {/* Barra de SLA */}
+      <SlaBar issue={issue} />
     </a>
   )
 }

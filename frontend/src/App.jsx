@@ -6,6 +6,8 @@ import FiltersView from './components/FiltersView'
 import AIInsightsView from './components/AIInsightsView'
 import ProductView from './components/ProductView'
 import KanbanView from './components/KanbanView'
+import StaleBanner from './components/StaleBanner'
+import NightSummary from './components/NightSummary'
 import './App.css'
 
 // Detectar URL da API dinamicamente
@@ -29,14 +31,30 @@ const API = getApiUrl()
 const REFRESH_SECRET = import.meta.env.VITE_REFRESH_SECRET ?? ''
 const REFRESH_INTERVAL = 5 * 60 * 1000
 
+function isBusinessHours() {
+  const now = new Date()
+  const day  = now.getDay()   // 0=Dom, 6=Sáb
+  const hour = now.getHours()
+  return day >= 1 && day <= 5 && hour >= 8 && hour < 19
+}
+
 export default function App() {
-  const [data, setData] = useState(null)
-  const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData]           = useState(null)
+  const [error, setError]         = useState(null)
+  const [loading, setLoading]     = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [lastFetch, setLastFetch] = useState(null)
-  const [currentView, setCurrentView] = useState('dashboard') // 'dashboard' | 'filters' | 'ai' | 'product' | 'kanban'
+  const [currentView, setCurrentView] = useState('dashboard')
   const [filters, setFilters] = useState({})
+  const [nightMode, setNightMode] = useState(!isBusinessHours())
+
+  // Detecta automaticamente entrada/saída do horário comercial
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!isBusinessHours()) setNightMode(true)
+    }, 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   const fetchDashboard = useCallback(async (filterParams = {}) => {
     try {
@@ -102,6 +120,17 @@ export default function App() {
     )
   }
 
+  // Modo resumo (noturno)
+  if (nightMode && data) {
+    return (
+      <NightSummary
+        data={data}
+        lastFetch={lastFetch}
+        onExit={() => setNightMode(false)}
+      />
+    )
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -143,6 +172,13 @@ export default function App() {
             </span>
           )}
           <button
+            className="night-btn"
+            onClick={() => setNightMode(true)}
+            title="Modo resumo"
+          >
+            🌙
+          </button>
+          <button
             className={`refresh-btn ${refreshing ? 'loading' : ''}`}
             onClick={handleRefresh}
             disabled={refreshing}
@@ -154,7 +190,12 @@ export default function App() {
 
       {currentView === 'dashboard' && data && (
         <>
-          <KpiBar kpis={data.kpis} />
+          <KpiBar kpis={data.kpis} delta={data.kpi_delta} />
+
+          {data.stale_issues?.length > 0 && (
+            <StaleBanner issues={data.stale_issues} jiraBaseUrl={data.jira_base_url} />
+          )}
+
           <main className="app-body">
             <DevGrid devs={data.devs} jiraBaseUrl={data.jira_base_url} />
             <BacklogPanel issues={data.backlog} jiraBaseUrl={data.jira_base_url} />

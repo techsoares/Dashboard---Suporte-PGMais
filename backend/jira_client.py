@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 
 from models import (
     Assignee, IssueType, Status, Priority, Component,
-    Issue, TimeInStatus, DevSummary, KpiSummary, DashboardResponse,
+    Issue, TimeInStatus, DevSummary, KpiSummary, KpiDelta, DashboardResponse,
     _ms_to_hms,
 )
 
@@ -354,6 +354,38 @@ async def fetch_done_this_week() -> list[Issue]:
     return issues
 
 
+async def fetch_done_last_week() -> list[Issue]:
+    """Issues concluídas na semana anterior (para comparação de delta)."""
+    jql = (
+        f'statusCategory = Done '
+        f'AND statusCategoryChangedDate >= startOfWeek("-1w") '
+        f'AND statusCategoryChangedDate < startOfWeek() '
+        f'AND project = "{JIRA_PROJECT}"'
+    )
+    issues: list[Issue] = []
+
+    async with httpx.AsyncClient() as client:
+        next_page_token: str | None = None
+
+        while True:
+            params: dict = {"jql": jql, "maxResults": 100, "fields": FIELDS}
+            if next_page_token:
+                params["nextPageToken"] = next_page_token
+
+            data = await _get(client, SEARCH_URL, params=params)
+            raw_issues: list[dict] = data.get("issues", [])
+            for raw in raw_issues:
+                key: str = raw.get("key", "")
+                fields: dict = raw.get("fields", {})
+                issues.append(_build_issue(fields, key, []))
+
+            next_page_token = data.get("nextPageToken")
+            if not next_page_token or not raw_issues:
+                break
+
+    return issues
+
+
 # --- Dashboard consolidation ----------------------------------------------
 
 _PRIORITY_ORDER = {
@@ -381,9 +413,14 @@ def _sort_key(issue: Issue) -> tuple:
     return (overdue, type_order, due, prio)
 
 
+_STALE_MS = 30 * 24 * 3600 * 1000  # 30 dias em ms
+
+
 def build_dashboard(
     active_issues: list[Issue],
     done_issues: list[Issue],
+    done_last_week_count: int = 0,
+    prev_kpis: KpiSummary | None = None,
 ) -> DashboardResponse:
     # Agrupar por dev
     dev_map: dict[str, DevSummary] = {}
@@ -394,7 +431,6 @@ def build_dashboard(
             if aid not in dev_map:
                 dev_map[aid] = DevSummary(assignee=issue.assignee)
             dev_map[aid].active_issues.append(issue)
-        # Issues sem atribuição também vão para o backlog geral
 
     # Atualizar contadores
     for dev in dev_map.values():
@@ -403,6 +439,12 @@ def build_dashboard(
 
     # Backlog geral: todas as issues ativas, ordenadas por prioridade
     backlog = sorted(active_issues, key=_sort_key)
+
+    # Issues paralisadas: > 30 dias em progresso
+    stale_issues = [
+        i for i in active_issues
+        if i.time_in_status.in_progress_ms >= _STALE_MS
+    ]
 
     # KPIs
     in_progress_count = sum(
@@ -422,10 +464,24 @@ def build_dashboard(
         overdue=overdue_count,
     )
 
+    # Delta: compara com snapshot de 24h (exceto done: semana anterior)
+    if prev_kpis is not None:
+        delta = KpiDelta(
+            total_sprint=kpis.total_sprint - prev_kpis.total_sprint,
+            in_progress=kpis.in_progress - prev_kpis.in_progress,
+            waiting=kpis.waiting - prev_kpis.waiting,
+            done_vs_last_week=kpis.done_this_week - done_last_week_count,
+            overdue=kpis.overdue - prev_kpis.overdue,
+        )
+    else:
+        delta = KpiDelta(done_vs_last_week=kpis.done_this_week - done_last_week_count)
+
     return DashboardResponse(
         devs=list(dev_map.values()),
         backlog=backlog,
+        stale_issues=stale_issues,
         kpis=kpis,
+        kpi_delta=delta,
         last_updated=datetime.now(timezone.utc).isoformat(),
         jira_base_url=JIRA_BASE_URL,
     )

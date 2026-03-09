@@ -18,8 +18,8 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 from cache import cache
-from jira_client import fetch_active_issues, fetch_done_this_week, build_dashboard
-from models import DashboardResponse
+from jira_client import fetch_active_issues, fetch_done_this_week, fetch_done_last_week, build_dashboard
+from models import DashboardResponse, KpiSummary
 from mock_data import get_mock_dashboard
 
 load_dotenv()
@@ -54,8 +54,10 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-Refresh-Secret"],
 )
 
-CACHE_KEY = "dashboard_data"
-CACHE_TTL = 300  # 5 minutos em segundos
+CACHE_KEY    = "dashboard_data"
+SNAPSHOT_KEY = "kpi_snapshot"       # snapshot diário para delta
+CACHE_TTL    = 300                  # 5 minutos
+SNAPSHOT_TTL = 86400                # 24 horas
 REFRESH_SECRET = os.getenv("REFRESH_SECRET", "")
 
 
@@ -70,6 +72,31 @@ def _validate_env() -> list[str]:
         if not os.getenv(var):
             missing.append(var)
     return missing
+
+
+def _build_and_cache(active_issues, done_issues, done_last_week) -> DashboardResponse:
+    """Constrói o dashboard, calcula delta e atualiza caches."""
+    prev_kpis: KpiSummary | None = cache.get(SNAPSHOT_KEY, ttl=SNAPSHOT_TTL)
+    dashboard = build_dashboard(
+        active_issues,
+        done_issues,
+        done_last_week_count=len(done_last_week),
+        prev_kpis=prev_kpis,
+    )
+    cache.set(CACHE_KEY, dashboard)
+
+    # Cria o snapshot diário na primeira vez; expira sozinho após 24h
+    if prev_kpis is None:
+        cache.set(SNAPSHOT_KEY, dashboard.kpis)
+
+    logger.info(
+        "Dashboard atualizado: %d devs, %d issues ativas, %d concluídas, %d paralisadas",
+        len(dashboard.devs),
+        len(dashboard.backlog),
+        dashboard.kpis.done_this_week,
+        len(dashboard.stale_issues),
+    )
+    return dashboard
 
 
 # ---------------------------------------------------------------------------
@@ -108,25 +135,20 @@ async def get_dashboard(
         logger.info("Credenciais Jira ausentes — usando dados mock para desenvolvimento")
         dashboard = get_mock_dashboard()
     else:
-        # Tenta cache primeiro
-        cache_key = f"dashboard_{account or 'all'}_{product or 'all'}_{assignee or 'all'}_{issue_type or 'all'}"
-        cached: DashboardResponse | None = cache.get(cache_key, ttl=CACHE_TTL)
+        cached: DashboardResponse | None = cache.get(CACHE_KEY, ttl=CACHE_TTL)
         if cached is not None:
             logger.info("Cache HIT — retornando dados em cache")
-            return cached
+            dashboard = cached
+        else:
+            logger.info("Cache MISS — buscando dados no Jira...")
+            try:
+                active_issues, done_issues, done_last_week = await _fetch_all()
+            except Exception as exc:
+                logger.error("Erro ao buscar dados no Jira: %s", exc, exc_info=True)
+                raise HTTPException(status_code=502, detail="Erro ao comunicar com o Jira")
+            dashboard = _build_and_cache(active_issues, done_issues, done_last_week)
 
-        # Cache miss → busca no Jira
-        logger.info("Cache MISS — buscando dados no Jira...")
-        try:
-            active_issues, done_issues = await _fetch_all()
-        except Exception as exc:
-            logger.error("Erro ao buscar dados no Jira: %s", exc, exc_info=True)
-            raise HTTPException(status_code=502, detail="Erro ao comunicar com o Jira")
-
-        dashboard = build_dashboard(active_issues, done_issues)
-        cache.set(cache_key, dashboard)
-
-    # Aplicar filtros
+    # Aplicar filtros em memória
     if account:
         dashboard.devs = [d for d in dashboard.devs if d.active_issues and any(i.account == account for i in d.active_issues)]
         dashboard.backlog = [i for i in dashboard.backlog if i.account == account]
@@ -168,13 +190,12 @@ async def force_refresh(x_refresh_secret: str | None = Header(default=None)):
     logger.info("Cache invalidado manualmente — buscando dados no Jira...")
 
     try:
-        active_issues, done_issues = await _fetch_all()
+        active_issues, done_issues, done_last_week = await _fetch_all()
     except Exception as exc:
         logger.error("Erro ao buscar dados no Jira: %s", exc, exc_info=True)
         raise HTTPException(status_code=502, detail="Erro ao comunicar com o Jira")
 
-    dashboard = build_dashboard(active_issues, done_issues)
-    cache.set(CACHE_KEY, dashboard)
+    dashboard = _build_and_cache(active_issues, done_issues, done_last_week)
     return {"status": "refreshed", "last_updated": dashboard.last_updated}
 
 
@@ -183,13 +204,14 @@ async def force_refresh(x_refresh_secret: str | None = Header(default=None)):
 # ---------------------------------------------------------------------------
 
 async def _fetch_all():
-    """Dispara as duas consultas ao Jira em paralelo."""
+    """Dispara as três consultas ao Jira em paralelo."""
     import asyncio
-    active_issues, done_issues = await asyncio.gather(
+    active_issues, done_issues, done_last_week = await asyncio.gather(
         fetch_active_issues(),
         fetch_done_this_week(),
+        fetch_done_last_week(),
     )
-    return active_issues, done_issues
+    return active_issues, done_issues, done_last_week
 
 
 # ---------------------------------------------------------------------------
