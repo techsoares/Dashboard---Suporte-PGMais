@@ -116,6 +116,58 @@ async def health():
     }
 
 
+@app.get("/api/debug/fields", tags=["infra"], summary="Mostra fields brutos de uma issue para diagnóstico")
+async def debug_fields(issue_key: str | None = None):
+    """Retorna os fields brutos de uma issue real do Jira para identificar custom fields."""
+    import httpx, base64, os
+
+    email = os.getenv("JIRA_EMAIL", "")
+    token = os.getenv("JIRA_TOKEN", "")
+    base_url = os.getenv("JIRA_BASE_URL", "https://pgmais.atlassian.net")
+    project = os.getenv("JIRA_PROJECT", "ON")
+
+    if not email or not token:
+        raise HTTPException(status_code=503, detail="Credenciais Jira não configuradas")
+
+    encoded = base64.b64encode(f"{email}:{token}".encode()).decode()
+    headers = {"Authorization": f"Basic {encoded}", "Accept": "application/json"}
+
+    async with httpx.AsyncClient() as client:
+        if issue_key:
+            # Busca issue específica com todos os fields
+            resp = await client.get(f"{base_url}/rest/api/3/issue/{issue_key}", headers=headers, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            fields = data.get("fields", {})
+        else:
+            # Busca a primeira issue do projeto
+            resp = await client.get(
+                f"{base_url}/rest/api/3/search/jql",
+                params={"jql": f'project = "{project}" ORDER BY created DESC', "maxResults": 1, "fields": "*all"},
+                headers=headers,
+                timeout=15,
+            )
+            resp.raise_for_status()
+            issues = resp.json().get("issues", [])
+            if not issues:
+                return {"error": "Nenhuma issue encontrada"}
+            fields = issues[0].get("fields", {})
+            issue_key = issues[0].get("key")
+
+    # Filtra apenas fields não nulos para facilitar leitura
+    non_null = {k: v for k, v in fields.items() if v is not None}
+    # Separa custom fields dos campos padrão
+    custom = {k: v for k, v in non_null.items() if k.startswith("customfield_")}
+    standard = {k: v for k, v in non_null.items() if not k.startswith("customfield_")}
+
+    return {
+        "issue_key": issue_key,
+        "standard_fields": {k: standard[k] for k in ["summary", "status", "assignee", "components", "issuetype", "priority"] if k in standard},
+        "custom_fields_with_values": custom,
+        "all_field_keys": list(non_null.keys()),
+    }
+
+
 @app.get(
     "/api/dashboard",
     response_model=DashboardResponse,

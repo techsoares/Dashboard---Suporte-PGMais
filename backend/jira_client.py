@@ -215,6 +215,7 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
 
     # Account: customfield_10001 pode ser string, dict {"value":...} ou lista
     account_raw = fields.get("customfield_10001")
+    logger.debug("Issue %s | customfield_10001 raw: %r", key, account_raw)
     if isinstance(account_raw, list):
         account: Optional[str] = _parse_activity_type(account_raw[0]) if account_raw else None
     else:
@@ -223,6 +224,7 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
     # Product: primeiro component ou None
     components = _parse_components(fields.get("components") or [])
     product: Optional[str] = components[0].name if components else None
+    logger.debug("Issue %s | components raw: %r → product: %r", key, fields.get("components"), product)
 
     return Issue(
         key=key,
