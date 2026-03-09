@@ -80,6 +80,8 @@ class Issue(BaseModel):
     time_in_status: TimeInStatus = TimeInStatus()
     is_overdue: bool = False
     jira_url: str = ""
+    account: Optional[str] = None         # Cliente/Account - customfield a definir
+    product: Optional[str] = None         # Produto - pode usar component ou customfield
 
 
 class DevSummary(BaseModel):

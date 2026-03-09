@@ -99,7 +99,12 @@ async def health():
     tags=["dashboard"],
     summary="Retorna dados consolidados do Jira (cache 5min)",
 )
-async def get_dashboard():
+async def get_dashboard(
+    account: str | None = None,
+    product: str | None = None,
+    assignee: str | None = None,
+    issue_type: str | None = None,
+):
     missing = _validate_env()
     if missing:
         raise HTTPException(
@@ -108,7 +113,8 @@ async def get_dashboard():
         )
 
     # Tenta cache primeiro
-    cached: DashboardResponse | None = cache.get(CACHE_KEY, ttl=CACHE_TTL)
+    cache_key = f"dashboard_{account or 'all'}_{product or 'all'}_{assignee or 'all'}_{issue_type or 'all'}"
+    cached: DashboardResponse | None = cache.get(cache_key, ttl=CACHE_TTL)
     if cached is not None:
         logger.info("Cache HIT — retornando dados em cache")
         return cached
@@ -121,8 +127,22 @@ async def get_dashboard():
         logger.error("Erro ao buscar dados no Jira: %s", exc, exc_info=True)
         raise HTTPException(status_code=502, detail="Erro ao comunicar com o Jira")
 
+    # Aplicar filtros
+    if account:
+        active_issues = [i for i in active_issues if i.account == account]
+        done_issues = [i for i in done_issues if i.account == account]
+    if product:
+        active_issues = [i for i in active_issues if i.product == product]
+        done_issues = [i for i in done_issues if i.product == product]
+    if assignee:
+        active_issues = [i for i in active_issues if i.assignee and i.assignee.display_name == assignee]
+        done_issues = [i for i in done_issues if i.assignee and i.assignee.display_name == assignee]
+    if issue_type:
+        active_issues = [i for i in active_issues if i.issue_type.name == issue_type]
+        done_issues = [i for i in done_issues if i.issue_type.name == issue_type]
+
     dashboard = build_dashboard(active_issues, done_issues)
-    cache.set(CACHE_KEY, dashboard)
+    cache.set(cache_key, dashboard)
     logger.info(
         "Dashboard atualizado: %d devs, %d issues ativas, %d concluídas na semana",
         len(dashboard.devs),
@@ -146,7 +166,8 @@ async def force_refresh(x_refresh_secret: str | None = Header(default=None)):
     if missing:
         raise HTTPException(status_code=503, detail="Serviço indisponível")
 
-    cache.invalidate(CACHE_KEY)
+    # Invalidar todos os caches de dashboard
+    cache.invalidate_pattern("dashboard_*")
     logger.info("Cache invalidado manualmente — buscando dados no Jira...")
 
     try:

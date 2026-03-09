@@ -213,6 +213,14 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
 
     time_in_status = _calculate_time_in_status(changelog_histories)
 
+    # Account: customfield_10001
+    account_raw = fields.get("customfield_10001")
+    account: Optional[str] = account_raw if isinstance(account_raw, str) else None
+
+    # Product: primeiro component ou None
+    components = _parse_components(fields.get("components") or [])
+    product: Optional[str] = components[0].name if components else None
+
     return Issue(
         key=key,
         summary=fields.get("summary", ""),
@@ -220,7 +228,7 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
         status=status,
         priority=_parse_priority(fields.get("priority")),
         assignee=assignee,
-        components=_parse_components(fields.get("components") or []),
+        components=components,
         activity_type=_parse_activity_type(fields.get("customfield_10460")),
         start_date=start_date,
         due_date=due_date,
@@ -228,6 +236,8 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
         time_in_status=time_in_status,
         is_overdue=_is_overdue(due_date),
         jira_url=f"{JIRA_BASE_URL}/browse/{key}",
+        account=account,
+        product=product,
     )
 
 
@@ -261,7 +271,7 @@ async def _fetch_changelog(client: httpx.AsyncClient, key: str) -> list[dict]:
 
 FIELDS = (
     "summary,status,assignee,priority,components,"
-    "customfield_10460,customfield_10015,duedate,issuetype,created"
+    "customfield_10460,customfield_10015,customfield_10001,duedate,issuetype,created"
 )
 
 

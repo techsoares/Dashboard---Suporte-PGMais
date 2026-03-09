@@ -35,6 +35,12 @@ class MemoryCache:
     def invalidate(self, key: str) -> None:
         self._store.pop(key, None)
 
+    def invalidate_pattern(self, pattern: str) -> None:
+        """Remove todas as chaves que contenham o padrão."""
+        keys_to_remove = [k for k in self._store.keys() if pattern in k]
+        for k in keys_to_remove:
+            del self._store[k]
+
     def clear(self) -> None:
         self._store.clear()
 
