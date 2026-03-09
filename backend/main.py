@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 from cache import cache
 from jira_client import fetch_active_issues, fetch_done_this_week, build_dashboard
 from models import DashboardResponse
+from mock_data import get_mock_dashboard
 
 load_dotenv()
 
@@ -41,20 +42,15 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS — origens permitidas via variável de ambiente + localhost para dev
+# CORS com suporte para GitHub Codespaces tunnels
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "")
 _extra = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        *_extra,
-    ],
+    allow_origin_regex=r"(https?://localhost.*|https?://127\.0\.0\.1.*|https://.*\.app\.github\.dev.*|http://.*\.app\.github\.dev.*)",
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "X-Refresh-Secret"],
 )
 
@@ -106,45 +102,46 @@ async def get_dashboard(
     issue_type: str | None = None,
 ):
     missing = _validate_env()
+
+    # Se não houver credenciais, usar dados mock para desenvolvimento
     if missing:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Variáveis de ambiente ausentes: {', '.join(missing)}",
-        )
+        logger.info("Credenciais Jira ausentes — usando dados mock para desenvolvimento")
+        dashboard = get_mock_dashboard()
+    else:
+        # Tenta cache primeiro
+        cache_key = f"dashboard_{account or 'all'}_{product or 'all'}_{assignee or 'all'}_{issue_type or 'all'}"
+        cached: DashboardResponse | None = cache.get(cache_key, ttl=CACHE_TTL)
+        if cached is not None:
+            logger.info("Cache HIT — retornando dados em cache")
+            return cached
 
-    # Tenta cache primeiro
-    cache_key = f"dashboard_{account or 'all'}_{product or 'all'}_{assignee or 'all'}_{issue_type or 'all'}"
-    cached: DashboardResponse | None = cache.get(cache_key, ttl=CACHE_TTL)
-    if cached is not None:
-        logger.info("Cache HIT — retornando dados em cache")
-        return cached
+        # Cache miss → busca no Jira
+        logger.info("Cache MISS — buscando dados no Jira...")
+        try:
+            active_issues, done_issues = await _fetch_all()
+        except Exception as exc:
+            logger.error("Erro ao buscar dados no Jira: %s", exc, exc_info=True)
+            raise HTTPException(status_code=502, detail="Erro ao comunicar com o Jira")
 
-    # Cache miss → busca no Jira
-    logger.info("Cache MISS — buscando dados no Jira...")
-    try:
-        active_issues, done_issues = await _fetch_all()
-    except Exception as exc:
-        logger.error("Erro ao buscar dados no Jira: %s", exc, exc_info=True)
-        raise HTTPException(status_code=502, detail="Erro ao comunicar com o Jira")
+        dashboard = build_dashboard(active_issues, done_issues)
+        cache.set(cache_key, dashboard)
 
     # Aplicar filtros
     if account:
-        active_issues = [i for i in active_issues if i.account == account]
-        done_issues = [i for i in done_issues if i.account == account]
+        dashboard.devs = [d for d in dashboard.devs if d.active_issues and any(i.account == account for i in d.active_issues)]
+        dashboard.backlog = [i for i in dashboard.backlog if i.account == account]
     if product:
-        active_issues = [i for i in active_issues if i.product == product]
-        done_issues = [i for i in done_issues if i.product == product]
+        dashboard.devs = [d for d in dashboard.devs if d.active_issues and any(i.product == product for i in d.active_issues)]
+        dashboard.backlog = [i for i in dashboard.backlog if i.product == product]
     if assignee:
-        active_issues = [i for i in active_issues if i.assignee and i.assignee.display_name == assignee]
-        done_issues = [i for i in done_issues if i.assignee and i.assignee.display_name == assignee]
+        dashboard.devs = [d for d in dashboard.devs if d.assignee.display_name == assignee]
+        dashboard.backlog = [i for i in dashboard.backlog if i.assignee and i.assignee.display_name == assignee]
     if issue_type:
-        active_issues = [i for i in active_issues if i.issue_type.name == issue_type]
-        done_issues = [i for i in done_issues if i.issue_type.name == issue_type]
+        dashboard.devs = [d for d in dashboard.devs if d.active_issues and any(i.issue_type.name == issue_type for i in d.active_issues)]
+        dashboard.backlog = [i for i in dashboard.backlog if i.issue_type.name == issue_type]
 
-    dashboard = build_dashboard(active_issues, done_issues)
-    cache.set(cache_key, dashboard)
     logger.info(
-        "Dashboard atualizado: %d devs, %d issues ativas, %d concluídas na semana",
+        "Dashboard retornado: %d devs, %d issues ativas, %d concluídas na semana",
         len(dashboard.devs),
         len(dashboard.backlog),
         dashboard.kpis.done_this_week,

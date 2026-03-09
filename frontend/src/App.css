@@ -88,13 +88,16 @@ body {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .last-updated {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 300;
   color: var(--text-muted);
+  display: none;
 }
 
 .refresh-btn {
@@ -121,15 +124,16 @@ body {
   background: transparent;
   border: 1.5px solid var(--azul-escuro);
   color: var(--text-secondary);
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
   font-family: 'Lato', sans-serif;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   transition: all 0.2s;
   cursor: pointer;
+  white-space: nowrap;
 }
 .view-btn:hover {
   background: rgba(36,58,131,0.3);

@@ -8,7 +8,24 @@ import ProductView from './components/ProductView'
 import KanbanView from './components/KanbanView'
 import './App.css'
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+// Detectar URL da API dinamicamente
+const getApiUrl = () => {
+  // Se tiver variável de ambiente, usar primeiramente
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+
+  // Se estiver em dev local, usar localhost
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:8000'
+  }
+
+  // Se estiver em tunnel/produção, substituir porta 5173 por 8000
+  const host = window.location.host.replace(':5173', ':8000').replace('-5173.', '-8000.')
+  return `${window.location.protocol}//${host}`
+}
+
+const API = getApiUrl()
 const REFRESH_SECRET = import.meta.env.VITE_REFRESH_SECRET ?? ''
 const REFRESH_INTERVAL = 5 * 60 * 1000
 
