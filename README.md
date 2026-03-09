@@ -28,6 +28,25 @@ Exibe issues ativas por desenvolvedor, backlog geral, KPIs em tempo real, análi
 
 ## 🚀 Quickstart Local
 
+### ⚡ Automático (Recomendado)
+
+**Linux/Mac:**
+```bash
+git clone https://github.com/techsoares/Dashboards-pgmais.git
+cd Dashboards-pgmais
+chmod +x setup.sh
+./setup.sh
+```
+
+**Windows:**
+```bash
+git clone https://github.com/techsoares/Dashboards-pgmais.git
+cd Dashboards-pgmais
+setup.bat
+```
+
+### 🔧 Manual
+
 ### 1️⃣ Clonar e acessar
 
 ```bash
