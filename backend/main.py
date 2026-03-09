@@ -12,7 +12,7 @@ import logging
 import os
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
@@ -53,13 +53,14 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         *_extra,
     ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-Refresh-Secret"],
 )
 
 CACHE_KEY = "dashboard_data"
 CACHE_TTL = 300  # 5 minutos em segundos
+REFRESH_SECRET = os.getenv("REFRESH_SECRET", "")
 
 
 # ---------------------------------------------------------------------------
@@ -81,12 +82,11 @@ def _validate_env() -> list[str]:
 
 @app.get("/api/health", tags=["infra"])
 async def health():
-    """Healthcheck simples. Verifica se as credenciais Jira estão configuradas."""
+    """Healthcheck simples."""
     missing = _validate_env()
     status = "ok" if not missing else "degraded"
     return {
         "status": status,
-        "missing_env": missing,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "cache_age_seconds": cache.age_seconds(CACHE_KEY),
         "cache_ttl_remaining_seconds": cache.ttl_remaining(CACHE_KEY, CACHE_TTL),
@@ -119,10 +119,7 @@ async def get_dashboard():
         active_issues, done_issues = await _fetch_all()
     except Exception as exc:
         logger.error("Erro ao buscar dados no Jira: %s", exc, exc_info=True)
-        raise HTTPException(
-            status_code=502,
-            detail=f"Erro ao comunicar com o Jira: {str(exc)}",
-        )
+        raise HTTPException(status_code=502, detail="Erro ao comunicar com o Jira")
 
     dashboard = build_dashboard(active_issues, done_issues)
     cache.set(CACHE_KEY, dashboard)
@@ -140,14 +137,14 @@ async def get_dashboard():
     tags=["dashboard"],
     summary="Invalida o cache e força atualização imediata",
 )
-async def force_refresh():
-    """Útil para invalidação manual via botão no frontend ou curl."""
+async def force_refresh(x_refresh_secret: str | None = Header(default=None)):
+    """Requer header X-Refresh-Secret quando REFRESH_SECRET estiver configurado."""
+    if REFRESH_SECRET and x_refresh_secret != REFRESH_SECRET:
+        raise HTTPException(status_code=401, detail="Não autorizado")
+
     missing = _validate_env()
     if missing:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Variáveis de ambiente ausentes: {', '.join(missing)}",
-        )
+        raise HTTPException(status_code=503, detail="Serviço indisponível")
 
     cache.invalidate(CACHE_KEY)
     logger.info("Cache invalidado manualmente — buscando dados no Jira...")
@@ -156,10 +153,7 @@ async def force_refresh():
         active_issues, done_issues = await _fetch_all()
     except Exception as exc:
         logger.error("Erro ao buscar dados no Jira: %s", exc, exc_info=True)
-        raise HTTPException(
-            status_code=502,
-            detail=f"Erro ao comunicar com o Jira: {str(exc)}",
-        )
+        raise HTTPException(status_code=502, detail="Erro ao comunicar com o Jira")
 
     dashboard = build_dashboard(active_issues, done_issues)
     cache.set(CACHE_KEY, dashboard)

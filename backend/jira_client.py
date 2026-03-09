@@ -141,7 +141,6 @@ def _parse_assignee(raw: Optional[dict]) -> Optional[Assignee]:
     return Assignee(
         account_id=raw.get("accountId", ""),
         display_name=raw.get("displayName", "Não atribuído"),
-        email=raw.get("emailAddress"),
         avatar_url=(raw.get("avatarUrls") or {}).get("48x48"),
     )
 
@@ -234,8 +233,8 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
 
 # --- HTTP helpers ---------------------------------------------------------
 
-async def _get(client: httpx.AsyncClient, url: str, params: dict = {}) -> dict:
-    resp = await client.get(url, params=params, headers=_auth_header(), timeout=30)
+async def _get(client: httpx.AsyncClient, url: str, params: dict | None = None) -> dict:
+    resp = await client.get(url, params=params or {}, headers=_auth_header(), timeout=30)
     resp.raise_for_status()
     return resp.json()
 

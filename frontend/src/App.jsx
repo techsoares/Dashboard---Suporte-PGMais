@@ -5,6 +5,7 @@ import BacklogPanel from './components/BacklogPanel'
 import './App.css'
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+const REFRESH_SECRET = import.meta.env.VITE_REFRESH_SECRET ?? ''
 const REFRESH_INTERVAL = 5 * 60 * 1000
 
 export default function App() {
@@ -31,7 +32,10 @@ export default function App() {
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
-      await fetch(`${API}/api/refresh`, { method: 'POST' })
+      await fetch(`${API}/api/refresh`, {
+        method: 'POST',
+        headers: REFRESH_SECRET ? { 'X-Refresh-Secret': REFRESH_SECRET } : {},
+      })
       await fetchDashboard()
     } finally {
       setRefreshing(false)

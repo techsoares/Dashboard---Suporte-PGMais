@@ -38,7 +38,6 @@ def _ms_to_hms(ms: int) -> str:
 class Assignee(BaseModel):
     account_id: str
     display_name: str
-    email: Optional[str] = None
     avatar_url: Optional[str] = None
 
 
