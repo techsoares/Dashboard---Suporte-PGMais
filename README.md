@@ -1,121 +1,180 @@
 # PGMais Dashboard
 
-Dashboard de acompanhamento de times integrado ao Jira Cloud.
-Exibe issues ativas por desenvolvedor, backlog geral e KPIs em tempo real.
+Dashboard de acompanhamento de times integrado ao Jira Cloud com análise de dados, filtros avançados e múltiplas visualizações.
+
+Exibe issues ativas por desenvolvedor, backlog geral, KPIs em tempo real, análise com IA, visão de produtos e kanban.
 
 ---
 
-## Estrutura do projeto
+## 🎯 Funcionalidades
 
-```
-pgmais-dashboard/
-├── backend/          # API FastAPI (proxy + cache do Jira)
-└── frontend/         # SPA React + Vite
-```
+- **Dashboard Principal**: Visão geral com KPIs, devs e backlog
+- **Filtros Avançados**: Filtrar por Account, Produto, Responsável e Tipo de Item
+- **IA Insights**: Análise automática e chat interativo sobre os dados
+- **Visão Produto**: Ranking de produtos com gráfico radar de eficiência
+- **Kanban**: Visualização de colunas por status do Jira
+- **Cache Inteligente**: 5 minutos de cache com invalidação por filtros
+- **Dados Mock**: Funciona sem credenciais Jira para testes
 
 ---
 
-## Pré-requisitos
+## 📋 Pré-requisitos
 
 - Python 3.11+
 - Node.js 18+
-- Token de API do Jira Cloud
+- Token de API do Jira Cloud (opcional para testes com dados mock)
 
 ---
 
-## Configuração
+## 🚀 Quickstart Local
 
-### 1. Backend
+### 1️⃣ Clonar e acessar
+
+```bash
+git clone https://github.com/techsoares/Dashboards-pgmais.git
+cd Dashboards-pgmais
+```
+
+### 2️⃣ Backend
 
 ```bash
 cd backend
+
+# Criar ambiente virtual
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Ativar (Unix/Mac)
+source .venv/bin/activate
+# Ativar (Windows)
+# .venv\Scripts\activate
+
+# Instalar dependências
 pip install -r requirements.txt
-```
 
-Crie o arquivo `.env` a partir do exemplo:
-
-```bash
+# Configurar credenciais (opcional - funciona com dados mock sem isso)
 cp .env.example .env
-```
+# Editar .env com suas credenciais Jira
 
-Preencha o `.env`:
-
-```env
-JIRA_EMAIL=seu-email@empresa.com.br
-JIRA_TOKEN=seu-token-aqui
-JIRA_BASE_URL=https://sua-empresa.atlassian.net
-JIRA_PROJECT=XX
-REFRESH_SECRET=    # gere com: python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-> O token do Jira é gerado em: **Perfil Jira → Segurança → Criar e gerenciar tokens de API**
-
-### 2. Frontend
-
-```bash
-cd frontend
-npm install
-```
-
-Crie o arquivo `.env` a partir do exemplo:
-
-```bash
-cp .env.example .env
-```
-
-Em desenvolvimento local, o `.env` pode ficar vazio — o frontend aponta automaticamente para `http://localhost:8000`.
-
----
-
-## Rodando localmente
-
-### Backend
-
-```bash
-cd backend
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+# Rodar
 python main.py
 ```
 
-API disponível em `http://localhost:8000`
-Documentação: `http://localhost:8000/docs`
+Backend rodará em: **http://localhost:8000**  
+Swagger Docs: **http://localhost:8000/docs**
 
-### Frontend
+### 3️⃣ Frontend (novo terminal)
 
 ```bash
 cd frontend
+
+# Instalar dependências
+npm install
+
+# Rodar dev server
 npm run dev
 ```
 
-Dashboard disponível em `http://localhost:5173`
+Frontend rodará em: **http://localhost:5173**
 
 ---
 
-## Endpoints da API
+## 🔧 Estrutura
 
-| Método | Rota            | Descrição                              |
-|--------|-----------------|----------------------------------------|
-| GET    | `/api/health`   | Status do serviço e cache              |
-| GET    | `/api/dashboard`| Dados consolidados (cache de 5 min)    |
-| POST   | `/api/refresh`  | Força atualização imediata do cache    |
-
-O endpoint `/api/refresh` requer o header `X-Refresh-Secret` quando `REFRESH_SECRET` estiver configurado.
+```
+Dashboards-pgmais/
+├── backend/
+│   ├── main.py              # App FastAPI + rotas
+│   ├── jira_client.py       # Cliente do Jira Cloud
+│   ├── models.py            # Pydantic models
+│   ├── cache.py             # Cache em memória
+│   ├── mock_data.py         # Dados mock para desenvolvimento
+│   ├── requirements.txt      # Dependências Python
+│   └── .env.example         # Template de variáveis de ambiente
+│
+└── frontend/
+    ├── src/
+    │   ├── App.jsx          # Componente principal com rotas
+    │   ├── App.css          # Estilos globais
+    │   └── components/
+    │       ├── KpiBar.jsx            # KPIs em cards
+    │       ├── DevGrid.jsx           # Grid de desenvolvedores
+    │       ├── BacklogPanel.jsx      # Painel de backlog
+    │       ├── FiltersView.jsx       # Tela de filtros
+    │       ├── AIInsightsView.jsx    # IA com análise
+    │       ├── ProductView.jsx       # Ranking de produtos
+    │       └── KanbanView.jsx        # Visão kanban
+    ├── package.json
+    ├── vite.config.js
+    └── .env.local           # Config local (não versionado)
+```
 
 ---
 
-## Segurança
+## 📡 API Endpoints
 
-- Credenciais do Jira ficam **apenas no backend**, nunca chegam ao frontend
-- O arquivo `.env` está no `.gitignore` e nunca é versionado
-- CORS restrito às origens configuradas
-- Erros internos não são expostos nas respostas da API
+| Método | Rota            | Descrição                                    | Filters        |
+|--------|-----------------|----------------------------------------------|----------------|
+| GET    | `/api/health`   | Status do serviço                            | N/A            |
+| GET    | `/api/dashboard`| Dados consolidados (cache 5min)              | account, product, assignee, issue_type |
+| POST   | `/api/refresh`  | Força atualização (requer X-Refresh-Secret)  | N/A            |
+
+**Exemplo de requisição com filtros:**
+```bash
+curl "http://localhost:8000/api/dashboard?account=PGMais&product=MIDWAY"
+```
 
 ---
 
-## Tecnologias
+## 🔐 Segurança
 
-**Backend:** Python · FastAPI · httpx · Pydantic
-**Frontend:** React · Vite · CSS customizado (brand PGMais)
-**Integração:** Jira Cloud REST API v3
+- ✅ Credenciais Jira ficam **apenas no backend**
+- ✅ `.env` está no `.gitignore` (nunca é versionado)
+- ✅ CORS configurado com regex para localhost e tunnels
+- ✅ Erros internos não são expostos
+- ✅ Cache com TTL de 5 minutos
+
+---
+
+## 🛠 Desenvolvimento
+
+### Estrutura de Código
+
+- **Backend**: FastAPI middleware-based, logging estruturado, cache genérico
+- **Frontend**: React hooks, componentes funcionais, CSS-in-JS com variáveis CSS
+- **Comunicação**: Fetch API direct, sem axios/libraries
+
+### Build & Deploy
+
+**Frontend:**
+```bash
+cd frontend
+npm run build   # Output: dist/
+npm run dev     # Dev server com HMR
+```
+
+**Backend:**
+```bash
+python main.py  # Dev com reload automático
+```
+
+---
+
+## 🚀 Deployment
+
+### Produção
+
+1. **Backend** (Docker ou servidor):
+   - Configurar `.env` com credenciais Jira reais
+   - Usar `gunicorn` ou similar: `gunicorn -w 4 -b 0.0.0.0:8000 main:app`
+   - CORS: Adicionar domínios reais em `ALLOWED_ORIGINS`
+
+2. **Frontend** (CDN ou servidor estático):
+   - Build: `npm run build`
+   - Servir `dist/` em HTTP/HTTPS
+   - `.env.local` configurar `VITE_API_URL` para API em produção
+
+---
+
+## 📝 Licença
+
+Propriedade de PGMais Tecnologia
