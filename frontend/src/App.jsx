@@ -45,15 +45,7 @@ export default function App() {
   const [lastFetch, setLastFetch] = useState(null)
   const [currentView, setCurrentView] = useState('dashboard')
   const [filters, setFilters] = useState({})
-  const [nightMode, setNightMode] = useState(!isBusinessHours())
-
-  // Detecta automaticamente entrada/saída do horário comercial
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (!isBusinessHours()) setNightMode(true)
-    }, 60000)
-    return () => clearInterval(timer)
-  }, [])
+  const [nightMode, setNightMode] = useState(false)
 
   const fetchDashboard = useCallback(async () => {
     try {
