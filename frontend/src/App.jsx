@@ -4,7 +4,7 @@ import DevGrid from './components/DevGrid'
 import BacklogPanel from './components/BacklogPanel'
 import './App.css'
 
-const API = 'http://localhost:8000'
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 const REFRESH_INTERVAL = 5 * 60 * 1000
 
 export default function App() {

@@ -41,14 +41,17 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS — libera localhost em qualquer porta (Vite dev server, etc.)
+# CORS — origens permitidas via variável de ambiente + localhost para dev
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+_extra = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",   # Vite padrão
+        "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
+        *_extra,
     ],
     allow_credentials=True,
     allow_methods=["*"],
