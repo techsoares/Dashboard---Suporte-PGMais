@@ -1,0 +1,24 @@
+# Credenciais — NUNCA commitar
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+dist/
+build/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+dist/
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db

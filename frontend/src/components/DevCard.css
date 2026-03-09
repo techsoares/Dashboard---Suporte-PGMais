@@ -1,0 +1,142 @@
+/* ===== Card ===== */
+.dev-card {
+  background: #0e1a3a;
+  border: 1px solid rgba(61,183,244,0.12);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 340px;
+}
+.dev-card-alert {
+  border-color: rgba(254,112,189,0.4);
+}
+
+/* ===== Header ===== */
+.dev-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(61,183,244,0.1);
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(36,58,131,0.7) 0%, rgba(53,89,235,0.1) 100%);
+}
+
+/* Avatar ring — dimensões explícitas em px */
+.dev-avatar-ring {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(135deg, #3DB7F4, #3559EB);
+}
+.dev-avatar-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+.dev-avatar-initials {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #243A83;
+  color: #3DB7F4;
+  font-family: 'Lato', sans-serif;
+  font-size: 13px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 1px;
+}
+
+/* Info do dev */
+.dev-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dev-name {
+  font-family: 'Lato', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dev-sub {
+  font-family: 'Lato', sans-serif;
+  font-size: 12px;
+  font-weight: 300;
+  color: rgba(255,255,255,0.4);
+}
+
+.dev-alert-badge {
+  flex-shrink: 0;
+  font-family: 'Lato', sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  color: #FE70BD;
+  background: rgba(254,112,189,0.12);
+  border: 1px solid rgba(254,112,189,0.4);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+/* ===== Barra de saúde ===== */
+.dev-health {
+  padding: 8px 14px 7px;
+  border-bottom: 1px solid rgba(61,183,244,0.08);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.dev-health-bar {
+  display: flex;
+  height: 4px;
+  border-radius: 2px;
+  gap: 2px;
+  overflow: hidden;
+}
+.seg {
+  border-radius: 2px;
+  min-width: 4px;
+}
+.dev-health-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-family: 'Lato', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+}
+.avg-days {
+  margin-left: auto;
+  color: rgba(255,255,255,0.35) !important;
+  font-weight: 300 !important;
+}
+
+/* ===== Lista de issues ===== */
+.dev-issues {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(61,183,244,0.15) transparent;
+}
+.dev-empty {
+  font-size: 13px;
+  font-weight: 300;
+  color: rgba(255,255,255,0.3);
+  padding: 14px;
+  text-align: center;
+}

@@ -1,0 +1,108 @@
+.backlog-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 170px);
+  position: sticky;
+  top: 20px;
+  overflow: hidden;
+}
+
+.backlog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(36,58,131,0.6), rgba(53,89,235,0.15));
+}
+
+.backlog-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.backlog-count {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: rgba(61,183,244,0.15);
+  color: var(--azul-claro);
+  padding: 2px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(61,183,244,0.2);
+}
+
+/* ---- Filtros ---- */
+.backlog-filters {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  background: none;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: all 0.15s;
+}
+.filter-btn:hover {
+  border-color: var(--azul-claro);
+  color: var(--text);
+}
+
+/* Filtro ativo muda cor conforme categoria */
+.filter-btn.active { font-weight: 700; }
+
+.filter-btn[data-key="all"].active {
+  background: rgba(61,183,244,0.12);
+  border-color: var(--azul-claro);
+  color: var(--azul-claro);
+}
+.filter-btn[data-key="in_progress"].active {
+  background: rgba(53,89,235,0.15);
+  border-color: var(--azul-primario);
+  color: var(--azul-primario);
+}
+.filter-btn[data-key="waiting"].active {
+  background: rgba(242,242,75,0.12);
+  border-color: var(--amarelo);
+  color: var(--amarelo);
+}
+.filter-btn[data-key="overdue"].active {
+  background: rgba(254,112,189,0.12);
+  border-color: var(--rosa);
+  color: var(--rosa);
+}
+
+/* ---- Lista ---- */
+.backlog-list {
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(61,183,244,0.2) transparent;
+}
+
+.backlog-empty {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 300;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 28px 16px;
+}

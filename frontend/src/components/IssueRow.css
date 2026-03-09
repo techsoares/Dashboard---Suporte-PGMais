@@ -1,0 +1,141 @@
+/* ===== Issue Row ===== */
+.ir {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(61,183,244,0.08);
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.ir:last-child { border-bottom: none; }
+.ir:hover { background: rgba(61,183,244,0.04); }
+
+.ir-overdue {
+  border-left: 3px solid #FE70BD;
+  padding-left: 11px;
+  background: rgba(254,112,189,0.03);
+}
+.ir-overdue:hover { background: rgba(254,112,189,0.06); }
+
+/* ===== Linha 1 ===== */
+.ir-row1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.ir-key {
+  font-family: 'Lato', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #3DB7F4;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ir-prio {
+  font-size: 11px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* Tipo com emoji — sempre visível independente de CSS vars */
+.ir-type {
+  font-family: 'Lato', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tp-bug  { color: #FE70BD; }
+.tp-imp  { color: #40EB4F; }
+.tp-task { color: #3DB7F4; }
+.tp-epic { color: #a78bfa; }
+
+/* Status pill */
+.ir-status {
+  font-family: 'Lato', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.03em;
+}
+.st-new      { background: rgba(53,89,235,0.2);  color: #7b9fff; }
+.st-progress { background: rgba(61,183,244,0.18); color: #3DB7F4; }
+.st-done     { background: rgba(64,235,79,0.15);  color: #40EB4F; }
+
+.ir-status-raw {
+  font-family: 'Lato', sans-serif;
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  flex-shrink: 0;
+}
+
+/* Idade — sempre à direita */
+.ir-age {
+  font-family: 'Lato', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ===== Linha 2: título ===== */
+.ir-summary {
+  font-family: 'Lato', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.90);
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.ir-compact .ir-summary {
+  -webkit-line-clamp: 1;
+  font-size: 13px;
+}
+
+/* ===== Linha 3: meta ===== */
+.ir-row3 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ir-due-overdue {
+  font-family: 'Lato', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #FE70BD;
+}
+.ir-due {
+  font-family: 'Lato', sans-serif;
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+}
+.ir-meta {
+  font-family: 'Lato', sans-serif;
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+}
+.ir-component {
+  font-family: 'Lato', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #3DB7F4;
+  background: rgba(61,183,244,0.08);
+  padding: 1px 6px;
+  border-radius: 3px;
+}

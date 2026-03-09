@@ -1,0 +1,15 @@
+.dev-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  align-content: start;
+}
+
+.dev-grid-empty {
+  font-family: 'Lato', sans-serif;
+  font-size: 1rem;
+  font-weight: 300;
+  color: var(--text-muted);
+  padding: 40px;
+  text-align: center;
+}

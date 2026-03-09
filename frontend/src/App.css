@@ -1,0 +1,175 @@
+/* ===== Brand Tokens PGMais ===== */
+:root {
+  --azul-profundo: #0120EB;
+  --azul-primario: #3559EB;
+  --azul-claro:    #3DB7F4;
+  --azul-escuro:   #243A83;
+  --rosa:          #FE70BD;
+  --cinza:         #CCCCCC;
+  --amarelo:       #F2F24B;
+  --verde:         #40EB4F;
+
+  --bg:            #070d1f;
+  --surface:       #0e1a3a;
+  --surface-alt:   #132048;
+  --border:        rgba(61,183,244,0.12);
+  --border-strong: rgba(61,183,244,0.25);
+
+  --text:          #ffffff;
+  --text-secondary: rgba(255,255,255,0.70);
+  --text-muted:    rgba(255,255,255,0.38);
+
+  --radius-sm: 8px;
+  --radius:    14px;
+  --radius-lg: 20px;
+
+  font-family: 'Lato', system-ui, sans-serif;
+}
+
+/* ===== Background freeform (Coluna 1 = azuis) ===== */
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 55% at 5%   0%,   rgba(1,32,235,0.40) 0%, transparent 65%),
+    radial-gradient(ellipse 45% 50% at 95%  95%,  rgba(53,89,235,0.28) 0%, transparent 60%),
+    radial-gradient(ellipse 35% 35% at 55%  45%,  rgba(36,58,131,0.20) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 80%  10%,  rgba(61,183,244,0.12) 0%, transparent 55%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ===== App Layout ===== */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 20px 28px 28px;
+  gap: 20px;
+}
+
+/* ===== Header ===== */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 18px;
+  position: relative;
+}
+
+/* Barra decorativa da marca: verde → azul claro → azul → transparente */
+.app-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    var(--verde),
+    var(--azul-claro) 30%,
+    var(--azul-primario) 60%,
+    transparent
+  );
+  border-radius: 1px;
+}
+
+.tagline {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
+}
+.tagline em {
+  font-style: normal;
+  color: var(--azul-claro);
+  font-weight: 600;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.last-updated {
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: var(--text-muted);
+}
+
+.refresh-btn {
+  background: transparent;
+  border: 1.5px solid var(--azul-primario);
+  color: var(--azul-claro);
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  font-family: 'Lato', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: background 0.2s, border-color 0.2s;
+}
+.refresh-btn:hover:not(:disabled) {
+  background: rgba(53,89,235,0.2);
+  border-color: var(--azul-claro);
+}
+.refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.refresh-btn.loading  { animation: pulse 1.2s ease-in-out infinite; }
+
+/* ===== App Body ===== */
+.app-body {
+  display: grid;
+  grid-template-columns: 1fr 390px;
+  gap: 20px;
+  flex: 1;
+  align-items: start;
+}
+
+/* ===== Loading / Error ===== */
+.loading-screen, .error-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 16px;
+}
+.loading-screen p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 300;
+}
+.loading-tagline {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.error-screen h2 {
+  font-family: 'Lato', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--rosa);
+}
+.error-screen p { color: var(--text-muted); font-size: 0.95rem; }
+.error-screen button {
+  background: var(--azul-primario);
+  color: #fff;
+  border: none;
+  padding: 12px 28px;
+  border-radius: var(--radius-sm);
+  font-family: 'Lato', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.spinner {
+  width: 44px; height: 44px;
+  border: 3px solid rgba(61,183,244,0.18);
+  border-top-color: var(--azul-claro);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin  { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }

@@ -1,0 +1,80 @@
+.kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+/* Barra superior colorida */
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+/* Blob decorativo de fundo (círculo da marca) */
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  bottom: -20px; right: -20px;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  opacity: 0.06;
+}
+
+.kpi-value {
+  font-family: 'Lato', sans-serif;
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.kpi-label {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+/* Azul Claro — Backlog total */
+.kpi-azul-claro::before { background: var(--azul-claro); }
+.kpi-azul-claro::after  { background: var(--azul-claro); }
+.kpi-azul-claro .kpi-value { color: var(--azul-claro); }
+
+/* Azul Primário — Em Andamento */
+.kpi-azul-primario::before { background: var(--azul-primario); }
+.kpi-azul-primario::after  { background: var(--azul-primario); }
+.kpi-azul-primario .kpi-value { color: var(--azul-primario); }
+
+/* Amarelo — Aguardando */
+.kpi-amarelo::before { background: var(--amarelo); }
+.kpi-amarelo::after  { background: var(--amarelo); }
+.kpi-amarelo .kpi-value { color: var(--amarelo); }
+
+/* Verde — Concluído */
+.kpi-verde::before { background: var(--verde); }
+.kpi-verde::after  { background: var(--verde); }
+.kpi-verde .kpi-value { color: var(--verde); }
+
+/* Rosa — Em Atraso */
+.kpi-rosa::before { background: var(--rosa); }
+.kpi-rosa::after  { background: var(--rosa); }
+.kpi-rosa .kpi-value { color: var(--rosa); }
