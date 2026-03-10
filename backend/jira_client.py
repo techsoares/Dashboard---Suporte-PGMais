@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from models import (
     Assignee, IssueType, Status, Priority, Component,
     Issue, TimeInStatus, DevSummary, KpiSummary, KpiDelta, DashboardResponse,
+    WeekSummary, DevDelivery, DevWeekSummary, ProductDelivery, TypeBreakdown, ManagementData,
     _ms_to_hms,
 )
 
@@ -222,6 +223,9 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
     product: Optional[str] = components[0].name if components else None
     logger.debug("Issue %s | components raw: %r → product: %r", key, fields.get("components"), product)
 
+    resolved_date_raw = fields.get("resolutiondate")
+    resolved_date: Optional[str] = resolved_date_raw if isinstance(resolved_date_raw, str) else None
+
     return Issue(
         key=key,
         summary=fields.get("summary", ""),
@@ -234,6 +238,7 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
         start_date=start_date,
         due_date=due_date,
         created=fields.get("created"),
+        resolved_date=resolved_date,
         time_in_status=time_in_status,
         is_overdue=_is_overdue(due_date),
         jira_url=f"{JIRA_BASE_URL}/browse/{key}",
@@ -272,7 +277,7 @@ async def _fetch_changelog(client: httpx.AsyncClient, key: str) -> list[dict]:
 
 FIELDS = (
     "summary,status,assignee,priority,components,"
-    "customfield_10460,customfield_10015,customfield_10113,duedate,issuetype,created"
+    "customfield_10460,customfield_10015,customfield_10113,duedate,issuetype,created,resolutiondate"
 )
 
 
@@ -480,9 +485,254 @@ def build_dashboard(
     return DashboardResponse(
         devs=list(dev_map.values()),
         backlog=backlog,
+        done_issues=done_issues,
         stale_issues=stale_issues,
         kpis=kpis,
         kpi_delta=delta,
         last_updated=datetime.now(timezone.utc).isoformat(),
         jira_base_url=JIRA_BASE_URL,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Management / Historical data
+# ---------------------------------------------------------------------------
+
+async def fetch_done_last_n_weeks(from_date: date, to_date: date | None = None) -> list[Issue]:
+    """Busca todas as issues concluídas no período [from_date, to_date), com changelog."""
+    import asyncio
+
+    jql_date = f'statusCategoryChangedDate >= "{from_date.isoformat()}"'
+    if to_date:
+        jql_date += f' AND statusCategoryChangedDate < "{to_date.isoformat()}"'
+
+    jql = (
+        f'statusCategory = Done '
+        f'AND {jql_date} '
+        f'AND project = "{JIRA_PROJECT}" '
+        f'ORDER BY statusCategoryChangedDate DESC'
+    )
+    raw_all: list[dict] = []
+
+    # Semáforo para limitar concorrência no fetch de changelogs
+    semaphore = asyncio.Semaphore(8)
+
+    async def fetch_cl_limited(client: httpx.AsyncClient, key: str) -> list[dict]:
+        async with semaphore:
+            return await _fetch_changelog(client, key)
+
+    async with httpx.AsyncClient() as client:
+        next_page_token: str | None = None
+        while True:
+            params: dict = {"jql": jql, "maxResults": 100, "fields": FIELDS}
+            if next_page_token:
+                params["nextPageToken"] = next_page_token
+            data = await _get(client, SEARCH_URL, params=params)
+            raw_issues: list[dict] = data.get("issues", [])
+            raw_all.extend(raw_issues)
+            next_page_token = data.get("nextPageToken")
+            if not next_page_token or not raw_issues:
+                break
+
+        # Busca changelogs em paralelo com limite de concorrência
+        changelogs: list[list[dict]] = await asyncio.gather(
+            *[fetch_cl_limited(client, raw.get("key", "")) for raw in raw_all]
+        )
+
+    issues: list[Issue] = []
+    for raw, histories in zip(raw_all, changelogs):
+        key: str = raw.get("key", "")
+        fields: dict = raw.get("fields", {})
+        issues.append(_build_issue(fields, key, histories))
+
+    logger.info("fetch_done_last_n_weeks: %d issues com changelog", len(issues))
+    return issues
+
+
+def _was_on_time(issue: Issue) -> bool:
+    """Retorna True se a issue foi concluída dentro do prazo."""
+    if not issue.due_date:
+        return True  # sem prazo definido = sem violação
+    try:
+        due = date.fromisoformat(issue.due_date)
+        if issue.resolved_date:
+            resolved = date.fromisoformat(issue.resolved_date[:10])
+            return resolved <= due
+        return True
+    except (ValueError, TypeError):
+        return True
+
+
+def _cycle_days(issue: Issue) -> float | None:
+    """Dias entre criação e resolução."""
+    if not issue.created or not issue.resolved_date:
+        return None
+    try:
+        created = datetime.fromisoformat(issue.created.replace("Z", "+00:00"))
+        resolved = datetime.fromisoformat(issue.resolved_date.replace("Z", "+00:00"))
+        return max(0.0, (resolved - created).total_seconds() / 86400)
+    except (ValueError, TypeError):
+        return None
+
+
+def build_management_data(done_issues: list[Issue], period_weeks: int) -> ManagementData:
+    """Consolida issues concluídas em métricas de gestão por período."""
+    from datetime import timedelta
+
+    today = date.today()
+    start_of_week = today - timedelta(days=today.weekday())
+
+    # Semanas do mais antigo ao mais recente
+    weeks: list[WeekSummary] = []
+    for i in range(period_weeks - 1, -1, -1):
+        w_start = start_of_week - timedelta(weeks=i)
+        w_end   = w_start + timedelta(days=7)
+        label   = w_start.strftime("%d/%b")
+
+        w_issues = [
+            iss for iss in done_issues
+            if iss.resolved_date
+            and w_start <= date.fromisoformat(iss.resolved_date[:10]) < w_end
+        ]
+
+        on_time  = sum(1 for i in w_issues if _was_on_time(i))
+        cycles   = [c for iss in w_issues if (c := _cycle_days(iss)) is not None]
+        avg_cycle = round(sum(cycles) / len(cycles), 1) if cycles else 0.0
+
+        weeks.append(WeekSummary(
+            week_label=label,
+            week_start=w_start.isoformat(),
+            done_count=len(w_issues),
+            on_time=on_time,
+            late=len(w_issues) - on_time,
+            avg_cycle_days=avg_cycle,
+        ))
+
+    def _ms_to_days(ms: int) -> float:
+        return round(ms / (1000 * 3600 * 24), 1)
+
+    # Por dev
+    dev_map: dict[str, dict] = {}
+    for iss in done_issues:
+        name = iss.assignee.display_name if iss.assignee else "Não atribuído"
+        if name not in dev_map:
+            dev_map[name] = {
+                "done": 0, "on_time": 0, "cycles": [],
+                "backlog_ms": [], "waiting_ms": [], "progress_ms": [],
+            }
+        dev_map[name]["done"] += 1
+        if _was_on_time(iss):
+            dev_map[name]["on_time"] += 1
+        c = _cycle_days(iss)
+        if c is not None:
+            dev_map[name]["cycles"].append(c)
+        t = iss.time_in_status
+        if t.backlog_ms > 0:
+            dev_map[name]["backlog_ms"].append(t.backlog_ms)
+        if t.waiting_ms > 0:
+            dev_map[name]["waiting_ms"].append(t.waiting_ms)
+        if t.in_progress_ms > 0:
+            dev_map[name]["progress_ms"].append(t.in_progress_ms)
+
+    def _avg_days(lst: list[int]) -> float:
+        return _ms_to_days(int(sum(lst) / len(lst))) if lst else 0.0
+
+    by_dev = sorted([
+        DevDelivery(
+            name=name,
+            done_count=v["done"],
+            on_time=v["on_time"],
+            avg_cycle_days=round(sum(v["cycles"]) / len(v["cycles"]), 1) if v["cycles"] else 0.0,
+            avg_backlog_days=_avg_days(v["backlog_ms"]),
+            avg_waiting_days=_avg_days(v["waiting_ms"]),
+            avg_in_progress_days=_avg_days(v["progress_ms"]),
+        )
+        for name, v in dev_map.items()
+        if name != "Não atribuído"
+    ], key=lambda x: -x.done_count)
+
+    # Por dev por semana (para gráfico de linhas)
+    week_starts_list = [date.fromisoformat(w.week_start) for w in weeks]
+    dev_week_raw: dict[str, list[int]] = {}
+    for iss in done_issues:
+        if not iss.resolved_date or not iss.assignee:
+            continue
+        name = iss.assignee.display_name
+        if name == "Não atribuído":
+            continue
+        resolved = date.fromisoformat(iss.resolved_date[:10])
+        for idx, w_start in enumerate(week_starts_list):
+            if w_start <= resolved < w_start + timedelta(days=7):
+                if name not in dev_week_raw:
+                    dev_week_raw[name] = [0] * period_weeks
+                dev_week_raw[name][idx] += 1
+                break
+
+    # Mantém a mesma ordem de by_dev para consistência de cores
+    by_dev_weekly = [
+        DevWeekSummary(name=d.name, weekly_counts=dev_week_raw.get(d.name, [0] * period_weeks))
+        for d in by_dev
+    ]
+
+    # Por produto
+    prod_map: dict[str, dict] = {}
+    for iss in done_issues:
+        prod = iss.product or "Sem produto"
+        if prod not in prod_map:
+            prod_map[prod] = {"done": 0, "on_time": 0}
+        prod_map[prod]["done"] += 1
+        if _was_on_time(iss):
+            prod_map[prod]["on_time"] += 1
+
+    by_product = sorted([
+        ProductDelivery(product=p, done_count=v["done"], on_time=v["on_time"])
+        for p, v in prod_map.items()
+    ], key=lambda x: -x.done_count)
+
+    # Por tipo de issue
+    type_map: dict[str, dict] = {}
+    for iss in done_issues:
+        tname = iss.issue_type.name or "Tarefa"
+        if tname not in type_map:
+            type_map[tname] = {"count": 0, "on_time": 0}
+        type_map[tname]["count"] += 1
+        if _was_on_time(iss):
+            type_map[tname]["on_time"] += 1
+
+    by_type = sorted([
+        TypeBreakdown(type_name=t, count=v["count"], on_time=v["on_time"])
+        for t, v in type_map.items()
+    ], key=lambda x: -x.count)
+
+    # Totais e médias do time
+    total = len(done_issues)
+    on_time_total = sum(1 for i in done_issues if _was_on_time(i))
+    all_cycles = [c for iss in done_issues if (c := _cycle_days(iss)) is not None]
+
+    all_backlog_ms = [iss.time_in_status.backlog_ms for iss in done_issues if iss.time_in_status.backlog_ms > 0]
+    all_waiting_ms = [iss.time_in_status.waiting_ms for iss in done_issues if iss.time_in_status.waiting_ms > 0]
+    all_progress_ms = [iss.time_in_status.in_progress_ms for iss in done_issues if iss.time_in_status.in_progress_ms > 0]
+
+    # Ordena por data de resolução desc para drill-down
+    done_sorted = sorted(
+        done_issues,
+        key=lambda i: i.resolved_date or "",
+        reverse=True,
+    )
+
+    return ManagementData(
+        weeks=weeks,
+        by_dev=by_dev,
+        by_dev_weekly=by_dev_weekly,
+        by_product=by_product,
+        by_type=by_type,
+        done_issues=done_sorted,
+        total_done=total,
+        sla_rate=round(on_time_total / total * 100, 1) if total > 0 else 0.0,
+        avg_cycle_days=round(sum(all_cycles) / len(all_cycles), 1) if all_cycles else 0.0,
+        team_avg_backlog_days=_avg_days(all_backlog_ms),
+        team_avg_waiting_days=_avg_days(all_waiting_ms),
+        team_avg_in_progress_days=_avg_days(all_progress_ms),
+        period_weeks=period_weeks,
+        last_updated=datetime.now(timezone.utc).isoformat(),
     )

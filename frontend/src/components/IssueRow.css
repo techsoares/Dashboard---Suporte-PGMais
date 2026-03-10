@@ -75,7 +75,7 @@
 .ir-status-raw {
   font-family: 'Lato', sans-serif;
   font-size: 10px;
-  color: rgba(255,255,255,0.4);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -94,7 +94,7 @@
   font-family: 'Lato', sans-serif;
   font-size: 14px;
   font-weight: 400;
-  color: rgba(255,255,255,0.90);
+  color: var(--text-secondary);
   line-height: 1.35;
   overflow: hidden;
   display: -webkit-box;
@@ -123,12 +123,12 @@
 .ir-due {
   font-family: 'Lato', sans-serif;
   font-size: 11px;
-  color: rgba(255,255,255,0.4);
+  color: var(--text-muted);
 }
 .ir-meta {
   font-family: 'Lato', sans-serif;
   font-size: 11px;
-  color: rgba(255,255,255,0.35);
+  color: var(--text-muted);
 }
 .ir-component {
   font-family: 'Lato', sans-serif;

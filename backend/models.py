@@ -77,6 +77,7 @@ class Issue(BaseModel):
     start_date: Optional[str] = None      # customfield_10015 — YYYY-MM-DD
     due_date: Optional[str] = None        # duedate — YYYY-MM-DD
     created: Optional[str] = None
+    resolved_date: Optional[str] = None   # resolutiondate — quando foi concluída
     time_in_status: TimeInStatus = TimeInStatus()
     is_overdue: bool = False
     jira_url: str = ""
@@ -109,9 +110,68 @@ class KpiDelta(BaseModel):
 
 class DashboardResponse(BaseModel):
     devs: List[DevSummary] = []
-    backlog: List[Issue] = []             # Todas as issues (para coluna direita)
+    backlog: List[Issue] = []             # Todas as issues ativas (para coluna direita)
+    done_issues: List[Issue] = []         # Issues concluídas esta semana
     stale_issues: List[Issue] = []        # Issues > 30 dias em progresso
     kpis: KpiSummary = KpiSummary()
     kpi_delta: KpiDelta = KpiDelta()
     last_updated: str = ""
     jira_base_url: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Management / Historical models
+# ---------------------------------------------------------------------------
+
+class WeekSummary(BaseModel):
+    week_label: str          # "03/Mar", "10/Mar", etc.
+    week_start: str          # ISO date YYYY-MM-DD
+    done_count: int = 0
+    on_time: int = 0         # entregues dentro do prazo
+    late: int = 0            # entregues com atraso
+    avg_cycle_days: float = 0.0
+
+
+class DevDelivery(BaseModel):
+    name: str
+    done_count: int = 0
+    on_time: int = 0
+    avg_cycle_days: float = 0.0
+    avg_backlog_days: float = 0.0      # tempo médio em backlog/fila
+    avg_waiting_days: float = 0.0      # tempo médio aguardando
+    avg_in_progress_days: float = 0.0  # tempo médio em desenvolvimento
+
+
+class ProductDelivery(BaseModel):
+    product: str
+    done_count: int = 0
+    on_time: int = 0
+
+
+class TypeBreakdown(BaseModel):
+    type_name: str
+    count: int = 0
+    on_time: int = 0
+
+
+class DevWeekSummary(BaseModel):
+    """Contagem de entregas por semana para um dev (alinhada com ManagementData.weeks)."""
+    name: str
+    weekly_counts: List[int] = []
+
+
+class ManagementData(BaseModel):
+    weeks: List[WeekSummary] = []
+    by_dev: List[DevDelivery] = []
+    by_dev_weekly: List[DevWeekSummary] = []
+    by_product: List[ProductDelivery] = []
+    by_type: List[TypeBreakdown] = []
+    done_issues: List[Issue] = []        # Lista completa para drill-down
+    total_done: int = 0
+    sla_rate: float = 0.0        # % entregues dentro do prazo
+    avg_cycle_days: float = 0.0  # dias médios criação→conclusão
+    team_avg_backlog_days: float = 0.0
+    team_avg_waiting_days: float = 0.0
+    team_avg_in_progress_days: float = 0.0
+    period_weeks: int = 8
+    last_updated: str = ""
