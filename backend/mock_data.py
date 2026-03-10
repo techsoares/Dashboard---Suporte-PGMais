@@ -2,9 +2,10 @@
 
 from models import (
     DashboardResponse, DevSummary, Assignee, Issue, IssueType, Status,
-    Priority, Component, TimeInStatus, KpiSummary
+    Priority, Component, TimeInStatus, KpiSummary,
+    ManagementData, WeekSummary, DevDelivery, DevWeekSummary, ProductDelivery, TypeBreakdown,
 )
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 
 def get_mock_dashboard() -> DashboardResponse:
     """Retorna dados mock para desenvolvimento local."""
@@ -148,4 +149,82 @@ def get_mock_dashboard() -> DashboardResponse:
         ),
         last_updated=datetime.now(timezone.utc).isoformat(),
         jira_base_url="https://pgmais.atlassian.net",
+    )
+
+
+def get_mock_management(period_weeks: int = 4) -> ManagementData:
+    """Dados mock para a visão de Gestão Executiva (desenvolvimento local)."""
+    today = date.today()
+    start_of_week = today - timedelta(days=today.weekday())
+
+    weeks = []
+    for i in range(period_weeks - 1, -1, -1):
+        w_start = start_of_week - timedelta(weeks=i)
+        label = w_start.strftime("%d/%b")
+        done = max(2, 8 - i * 2)
+        weeks.append(WeekSummary(
+            week_label=label,
+            week_start=w_start.isoformat(),
+            done_count=done,
+            on_time=max(1, done - 1),
+            late=1,
+            avg_cycle_days=round(3.5 + i * 0.5, 1),
+        ))
+
+    devs = [
+        DevDelivery(name="Aldinei Sampaio",     done_count=6, on_time=5, avg_cycle_days=3.2, avg_backlog_days=1.1, avg_waiting_days=0.5, avg_in_progress_days=1.6),
+        DevDelivery(name="Anderson Wignieski",  done_count=5, on_time=4, avg_cycle_days=4.8, avg_backlog_days=2.0, avg_waiting_days=1.2, avg_in_progress_days=1.6),
+        DevDelivery(name="Cleyton Kevin",       done_count=4, on_time=3, avg_cycle_days=5.1, avg_backlog_days=1.5, avg_waiting_days=0.8, avg_in_progress_days=2.8),
+    ]
+
+    by_dev_weekly = [
+        DevWeekSummary(name=d.name, weekly_counts=[max(0, d.done_count // period_weeks + (1 if i % 2 == 0 else 0)) for i in range(period_weeks)])
+        for d in devs
+    ]
+
+    done_issues_mock = [
+        Issue(
+            key=f"ON-3630{i}",
+            summary=f"[MOCK] Entrega exemplo {i+1}",
+            issue_type=IssueType(id="1", name="Tarefa"),
+            status=Status(id="3", name="Done", category="done", category_name="Concluído"),
+            priority=Priority(id="2", name="High"),
+            assignee=Assignee(account_id=str(i % 3 + 1), display_name=devs[i % 3].name),
+            components=[Component(id="1", name=["SMS", "Email", "RCS"][i % 3])],
+            created=(today - timedelta(days=10 + i)).isoformat() + "T10:00:00Z",
+            resolved_date=(today - timedelta(days=i)).isoformat() + "T15:00:00Z",
+            due_date=(today - timedelta(days=i - 1)).isoformat(),
+            time_in_status=TimeInStatus(backlog_ms=86400000, waiting_ms=43200000, in_progress_ms=172800000),
+            is_overdue=False,
+            jira_url=f"https://pgmais.atlassian.net/browse/ON-3630{i}",
+            account="PGMais",
+            product=["SMS", "Email", "RCS"][i % 3],
+        )
+        for i in range(min(period_weeks * 4, 12))
+    ]
+
+    total = len(done_issues_mock)
+    return ManagementData(
+        weeks=weeks,
+        by_dev=devs,
+        by_dev_weekly=by_dev_weekly,
+        by_product=[
+            ProductDelivery(product="SMS",   done_count=max(1, total // 3),     on_time=max(1, total // 3 - 1)),
+            ProductDelivery(product="Email", done_count=max(1, total // 3),     on_time=max(1, total // 3 - 1)),
+            ProductDelivery(product="RCS",   done_count=total - 2*(total // 3), on_time=total - 2*(total // 3)),
+        ],
+        by_type=[
+            TypeBreakdown(type_name="Tarefa",   count=max(1, total // 2), on_time=max(1, total // 2 - 1)),
+            TypeBreakdown(type_name="Bug",       count=max(1, total // 4), on_time=max(1, total // 4 - 1)),
+            TypeBreakdown(type_name="Melhoria",  count=total - total // 2 - total // 4, on_time=total - total // 2 - total // 4),
+        ],
+        done_issues=done_issues_mock,
+        total_done=total,
+        sla_rate=83.0,
+        avg_cycle_days=4.2,
+        team_avg_backlog_days=1.5,
+        team_avg_waiting_days=0.8,
+        team_avg_in_progress_days=2.0,
+        period_weeks=period_weeks,
+        last_updated=datetime.now(timezone.utc).isoformat(),
     )

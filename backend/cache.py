@@ -1,3 +1,4 @@
+import fnmatch
 import time
 from typing import Any, Optional
 from dataclasses import dataclass, field
@@ -36,8 +37,8 @@ class MemoryCache:
         self._store.pop(key, None)
 
     def invalidate_pattern(self, pattern: str) -> None:
-        """Remove todas as chaves que contenham o padrão."""
-        keys_to_remove = [k for k in self._store.keys() if pattern in k]
+        """Remove chaves que correspondam ao padrão glob (ex: 'mgmt_*') ou o contenham."""
+        keys_to_remove = [k for k in self._store.keys() if fnmatch.fnmatch(k, pattern)]
         for k in keys_to_remove:
             del self._store[k]
 

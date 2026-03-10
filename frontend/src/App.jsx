@@ -359,7 +359,7 @@ export default function App() {
         </>
       )}
 
-      {currentView === 'management' && data && <ManagementView data={data} />}
+      {currentView === 'management' && data && <ManagementView data={filteredData} filters={filters} />}
       {currentView === 'ai' && data && <AIInsightsView data={data} />}
       {currentView === 'product' && filteredData && <ProductView data={filteredData} />}
       {currentView === 'kanban' && data && <KanbanView data={data} />}

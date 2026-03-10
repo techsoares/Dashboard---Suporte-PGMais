@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 from cache import cache
 from jira_client import fetch_active_issues, fetch_done_this_week, fetch_done_last_week, build_dashboard, fetch_done_last_n_weeks, build_management_data
 from models import DashboardResponse, KpiSummary, ManagementData
-from mock_data import get_mock_dashboard
+from mock_data import get_mock_dashboard, get_mock_management
 
 load_dotenv()
 
@@ -150,11 +150,29 @@ async def health():
     }
 
 
+_JIRA_KEY_RE = re.compile(r'^[A-Z][A-Z0-9]{0,9}-\d{1,6}$')
+
 @app.get("/api/debug/fields", tags=["infra"], summary="Mostra fields brutos de uma issue para diagnóstico")
 async def debug_fields(issue_key: str | None = None, x_refresh_secret: str | None = Header(default=None)):
-    """Retorna os fields brutos de uma issue real do Jira para identificar custom fields."""
-    if REFRESH_SECRET and x_refresh_secret != REFRESH_SECRET:
+    """Retorna os fields brutos de uma issue real do Jira para identificar custom fields.
+
+    Requer X-Refresh-Secret. Quando REFRESH_SECRET não está configurado o endpoint
+    permanece bloqueado para evitar expor dados do Jira sem autenticação.
+    """
+    # Sempre exige autenticação — sem secret configurada o endpoint fica fechado
+    if not REFRESH_SECRET:
+        raise HTTPException(
+            status_code=403,
+            detail="Endpoint de diagnóstico desativado. Configure REFRESH_SECRET no .env para habilitá-lo.",
+        )
+    if x_refresh_secret != REFRESH_SECRET:
         raise HTTPException(status_code=401, detail="Não autorizado")
+
+    # Valida formato do issue_key para evitar path traversal e injeção de URL
+    if issue_key is not None:
+        if not _JIRA_KEY_RE.match(issue_key):
+            raise HTTPException(status_code=400, detail="issue_key inválido — use o formato PROJ-123")
+
     import httpx, base64
 
     email = os.getenv("JIRA_EMAIL", "")
@@ -264,7 +282,12 @@ async def get_dashboard(
 
 
 def _period_date_range(period: str) -> tuple[date, date | None, int]:
-    """Retorna (from_date, to_date_exclusive, period_weeks) para cada período."""
+    """Retorna (from_date, to_date_exclusive, period_weeks) para cada período.
+
+    O from_date é alinhado ao início do primeiro bucket semanal gerado por
+    build_management_data (start_of_week - (period_weeks-1) semanas), garantindo
+    que todas as issues buscadas caiam dentro de algum bucket e apareçam no drill.
+    """
     today = date.today()
     start_of_week = today - timedelta(days=today.weekday())  # Segunda-feira
     if period == "today":
@@ -272,13 +295,13 @@ def _period_date_range(period: str) -> tuple[date, date | None, int]:
     elif period == "week":
         return start_of_week, None, 1
     elif period == "month":
-        return today - timedelta(weeks=4), None, 4
+        return start_of_week - timedelta(weeks=3), None, 4
     elif period == "quarter":
-        return today - timedelta(weeks=13), None, 13
+        return start_of_week - timedelta(weeks=12), None, 13
     elif period == "semester":
-        return today - timedelta(weeks=26), None, 26
+        return start_of_week - timedelta(weeks=25), None, 26
     else:
-        return today - timedelta(weeks=4), None, 4
+        return start_of_week - timedelta(weeks=3), None, 4
 
 
 @app.get(
@@ -299,7 +322,9 @@ async def get_management(period: str = "month"):
 
     missing = _validate_env()
     if missing:
-        raise HTTPException(status_code=503, detail="Credenciais Jira não configuradas")
+        logger.info("Credenciais Jira ausentes — usando dados mock de gestão para desenvolvimento")
+        _, _, period_weeks = _period_date_range(period)
+        return get_mock_management(period_weeks)
 
     from_date, to_date, period_weeks = _period_date_range(period)
     logger.info("Management cache MISS — período %s (%s → %s)...", period, from_date, to_date or "hoje")

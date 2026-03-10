@@ -223,7 +223,10 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
     product: Optional[str] = components[0].name if components else None
     logger.debug("Issue %s | components raw: %r → product: %r", key, fields.get("components"), product)
 
-    resolved_date_raw = fields.get("resolutiondate")
+    # resolved_date: prefere statuscategorychangedate para consistência com a query JQL
+    # (que filtra por statusCategoryChangedDate). resolutiondate pode ser muito mais antiga
+    # e causaria issues fora de qualquer bucket semanal no build_management_data.
+    resolved_date_raw = fields.get("statuscategorychangedate") or fields.get("resolutiondate")
     resolved_date: Optional[str] = resolved_date_raw if isinstance(resolved_date_raw, str) else None
 
     return Issue(
@@ -277,7 +280,8 @@ async def _fetch_changelog(client: httpx.AsyncClient, key: str) -> list[dict]:
 
 FIELDS = (
     "summary,status,assignee,priority,components,"
-    "customfield_10460,customfield_10015,customfield_10113,duedate,issuetype,created,resolutiondate"
+    "customfield_10460,customfield_10015,customfield_10113,duedate,issuetype,created,"
+    "resolutiondate,statuscategorychangedate"
 )
 
 
@@ -314,16 +318,22 @@ async def fetch_active_issues() -> list[Issue]:
             if not next_page_token or not raw_issues:
                 break
 
-        # 2. Busca changelogs em paralelo
-        changelogs: list[list[dict]] = await asyncio.gather(
-            *[_fetch_changelog(client, raw.get("key", "")) for raw in raw_all]
+        # 2. Busca changelogs em paralelo — falhas individuais não derrubam o endpoint
+        results = await asyncio.gather(
+            *[_fetch_changelog(client, raw.get("key", "")) for raw in raw_all],
+            return_exceptions=True,
         )
+
+    cl_errors = sum(1 for r in results if isinstance(r, Exception))
+    if cl_errors:
+        logger.warning("fetch_active_issues: %d/%d changelogs falharam", cl_errors, len(raw_all))
 
     # 3. Constrói as issues com o changelog correspondente
     issues: list[Issue] = []
-    for raw, histories in zip(raw_all, changelogs):
+    for raw, result in zip(raw_all, results):
         key: str = raw.get("key", "")
         fields: dict = raw.get("fields", {})
+        histories: list[dict] = result if not isinstance(result, Exception) else []
         issues.append(_build_issue(fields, key, histories))
 
     return issues
@@ -499,7 +509,12 @@ def build_dashboard(
 # ---------------------------------------------------------------------------
 
 async def fetch_done_last_n_weeks(from_date: date, to_date: date | None = None) -> list[Issue]:
-    """Busca todas as issues concluídas no período [from_date, to_date), com changelog."""
+    """Busca todas as issues concluídas no período [from_date, to_date), com changelog.
+
+    Changelogs são buscados em paralelo (semáforo=6 para evitar throttle do Jira).
+    Falhas individuais de changelog são toleradas — a issue é incluída com
+    time_in_status zerado em vez de derrubar todo o endpoint.
+    """
     import asyncio
 
     jql_date = f'statusCategoryChangedDate >= "{from_date.isoformat()}"'
@@ -514,8 +529,8 @@ async def fetch_done_last_n_weeks(from_date: date, to_date: date | None = None) 
     )
     raw_all: list[dict] = []
 
-    # Semáforo para limitar concorrência no fetch de changelogs
-    semaphore = asyncio.Semaphore(8)
+    # Semáforo conservador (6) para não ultrapassar o rate-limit do Jira Cloud
+    semaphore = asyncio.Semaphore(6)
 
     async def fetch_cl_limited(client: httpx.AsyncClient, key: str) -> list[dict]:
         async with semaphore:
@@ -534,18 +549,30 @@ async def fetch_done_last_n_weeks(from_date: date, to_date: date | None = None) 
             if not next_page_token or not raw_issues:
                 break
 
-        # Busca changelogs em paralelo com limite de concorrência
-        changelogs: list[list[dict]] = await asyncio.gather(
-            *[fetch_cl_limited(client, raw.get("key", "")) for raw in raw_all]
+        logger.info("fetch_done_last_n_weeks: %d issues encontradas, buscando changelogs...", len(raw_all))
+
+        # return_exceptions=True garante que uma falha de changelog não derruba tudo
+        results = await asyncio.gather(
+            *[fetch_cl_limited(client, raw.get("key", "")) for raw in raw_all],
+            return_exceptions=True,
+        )
+
+    cl_errors = sum(1 for r in results if isinstance(r, Exception))
+    if cl_errors:
+        logger.warning(
+            "fetch_done_last_n_weeks: %d/%d changelogs falharam (rate limit ou erro) — "
+            "time_in_status zerado para essas issues",
+            cl_errors, len(raw_all),
         )
 
     issues: list[Issue] = []
-    for raw, histories in zip(raw_all, changelogs):
+    for raw, result in zip(raw_all, results):
         key: str = raw.get("key", "")
         fields: dict = raw.get("fields", {})
+        histories: list[dict] = result if not isinstance(result, Exception) else []
         issues.append(_build_issue(fields, key, histories))
 
-    logger.info("fetch_done_last_n_weeks: %d issues com changelog", len(issues))
+    logger.info("fetch_done_last_n_weeks: %d issues montadas (%d sem changelog)", len(issues), cl_errors)
     return issues
 
 
