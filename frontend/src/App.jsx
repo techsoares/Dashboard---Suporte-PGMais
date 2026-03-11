@@ -51,6 +51,7 @@ export default function App() {
   const [nightMode, setNightMode]       = useState(false)
   const [lightMode, setLightMode]       = useState(false)
   const [notifications, setNotifications] = useState([])
+  const [backlogOpen, setBacklogOpen]     = useState(false)
   const prevKeysRef = useRef(null)
 
   useEffect(() => {
@@ -111,6 +112,14 @@ export default function App() {
     const interval = setInterval(fetchDashboard, REFRESH_INTERVAL)
     return () => clearInterval(interval)
   }, [fetchDashboard])
+
+  // Load BUs on startup
+  useEffect(() => {
+    fetch(`${API}/api/admin/bus`)
+      .then(r => r.json())
+      .then(r => setBus(Array.isArray(r) ? r : []))
+      .catch(() => {})
+  }, [])
 
   // Opções de filtro derivadas dos dados
   const filterOptions = useMemo(() => {
@@ -377,10 +386,18 @@ export default function App() {
             )}
           </div>
 
-          <main className="app-body">
-            <DevGrid devs={filteredData.devs} jiraBaseUrl={filteredData.jira_base_url} />
-            <BacklogPanel issues={filteredData.backlog} jiraBaseUrl={filteredData.jira_base_url} />
+          <main className="app-body app-body--full">
+            <DevGrid devs={filteredData.devs} jiraBaseUrl={filteredData.jira_base_url} bus={bus} />
           </main>
+
+          {/* Backlog drawer */}
+          <button className="backlog-toggle-btn" onClick={() => setBacklogOpen(v => !v)}>
+            {backlogOpen ? '✕' : `Backlog (${filteredData.backlog.length})`}
+          </button>
+          <div className={`backlog-drawer ${backlogOpen ? 'backlog-drawer--open' : ''}`}>
+            <BacklogPanel issues={filteredData.backlog} jiraBaseUrl={filteredData.jira_base_url} />
+          </div>
+          {backlogOpen && <div className="backlog-overlay" onClick={() => setBacklogOpen(false)} />}
         </>
       )}
 

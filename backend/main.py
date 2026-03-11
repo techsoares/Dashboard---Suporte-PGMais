@@ -81,6 +81,14 @@ class BUUpdate(BaseModel):
 class AccountRankingUpdate(BaseModel):
     accounts: list[str]
 
+class PriorityRequest(BaseModel):
+    issue_key: str
+    requester_name: str
+    justification: str
+    issue_summary: str = ""
+    issue_type: str = ""
+    account: str = ""
+
 
 def _strip_markdown(text: str) -> str:
     """Limpa markdown pesado mas preserva bullet points e listas numeradas."""
@@ -224,6 +232,124 @@ async def get_account_ranking():
 async def update_account_ranking(body: AccountRankingUpdate):
     _save_ranking(body.accounts)
     return {"status": "updated", "count": len(body.accounts)}
+
+
+# ---------------------------------------------------------------------------
+# Priority Requests — solicitações de prioridade com avaliação por IA
+# ---------------------------------------------------------------------------
+
+PRIORITY_FILE = os.path.join(os.path.dirname(__file__), "priority_requests.json")
+
+def _load_priority_requests() -> list[dict]:
+    if os.path.exists(PRIORITY_FILE):
+        with open(PRIORITY_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+def _save_priority_requests(requests: list[dict]):
+    with open(PRIORITY_FILE, "w", encoding="utf-8") as f:
+        json.dump(requests, f, ensure_ascii=False, indent=2)
+
+
+@app.get("/api/priority-requests", tags=["priority"], summary="Lista todas as solicitações de prioridade ativas")
+async def get_priority_requests():
+    return _load_priority_requests()
+
+
+@app.post("/api/priority-requests", tags=["priority"], summary="Solicita prioridade para um chamado com avaliação por IA")
+async def create_priority_request(body: PriorityRequest):
+    """
+    Recebe solicitação de prioridade, avalia com IA e atribui um boost ao score.
+    Limita a 1 pedido por pessoa por issue.
+    """
+    import httpx
+    from datetime import datetime
+
+    requests = _load_priority_requests()
+
+    # Check duplicate: same person + same issue
+    for r in requests:
+        if r["issue_key"] == body.issue_key and r["requester_name"].strip().lower() == body.requester_name.strip().lower():
+            return {"error": "duplicate", "message": f"{body.requester_name} já solicitou prioridade para {body.issue_key}"}
+
+    # AI evaluation
+    boost = 150  # default if AI fails
+    ai_verdict = "Avaliação automática padrão."
+
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    if api_key and body.justification.strip():
+        prompt = (
+            f"Você é um avaliador de urgência de chamados de suporte técnico. "
+            f"Avalie a justificativa abaixo para priorizar um chamado e responda APENAS com um JSON: "
+            f'{{"boost": <numero de 0 a 500>, "verdict": "<explicação curta em 1 frase>"}}\n\n'
+            f"Critérios de avaliação:\n"
+            f"- 400-500: Produção parada, perda financeira imediata, SLA crítico estourado\n"
+            f"- 250-399: Impacto significativo em cliente grande, degradação grave\n"
+            f"- 100-249: Impacto moderado, cliente insatisfeito mas operando\n"
+            f"- 0-99: Baixa urgência, conveniência, sem impacto real\n\n"
+            f"Chamado: {body.issue_key}\n"
+            f"Título: {body.issue_summary}\n"
+            f"Tipo: {body.issue_type}\n"
+            f"Account: {body.account}\n"
+            f"Justificativa do solicitante: {body.justification}"
+        )
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://pgmais-dashboard",
+            "X-Title": "PGMais Dashboard",
+        }
+        payload = {
+            "model": "anthropic/claude-sonnet-4.6",
+            "max_tokens": 300,
+            "messages": [
+                {"role": "user", "content": prompt},
+            ],
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    json=payload,
+                    headers=headers,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                answer = data["choices"][0]["message"]["content"]
+                # Parse JSON from response
+                import re
+                json_match = re.search(r'\{[^}]+\}', answer)
+                if json_match:
+                    parsed = json.loads(json_match.group())
+                    boost = max(0, min(500, int(parsed.get("boost", 150))))
+                    ai_verdict = parsed.get("verdict", ai_verdict)
+        except Exception as e:
+            logger.warning("AI priority evaluation failed: %s", e)
+
+    request_entry = {
+        "id": str(uuid.uuid4()),
+        "issue_key": body.issue_key,
+        "requester_name": body.requester_name.strip(),
+        "justification": body.justification.strip(),
+        "boost": boost,
+        "ai_verdict": ai_verdict,
+        "created_at": datetime.now().isoformat(),
+    }
+
+    requests.append(request_entry)
+    _save_priority_requests(requests)
+
+    return request_entry
+
+
+@app.delete("/api/priority-requests/{request_id}", tags=["priority"], summary="Remove uma solicitação de prioridade")
+async def delete_priority_request(request_id: str):
+    requests = _load_priority_requests()
+    requests = [r for r in requests if r["id"] != request_id]
+    _save_priority_requests(requests)
+    return {"status": "deleted"}
 
 
 @app.post(

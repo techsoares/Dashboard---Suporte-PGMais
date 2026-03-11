@@ -1,8 +1,65 @@
-.dev-grid {
+/* ===== BU Columns layout ===== */
+.bu-columns {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
-  align-content: start;
+  align-items: start;
+  min-height: 0;
+}
+
+.bu-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bu-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 10px;
+  border-bottom: 2px solid var(--azul-primario);
+  text-align: left;
+  transition: opacity 0.12s;
+}
+
+.bu-column-header:hover { opacity: 0.8; }
+
+.bu-column-name {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bu-column-count {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: var(--azul-claro);
+  background: rgba(61,183,244,0.1);
+  border-radius: 10px;
+  padding: 1px 8px;
+  flex-shrink: 0;
+}
+
+.bu-column-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .bu-columns { grid-template-columns: 1fr !important; }
 }
 
 .dev-grid-empty {

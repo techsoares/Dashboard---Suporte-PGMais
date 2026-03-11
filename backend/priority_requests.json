@@ -1,0 +1,20 @@
+[
+  {
+    "id": "f2962b62-7c13-41c5-bfee-3a40c25d9e34",
+    "issue_key": "ON-36148",
+    "requester_name": "Andressa Soares",
+    "justification": "risco de churn",
+    "boost": 320,
+    "ai_verdict": "Cliente grande (Lojas Renner) com funcionalidade crítica de emissão de boleto comprometida e risco de churn declarado, configurando impacto significativo na operação financeira.",
+    "created_at": "2026-03-11T14:09:46.826830"
+  },
+  {
+    "id": "784fd4e1-39f0-4cea-a90e-0a53a474f24f",
+    "issue_key": "ON-36148",
+    "requester_name": "Conrado",
+    "justification": "risco de perda de faturamento",
+    "boost": 420,
+    "ai_verdict": "Cliente de grande porte (Lojas Renner) com falha em emissão de boletos via API, representando risco direto e imediato de perda de faturamento em produção.",
+    "created_at": "2026-03-11T14:14:45.568633"
+  }
+]
