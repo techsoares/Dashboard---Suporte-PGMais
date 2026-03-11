@@ -10,6 +10,8 @@ import NightSummary from './components/NightSummary'
 import ProductStrip from './components/ProductStrip'
 import FilterDropdown from './components/FilterDropdown'
 import ManagementView from './components/ManagementView'
+import AdminView from './components/AdminView'
+import PrioritizationView from './components/PrioritizationView'
 import './App.css'
 
 const getApiUrl = () => {
@@ -34,7 +36,7 @@ const sortIssues = (issues) =>
     return issuePrio(a) - issuePrio(b)
   })
 
-const EMPTY_FILTERS = { assignee: [], account: [], product: [], issue_type: [], status: [] }
+const EMPTY_FILTERS = { bu: [], assignee: [], account: [], product: [], issue_type: [], status: [] }
 
 export default function App() {
   const [data, setData]             = useState(null)
@@ -43,6 +45,7 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false)
   const [lastFetch, setLastFetch]   = useState(null)
   const [currentView, setCurrentView] = useState('dashboard')
+  const [bus, setBus]               = useState([])
   const [filters, setFilters]       = useState(EMPTY_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
   const [nightMode, setNightMode]       = useState(false)
@@ -129,9 +132,15 @@ export default function App() {
     let backlog = data.backlog
     let doneIssues = data.done_issues || []
 
+    // Expande filtro de BU para lista de assignees
+    const buAssignees = filters.bu.length > 0
+      ? bus.filter(b => filters.bu.includes(b.name)).flatMap(b => b.members)
+      : []
+
     const filterIssue = (issues) => {
       let result = issues
-      if (filters.assignee.length) result = result.filter(i => filters.assignee.includes(i.assignee?.display_name))
+      if (buAssignees.length) result = result.filter(i => buAssignees.includes(i.assignee?.display_name))
+      else if (filters.assignee.length) result = result.filter(i => filters.assignee.includes(i.assignee?.display_name))
       if (filters.account.length)  result = result.filter(i => filters.account.includes(i.account))
       if (filters.product.length)  result = result.filter(i => filters.product.includes(i.product))
       if (filters.issue_type.length) result = result.filter(i => filters.issue_type.includes(i.issue_type?.name))
@@ -147,7 +156,9 @@ export default function App() {
       return result
     }
 
-    if (filters.assignee.length) {
+    if (buAssignees.length) {
+      devs = devs.filter(d => buAssignees.includes(d.assignee?.display_name))
+    } else if (filters.assignee.length) {
       devs = devs.filter(d => filters.assignee.includes(d.assignee?.display_name))
     }
     if (filters.account.length) {
@@ -184,7 +195,7 @@ export default function App() {
     backlog = sortIssues(backlog)
 
     return { ...data, devs, backlog, done_issues: doneIssues }
-  }, [data, filters, searchQuery])
+  }, [data, filters, searchQuery, bus])
 
   const toggleFilter = (key, value) => {
     setFilters(prev => {
@@ -270,6 +281,8 @@ export default function App() {
           <button className={`view-btn ${currentView === 'ai' ? 'active' : ''}`} onClick={() => setCurrentView('ai')}>IA Insights</button>
           <button className={`view-btn ${currentView === 'product' ? 'active' : ''}`} onClick={() => setCurrentView('product')}>Visão Produto</button>
           <button className={`view-btn ${currentView === 'kanban' ? 'active' : ''}`} onClick={() => setCurrentView('kanban')}>Kanban</button>
+          <button className={`view-btn ${currentView === 'admin' ? 'active' : ''}`} onClick={() => setCurrentView('admin')}>Admin</button>
+          <button className={`view-btn ${currentView === 'prioritization' ? 'active' : ''}`} onClick={() => setCurrentView('prioritization')}>Priorização</button>
           {lastFetch && (
             <span className="last-updated">
               atualizado às {lastFetch.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -287,9 +300,12 @@ export default function App() {
 
       {currentView === 'dashboard' && filteredData && (
         <>
-          <KpiBar kpis={filteredKpis} delta={hasAnyFilter ? null : data.kpi_delta} />
-
-          <ProductStrip issues={filteredData.backlog} />
+          {/* KPIs + Produtos compactos */}
+          <div className="kpi-product-row">
+            <KpiBar kpis={filteredKpis} delta={hasAnyFilter ? null : data.kpi_delta} />
+            <div className="kpi-product-divider" />
+            <ProductStrip issues={filteredData.backlog} />
+          </div>
 
           {/* Barra de filtros multi-select */}
           <div className="filter-bar">
@@ -305,6 +321,15 @@ export default function App() {
               {searchQuery && <button className="search-clear" onClick={() => setSearchQuery('')}>✕</button>}
             </div>
 
+            {bus.length > 0 && (
+              <FilterDropdown
+                label="BU"
+                options={bus.map(b => b.name)}
+                selected={filters.bu}
+                onToggle={v => toggleFilter('bu', v)}
+                onClear={() => clearFilter('bu')}
+              />
+            )}
             <FilterDropdown
               label="Responsável"
               options={filterOptions.assignees}
@@ -346,11 +371,11 @@ export default function App() {
                 ✕ limpar tudo
               </button>
             )}
-          </div>
 
-          {data.stale_issues?.length > 0 && (
-            <StaleBanner issues={data.stale_issues} jiraBaseUrl={data.jira_base_url} />
-          )}
+            {data.stale_issues?.length > 0 && (
+              <StaleBanner issues={data.stale_issues} jiraBaseUrl={data.jira_base_url} />
+            )}
+          </div>
 
           <main className="app-body">
             <DevGrid devs={filteredData.devs} jiraBaseUrl={filteredData.jira_base_url} />
@@ -363,6 +388,8 @@ export default function App() {
       {currentView === 'ai' && data && <AIInsightsView data={data} />}
       {currentView === 'product' && filteredData && <ProductView data={filteredData} />}
       {currentView === 'kanban' && data && <KanbanView data={data} />}
+      {currentView === 'admin' && <AdminView assignees={filterOptions.assignees} onBusChange={setBus} />}
+      {currentView === 'prioritization' && data && <PrioritizationView data={data} />}
 
       <footer className="app-footer">
         Desenvolvido por <span className="app-footer-name">Andressa Soares</span>

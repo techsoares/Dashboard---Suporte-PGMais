@@ -219,6 +219,8 @@ body {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
+  position: relative;
+  overflow: visible;
 }
 
 .search-wrapper {
@@ -303,12 +305,26 @@ body {
   color: #000;
 }
 
+/* ===== KPI + Produto strip compacto ===== */
+.kpi-product-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.kpi-product-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border-strong);
+  flex-shrink: 0;
+}
+
 /* ===== App Body ===== */
 .app-body {
   display: grid;
   grid-template-columns: 1fr 390px;
   gap: 20px;
-  flex: 1;
   align-items: start;
 }
 

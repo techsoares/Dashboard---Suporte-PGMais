@@ -572,7 +572,27 @@
 
 .mgmt-ai-bubble--ai .mgmt-ai-who { color: var(--azul-claro); }
 
-.mgmt-ai-answer { display: flex; flex-direction: column; gap: 2px; }
+.mgmt-ai-answer { display: flex; flex-direction: column; gap: 6px; }
+
+.mgmt-ai-answer .ai-answer-para {
+  margin: 0;
+  line-height: 1.65;
+  font-size: 0.88rem;
+}
+
+.mgmt-ai-answer .ai-answer-list {
+  margin: 2px 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mgmt-ai-answer .ai-answer-list li {
+  line-height: 1.6;
+  font-size: 0.88rem;
+  color: var(--text);
+}
 
 .mgmt-ai-input-row {
   display: flex;

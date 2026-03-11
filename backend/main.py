@@ -8,9 +8,11 @@ Endpoints:
   POST /api/refresh   → invalida cache e força atualização
 """
 
+import json
 import logging
 import os
 import re
+import uuid
 from datetime import datetime, timezone, date, timedelta
 
 from fastapi import FastAPI, HTTPException, Header
@@ -60,7 +62,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=f"({'|'.join(_origin_parts)})",
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-Refresh-Secret"],
 )
 
@@ -69,19 +71,28 @@ class AIChatRequest(BaseModel):
     context: str = ""
 
 
+class BUCreate(BaseModel):
+    name: str
+
+class BUUpdate(BaseModel):
+    name: str
+    members: list[str]
+
+class AccountRankingUpdate(BaseModel):
+    accounts: list[str]
+
+
 def _strip_markdown(text: str) -> str:
-    """Remove símbolos markdown da resposta da IA para garantir texto limpo."""
+    """Limpa markdown pesado mas preserva bullet points e listas numeradas."""
     # Remove bold/italic: **texto** → texto, *texto* → texto
     text = re.sub(r'\*\*(.+?)\*\*', r'\1', text, flags=re.DOTALL)
     text = re.sub(r'\*(.+?)\*',     r'\1', text, flags=re.DOTALL)
     # Remove headers: ## Título → Título
     text = re.sub(r'(?m)^#{1,6}\s+', '', text)
-    # Remove marcadores de lista: "* item", "+ item", "- item" no início da linha
-    text = re.sub(r'(?m)^\s*[\*\+\-]\s+', '', text)
-    # Remove listas numeradas: "1. item" → "item"
-    text = re.sub(r'(?m)^\s*\d+\.\s+', '', text)
     # Remove underlines: _texto_ → texto
     text = re.sub(r'_(.+?)_', r'\1', text)
+    # Remove blocos de código
+    text = re.sub(r'```[\s\S]*?```', '', text)
     # Colapsa linhas em branco excessivas
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
@@ -131,6 +142,158 @@ def _build_and_cache(active_issues, done_issues, done_last_week) -> DashboardRes
         len(dashboard.stale_issues),
     )
     return dashboard
+
+
+# ---------------------------------------------------------------------------
+# BU (Business Units) — storage em arquivo local
+# ---------------------------------------------------------------------------
+
+BUS_FILE = os.path.join(os.path.dirname(__file__), "bus.json")
+
+def _load_bus() -> list[dict]:
+    if os.path.exists(BUS_FILE):
+        with open(BUS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+def _save_bus(bus_list: list[dict]):
+    with open(BUS_FILE, "w", encoding="utf-8") as f:
+        json.dump(bus_list, f, ensure_ascii=False, indent=2)
+
+
+@app.get("/api/admin/bus", tags=["admin"], summary="Lista todas as BUs")
+async def list_bus():
+    return _load_bus()
+
+
+@app.post("/api/admin/bus", tags=["admin"], status_code=201, summary="Cria nova BU")
+async def create_bu(body: BUCreate):
+    if not body.name.strip():
+        raise HTTPException(status_code=400, detail="Nome da BU é obrigatório")
+    bus = _load_bus()
+    new_bu = {"id": str(uuid.uuid4()), "name": body.name.strip(), "members": []}
+    bus.append(new_bu)
+    _save_bus(bus)
+    return new_bu
+
+
+@app.put("/api/admin/bus/{bu_id}", tags=["admin"], summary="Atualiza nome e membros de uma BU")
+async def update_bu(bu_id: str, body: BUUpdate):
+    bus = _load_bus()
+    for i, b in enumerate(bus):
+        if b["id"] == bu_id:
+            bus[i] = {"id": bu_id, "name": body.name.strip(), "members": body.members}
+            _save_bus(bus)
+            return bus[i]
+    raise HTTPException(status_code=404, detail="BU não encontrada")
+
+
+@app.delete("/api/admin/bus/{bu_id}", tags=["admin"], summary="Remove uma BU")
+async def delete_bu(bu_id: str):
+    bus = _load_bus()
+    new_bus = [b for b in bus if b["id"] != bu_id]
+    if len(new_bus) == len(bus):
+        raise HTTPException(status_code=404, detail="BU não encontrada")
+    _save_bus(new_bus)
+    return {"status": "deleted"}
+
+
+# ---------------------------------------------------------------------------
+# Account Ranking — ordenação manual de accounts por faturamento
+# ---------------------------------------------------------------------------
+
+RANKING_FILE = os.path.join(os.path.dirname(__file__), "account_ranking.json")
+
+def _load_ranking() -> list[str]:
+    if os.path.exists(RANKING_FILE):
+        with open(RANKING_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+def _save_ranking(ranking: list[str]):
+    with open(RANKING_FILE, "w", encoding="utf-8") as f:
+        json.dump(ranking, f, ensure_ascii=False, indent=2)
+
+
+@app.get("/api/admin/account-ranking", tags=["admin"], summary="Retorna ranking de accounts por faturamento")
+async def get_account_ranking():
+    return _load_ranking()
+
+
+@app.put("/api/admin/account-ranking", tags=["admin"], summary="Atualiza ranking de accounts")
+async def update_account_ranking(body: AccountRankingUpdate):
+    _save_ranking(body.accounts)
+    return {"status": "updated", "count": len(body.accounts)}
+
+
+@app.post(
+    "/api/ai/classify-production",
+    tags=["ai"],
+    summary="Classifica quais issues afetam produção do cliente via IA",
+)
+async def classify_production(body: dict):
+    """Recebe lista de issues e retorna quais afetam produção."""
+    import httpx
+
+    issues = body.get("issues", [])
+    if not issues:
+        return {"production_affected": []}
+
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    if not api_key:
+        # Sem IA, retorna vazio (graceful degradation)
+        return {"production_affected": []}
+
+    # Build issue summaries for classification
+    lines = []
+    for i in issues:
+        lines.append(f"[{i['key']}] {i['summary']} (Tipo: {i.get('type', '-')}, Status: {i.get('status', '-')})")
+
+    prompt = (
+        "Analise a lista de chamados Jira abaixo. Para cada um, determine se está ATUALMENTE "
+        "afetando a produção diária do cliente (sistema fora do ar, falha em envio de mensagens, "
+        "erro em plataforma que impede operação, degradação de serviço ativo, etc).\n\n"
+        "Retorne APENAS uma lista com as chaves dos chamados que afetam produção, uma por linha. "
+        "Se nenhum afetar produção, responda 'NENHUM'. Sem explicações extras.\n\n"
+        "Chamados:\n" + "\n".join(lines)
+    )
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://pgmais-dashboard",
+        "X-Title": "PGMais Dashboard",
+    }
+    payload = {
+        "model": "anthropic/claude-sonnet-4.6",
+        "max_tokens": 500,
+        "messages": [
+            {"role": "system", "content": "Você é um analista de operações de TI. Classifique chamados que afetam produção do cliente."},
+            {"role": "user", "content": prompt},
+        ],
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                json=payload,
+                headers=headers,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            answer = data["choices"][0]["message"]["content"].strip()
+
+            if "NENHUM" in answer.upper():
+                return {"production_affected": []}
+
+            # Extract issue keys from response
+            import re as _re
+            keys = _re.findall(r'[A-Z][A-Z0-9]+-\d+', answer)
+            return {"production_affected": keys}
+    except Exception as exc:
+        logger.error("AI classify-production error: %s", exc)
+        return {"production_affected": []}
 
 
 # ---------------------------------------------------------------------------
@@ -368,14 +531,13 @@ async def ai_chat(body: AIChatRequest):
     extra_context = body.context
     # Prompt framework: CO-STAR + Dual-Persona (CEO estratégico / Dev operacional)
     system_prompt = (
-        # --- REGRA DE FORMATO — declarada primeiro para máxima precedência ---
-        "REGRA ABSOLUTA DE SAÍDA: sua resposta deve ser SOMENTE texto corrido em parágrafos. "
-        "É terminantemente proibido usar asterisco (*), dois-asteriscos (**), hashtag (#), underline (_), "
-        "hífen como marcador de lista, número seguido de ponto como lista, colchete duplo, "
-        "tag XML, bloco de código ou qualquer outro símbolo de formatação markdown. "
-        "Escreva exatamente como um consultor falando em voz alta — frases completas, sem listas, "
-        "sem negrito, sem títulos. Máximo 3 parágrafos densos. "
-        "Se sua resposta contiver qualquer marcação especial, ela estará errada.\n\n"
+        # --- REGRA DE FORMATO ---
+        "REGRA DE SAÍDA: use uma mistura natural de texto corrido e listas com bullet points (- item). "
+        "Bullet points são permitidos e recomendados para listar jiras, responsáveis, números e ações. "
+        "Parágrafos de texto corrido servem para análise, contexto e conclusões. "
+        "NÃO use asteriscos para negrito (**), hashtags (#) para títulos, underline (_), "
+        "blocos de código ou tags XML. Sem limite de tamanho — responda de forma completa e detalhada. "
+        "Seja tão extenso quanto o necessário para cobrir todos os pontos relevantes.\n\n"
 
         # --- CONTEXTO ---
         "CONTEXTO: Você é o analista de inteligência operacional do dashboard PGMais. "
@@ -419,7 +581,7 @@ async def ai_chat(body: AIChatRequest):
     }
     payload = {
         "model":      "anthropic/claude-sonnet-4.6",
-        "max_tokens": 900,
+        "max_tokens": 4096,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": question},

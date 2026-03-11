@@ -1,6 +1,41 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import './AIInsightsView.css'
 
+// Renderiza resposta da IA: mistura parágrafos e bullet points
+function renderAIAnswer(text) {
+  const blocks = text.split(/\n{2,}/)
+  return blocks.map((block, bi) => {
+    const lines = block.split('\n').filter(l => l.trim() !== '')
+    const isList = lines.every(l => /^[-•]\s/.test(l.trim()))
+    if (isList) {
+      return (
+        <ul key={bi} className="ai-answer-list">
+          {lines.map((l, li) => (
+            <li key={li}>{l.replace(/^[-•]\s+/, '')}</li>
+          ))}
+        </ul>
+      )
+    }
+    const parts = []
+    let currentBullets = []
+    for (const [li, line] of lines.entries()) {
+      if (/^[-•]\s/.test(line.trim())) {
+        currentBullets.push(line)
+      } else {
+        if (currentBullets.length) {
+          parts.push(<ul key={`${bi}-ul-${li}`} className="ai-answer-list">{currentBullets.map((b, i) => <li key={i}>{b.replace(/^[-•]\s+/, '')}</li>)}</ul>)
+          currentBullets = []
+        }
+        parts.push(<p key={`${bi}-p-${li}`} className="ai-answer-para">{line}</p>)
+      }
+    }
+    if (currentBullets.length) {
+      parts.push(<ul key={`${bi}-ul-end`} className="ai-answer-list">{currentBullets.map((b, i) => <li key={i}>{b.replace(/^[-•]\s+/, '')}</li>)}</ul>)
+    }
+    return <div key={bi}>{parts}</div>
+  })
+}
+
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:8000'
@@ -158,13 +193,9 @@ export default function AIInsightsView({ data }) {
                 </div>
                 <div className="ai-bubble ai-bubble--ai">
                   <span className="ai-bubble-who">✦ IA</span>
-                  <span className="ai-answer-text">
-                    {item.answer.split('\n').map((line, i) =>
-                      line.trim() === ''
-                        ? <br key={i} />
-                        : <span key={i} className="ai-answer-line">{line}</span>
-                    )}
-                  </span>
+                  <div className="ai-answer-text">
+                    {renderAIAnswer(item.answer)}
+                  </div>
                 </div>
               </div>
             ))}

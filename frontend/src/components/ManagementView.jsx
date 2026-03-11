@@ -1,6 +1,42 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import './ManagementView.css'
 
+// Renderiza resposta da IA: mistura parágrafos e bullet points
+function renderAIAnswer(text) {
+  const blocks = text.split(/\n{2,}/)
+  return blocks.map((block, bi) => {
+    const lines = block.split('\n').filter(l => l.trim() !== '')
+    const isList = lines.every(l => /^[-•]\s/.test(l.trim()))
+    if (isList) {
+      return (
+        <ul key={bi} className="ai-answer-list">
+          {lines.map((l, li) => (
+            <li key={li}>{l.replace(/^[-•]\s+/, '')}</li>
+          ))}
+        </ul>
+      )
+    }
+    // Bloco misto: separa linhas bullet das de texto
+    const parts = []
+    let currentBullets = []
+    for (const [li, line] of lines.entries()) {
+      if (/^[-•]\s/.test(line.trim())) {
+        currentBullets.push(line)
+      } else {
+        if (currentBullets.length) {
+          parts.push(<ul key={`${bi}-ul-${li}`} className="ai-answer-list">{currentBullets.map((b, i) => <li key={i}>{b.replace(/^[-•]\s+/, '')}</li>)}</ul>)
+          currentBullets = []
+        }
+        parts.push(<p key={`${bi}-p-${li}`} className="ai-answer-para">{line}</p>)
+      }
+    }
+    if (currentBullets.length) {
+      parts.push(<ul key={`${bi}-ul-end`} className="ai-answer-list">{currentBullets.map((b, i) => <li key={i}>{b.replace(/^[-•]\s+/, '')}</li>)}</ul>)
+    }
+    return <div key={bi}>{parts}</div>
+  })
+}
+
 // ── API URL ────────────────────────────────────────────────────────────────
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
@@ -473,13 +509,7 @@ function MgmtAIChat({ mgmtData, dashData }) {
               </div>
               <div className="mgmt-ai-bubble mgmt-ai-bubble--ai">
                 <span className="mgmt-ai-who">✦ IA</span>
-                <span className="mgmt-ai-answer">
-                  {item.answer.split('\n').map((line, i) =>
-                    line.trim() === ''
-                      ? <br key={i} />
-                      : <span key={i} style={{ display: 'block', lineHeight: '1.6' }}>{line}</span>
-                  )}
-                </span>
+                <div className="mgmt-ai-answer">{renderAIAnswer(item.answer)}</div>
               </div>
             </div>
           ))}

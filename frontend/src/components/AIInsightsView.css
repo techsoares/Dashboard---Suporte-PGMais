@@ -133,13 +133,26 @@
 .ai-answer-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   word-break: break-word;
 }
 
-.ai-answer-line {
-  display: block;
+.ai-answer-text .ai-answer-para {
+  margin: 0;
   line-height: 1.65;
+}
+
+.ai-answer-text .ai-answer-list {
+  margin: 2px 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-answer-text .ai-answer-list li {
+  line-height: 1.6;
+  color: var(--text);
 }
 
 /* Typing animation */

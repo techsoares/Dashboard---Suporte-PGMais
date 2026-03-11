@@ -1,0 +1,511 @@
+.prio-root {
+  padding: 1.5rem 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.prio-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.prio-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 2px 0;
+}
+
+.prio-subtitle {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.prio-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.prio-filter-btn {
+  padding: 6px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  background: var(--surface-alt);
+  color: var(--text-muted);
+  font-family: 'Lato', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.prio-filter-btn.active {
+  background: rgba(53,89,235,0.2);
+  border-color: var(--azul-primario);
+  color: var(--azul-claro);
+}
+
+.prio-classify-btn {
+  padding: 6px 16px;
+  border: 1px solid rgba(61,183,244,0.4);
+  border-radius: 20px;
+  background: rgba(61,183,244,0.1);
+  color: var(--azul-claro);
+  font-family: 'Lato', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.prio-classify-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.prio-classify-btn:hover:not(:disabled) { background: rgba(61,183,244,0.2); }
+
+/* Stats */
+.prio-stats-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.prio-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.prio-stat:hover { background: var(--surface-alt); }
+
+.prio-stat--active {
+  outline: 2px solid var(--azul-primario);
+  outline-offset: -1px;
+  background: rgba(53,89,235,0.08);
+}
+
+.prio-stat--danger.prio-stat--active { outline-color: var(--rosa); background: rgba(254,112,189,0.08); }
+.prio-stat--incident.prio-stat--active { outline-color: var(--rosa); background: rgba(254,112,189,0.08); }
+.prio-stat--problem.prio-stat--active { outline-color: var(--amarelo); background: rgba(242,242,75,0.08); }
+
+.prio-stat-value {
+  font-family: 'Lato', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.prio-stat-label {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.prio-stat--danger .prio-stat-value { color: var(--rosa); }
+.prio-stat--danger { border-color: rgba(254,112,189,0.4); }
+.prio-stat--incident .prio-stat-value { color: var(--rosa); }
+.prio-stat--problem .prio-stat-value { color: var(--amarelo); }
+
+/* Body layout */
+.prio-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 1.2rem;
+  align-items: start;
+}
+
+/* List panel */
+.prio-list-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.prio-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.prio-list-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.prio-classifying {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.75rem;
+  color: var(--azul-claro);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.prio-empty {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.prio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Issue item */
+.prio-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.12s;
+  border-left: 3px solid transparent;
+}
+
+.prio-item:hover { background: var(--surface-alt); }
+
+.prio-item--next {
+  border-left-color: var(--verde);
+  background: rgba(64,235,79,0.04);
+}
+
+.prio-item--production {
+  border-left-color: var(--rosa);
+}
+
+.prio-item--next.prio-item--production {
+  border-left-color: var(--rosa);
+  background: rgba(254,112,189,0.06);
+}
+
+.prio-rank {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 32px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.prio-item--next .prio-rank { color: var(--verde); font-size: 0.95rem; }
+
+.prio-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.prio-item-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.prio-key {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--azul-claro);
+}
+
+.prio-type-badge {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid;
+  border-radius: 12px;
+  padding: 1px 8px;
+}
+
+.prio-prod-flag {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(254,112,189,0.2);
+  color: var(--rosa);
+  border: 1px solid rgba(254,112,189,0.5);
+  border-radius: 12px;
+  padding: 1px 8px;
+}
+
+.prio-top-badge {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: rgba(53,89,235,0.15);
+  color: var(--azul-claro);
+  border: 1px solid rgba(53,89,235,0.3);
+  border-radius: 12px;
+  padding: 1px 8px;
+}
+
+.prio-summary {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.82rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prio-item-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.prio-account,
+.prio-assignee,
+.prio-age,
+.prio-score {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.prio-score {
+  color: var(--azul-claro);
+  font-weight: 700;
+}
+
+/* Ranking panel */
+.prio-ranking-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: sticky;
+  top: 16px;
+}
+
+.prio-ranking-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.prio-ranking-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.prio-saving {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.prio-ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prio-ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+
+.prio-ranking-item:hover { background: var(--surface-alt); }
+
+.prio-ranking-item--top {
+  border-left: 2px solid var(--azul-claro);
+}
+
+.prio-ranking-pos {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 20px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.prio-ranking-item--top .prio-ranking-pos { color: var(--azul-claro); }
+
+.prio-ranking-name {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prio-ranking-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.prio-ranking-item:hover .prio-ranking-actions { opacity: 1; }
+
+.prio-rank-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all 0.12s;
+}
+
+.prio-rank-btn:hover { background: var(--surface-alt); color: var(--text); }
+.prio-rank-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.prio-rank-btn--remove:hover { color: var(--rosa); }
+
+/* Unranked */
+.prio-unranked-header {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.prio-unranked-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prio-unranked-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'Lato', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s;
+}
+
+.prio-unranked-btn:hover {
+  background: var(--surface-alt);
+  color: var(--azul-claro);
+}
+
+/* Expand button */
+.prio-item-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.prio-expand-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: 'Lato', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  align-self: center;
+}
+
+.prio-expand-btn:hover { border-color: var(--azul-claro); color: var(--azul-claro); background: rgba(61,183,244,0.08); }
+.prio-expand-btn--open { border-color: var(--azul-claro); color: var(--azul-claro); background: rgba(61,183,244,0.1); }
+
+/* AI Summary */
+.prio-ai-summary {
+  padding: 8px 12px 10px 45px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+.prio-ai-loading {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.78rem;
+  color: var(--azul-claro);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.prio-ai-error {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.78rem;
+  color: var(--rosa);
+}
+
+.prio-ai-text {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0;
+  background: var(--surface-alt);
+  border-radius: 8px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--azul-claro);
+}
+
+@media (max-width: 1100px) {
+  .prio-body { grid-template-columns: 1fr; }
+  .prio-ranking-panel { position: static; }
+}
