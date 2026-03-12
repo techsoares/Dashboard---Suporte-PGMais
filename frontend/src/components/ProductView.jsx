@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState } from 'react'
 import './ProductView.css'
 
 const COLORS = [
@@ -26,13 +26,6 @@ const PERIOD_OPTIONS = [
   { label: '2 semanas', days: 14   },
   { label: '1 mês',     days: 30   },
   { label: '3 meses',   days: 90   },
-]
-
-const SORT_OPTIONS = [
-  { key: 'total',      label: 'Volume'     },
-  { key: 'overdue',    label: 'Atrasados'  },
-  { key: 'inProgress', label: 'Andamento'  },
-  { key: 'pctOverdue', label: '% Atraso'   },
 ]
 
 const STOP_WORDS = new Set([
@@ -139,14 +132,14 @@ function buildMatrix(issues, rowField, colGetter) {
 
 // --- Sub-components ---
 
-function HBar({ product, maxTotal, color, isActive, onClick }) {
+function HBar({ product, maxTotal, color }) {
   const pctBar      = maxTotal > 0 ? product.total / maxTotal : 0
   const pctProgress = product.total > 0 ? product.inProgress / product.total : 0
   const pctWaiting  = product.total > 0 ? product.waiting    / product.total : 0
   const pctOverdue  = product.total > 0 ? product.overdue    / product.total : 0
 
   return (
-    <div className={`pv-hbar-row ${isActive ? 'pv-hbar-row--active' : ''}`} onClick={onClick} title={`Clique para ver ${product.name}`}>
+    <div className="pv-hbar-row">
       <span className="pv-hbar-label" title={product.name}>{product.name}</span>
       <div className="pv-hbar-track">
         <div className="pv-hbar-bg" style={{ width: `${pctBar * 100}%`, background: color, opacity: 0.15 }} />
@@ -162,7 +155,7 @@ function HBar({ product, maxTotal, color, isActive, onClick }) {
   )
 }
 
-function MultiRadar({ products, maxTotal, activeProduct, onClickProduct }) {
+function MultiRadar({ products, maxTotal }) {
   const size = 220, cx = 110, cy = 110, R = 80
   const axes   = ['Volume', 'Andamento', 'Aguardando', 'Atraso']
   const n      = axes.length
@@ -176,7 +169,7 @@ function MultiRadar({ products, maxTotal, activeProduct, onClickProduct }) {
   ]
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="pv-radar-svg">
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       {[0.25, 0.5, 0.75, 1].map(level => (
         <polygon key={level}
           points={angles.map(a => ptXY(a, level).join(',')).join(' ')}
@@ -195,23 +188,17 @@ function MultiRadar({ products, maxTotal, activeProduct, onClickProduct }) {
         const vals = getVals(p)
         const pts  = angles.map((a, i) => ptXY(a, vals[i]).join(',')).join(' ')
         const color = COLORS[pi % COLORS.length]
-        const isActive = activeProduct === p.name
-        return (
-          <polygon key={p.name} points={pts}
-            fill={color} fillOpacity={isActive ? 0.35 : 0.12}
-            stroke={color} strokeWidth={isActive ? 2.5 : 1.5}
-            style={{ cursor: 'pointer', transition: 'all 0.2s' }}
-            onClick={() => onClickProduct(p.name)} />
-        )
+        return <polygon key={p.name} points={pts}
+          fill={color} fillOpacity="0.18" stroke={color} strokeWidth="1.8" />
       })}
     </svg>
   )
 }
 
-function ThemeBar({ word, count, maxCount, isActive, onClick }) {
+function ThemeBar({ word, count, maxCount }) {
   const pct = maxCount > 0 ? (count / maxCount) * 100 : 0
   return (
-    <div className={`pv-theme-row ${isActive ? 'pv-theme-row--active' : ''}`} onClick={onClick} title={`Clique para filtrar por "${word}"`}>
+    <div className="pv-theme-row">
       <span className="pv-theme-word">{word}</span>
       <div className="pv-theme-track">
         <div className="pv-theme-fill" style={{ width: `${pct}%` }} />
@@ -221,11 +208,11 @@ function ThemeBar({ word, count, maxCount, isActive, onClick }) {
   )
 }
 
-function PriorityBar({ product, maxCount, isActive, onClick }) {
+function PriorityBar({ product, maxCount }) {
   const total  = PRIOS.reduce((s, p) => s + (product[p] || 0), 0)
   const barPct = maxCount > 0 ? (total / maxCount) * 100 : 0
   return (
-    <div className={`pv-prio-row ${isActive ? 'pv-prio-row--active' : ''}`} onClick={onClick} title={`Clique para ver ${product.name}`}>
+    <div className="pv-prio-row">
       <span className="pv-prio-label" title={product.name}>{product.name}</span>
       <div className="pv-prio-track">
         <div className="pv-prio-bar" style={{ width: `${barPct}%` }}>
@@ -241,7 +228,7 @@ function PriorityBar({ product, maxCount, isActive, onClick }) {
   )
 }
 
-function MatrixTable({ label, rows, cols, matrix, maxVal, activeProduct, onClickCell }) {
+function MatrixTable({ label, rows, cols, matrix, maxVal }) {
   if (!rows.length || !cols.length) return <p className="pv-empty">Dados insuficientes</p>
 
   const trunc = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s
@@ -257,16 +244,15 @@ function MatrixTable({ label, rows, cols, matrix, maxVal, activeProduct, onClick
         </thead>
         <tbody>
           {rows.map(r => (
-            <tr key={r} className={activeProduct === r ? 'pv-matrix-row--active' : ''}>
+            <tr key={r}>
               <td className="pv-matrix-row-head" title={r}>{trunc(r, 20)}</td>
               {cols.map(c => {
                 const val       = matrix[r]?.[c] || 0
                 const intensity = maxVal > 0 ? val / maxVal : 0
                 return (
-                  <td key={c} className={`pv-matrix-cell ${val > 0 ? 'pv-matrix-cell--clickable' : ''}`}
+                  <td key={c} className="pv-matrix-cell"
                     style={{ '--intensity': intensity }}
-                    title={`${r} × ${c}: ${val}${val > 0 ? ' — clique para ver' : ''}`}
-                    onClick={() => val > 0 && onClickCell(r, c)}>
+                    title={`${r} × ${c}: ${val}`}>
                     {val || ''}
                   </td>
                 )
@@ -281,7 +267,7 @@ function MatrixTable({ label, rows, cols, matrix, maxVal, activeProduct, onClick
 
 const PRIO_ORDER = { Highest: 0, Blocker: 0, High: 1, Medium: 2, Low: 3, Lowest: 4 }
 
-function DrillPanel({ title, subtitle, issues, jiraBaseUrl, onClose }) {
+function DrillPanel({ productName, issues, jiraBaseUrl, onClose }) {
   const sorted = [...issues].sort((a, b) => {
     if (a.is_overdue !== b.is_overdue) return a.is_overdue ? -1 : 1
     return (PRIO_ORDER[a.priority?.name] ?? 2) - (PRIO_ORDER[b.priority?.name] ?? 2)
@@ -294,8 +280,7 @@ function DrillPanel({ title, subtitle, issues, jiraBaseUrl, onClose }) {
     <div className="pv-drill-panel">
       <div className="pv-drill-header">
         <div className="pv-drill-title-row">
-          <h3 className="pv-drill-title">{title}</h3>
-          {subtitle && <span className="pv-drill-subtitle">{subtitle}</span>}
+          <h3 className="pv-drill-title">{productName}</h3>
           <div className="pv-drill-meta">
             <span className="pv-drill-chip">{sorted.length} issues</span>
             {inProgress > 0 && <span className="pv-drill-chip pv-drill-chip--blue">{inProgress} andamento</span>}
@@ -320,7 +305,6 @@ function DrillPanel({ title, subtitle, issues, jiraBaseUrl, onClose }) {
                 <span className="pv-drill-summary" title={i.summary}>{i.summary}</span>
               </div>
               <div className="pv-drill-right">
-                <span className="pv-drill-product">{i.product || '—'}</span>
                 <span className="pv-drill-assignee">{i.assignee?.display_name || '—'}</span>
                 <span className="pv-drill-status">{i.status?.name || '—'}</span>
                 {i.is_overdue && <span className="pv-drill-overdue-tag">ATRASADA</span>}
@@ -336,13 +320,8 @@ function DrillPanel({ title, subtitle, issues, jiraBaseUrl, onClose }) {
 // --- Main component ---
 
 export default function ProductView({ data }) {
-  const [period, setPeriod]           = useState(null)
+  const [period, setPeriod] = useState(null)
   const [drillProduct, setDrillProduct] = useState(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [sortKey, setSortKey]         = useState('total')
-  const [sortAsc, setSortAsc]         = useState(false)
-  const [themeFilter, setThemeFilter] = useState(null)
-  const [matrixDrill, setMatrixDrill] = useState(null) // { row, col, field }
 
   const allIssues = useMemo(
     () => dedup([...data.backlog, ...data.devs.flatMap(d => d.active_issues)]),
@@ -351,27 +330,10 @@ export default function ProductView({ data }) {
 
   const issues = useMemo(() => filterByPeriod(allIssues, period), [allIssues, period])
 
-  const ranked = useMemo(() => {
-    const stats = Object.values(buildStats(issues))
-    // Apply search filter
-    let filtered = searchQuery.trim()
-      ? stats.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-      : stats
-
-    // Sort
-    return filtered.sort((a, b) => {
-      let va, vb
-      if (sortKey === 'pctOverdue') {
-        va = a.total > 0 ? a.overdue / a.total : 0
-        vb = b.total > 0 ? b.overdue / b.total : 0
-      } else {
-        va = a[sortKey] || 0
-        vb = b[sortKey] || 0
-      }
-      return sortAsc ? va - vb : vb - va
-    }).slice(0, 10)
-  }, [issues, searchQuery, sortKey, sortAsc])
-
+  const ranked   = useMemo(
+    () => Object.values(buildStats(issues)).sort((a, b) => b.total - a.total).slice(0, 8),
+    [issues]
+  )
   const maxTotal = ranked[0]?.total || 1
 
   const themes    = useMemo(() => buildThemes(issues), [issues])
@@ -390,87 +352,12 @@ export default function ProductView({ data }) {
     [issues]
   )
 
-  // Drill: produto selecionado
+  // Drill: produto selecionado (padrão = mais carregado)
   const activeDrill = drillProduct ?? ranked[0]?.name ?? null
-
-  // Build drill issues based on context
-  const drillIssues = useMemo(() => {
-    let filtered = issues
-
-    // Matrix drill — intersection of row × col
-    if (matrixDrill) {
-      const { row, col, field } = matrixDrill
-      return filtered.filter(i => {
-        const product = i.product || 'Sem Produto'
-        const colVal = field === 'dev'
-          ? (i.assignee?.display_name || 'N/A')
-          : (i.account || 'N/A')
-        return product === row && colVal === col
-      })
-    }
-
-    // Theme filter
-    if (themeFilter) {
-      filtered = filtered.filter(i =>
-        (i.summary || '').toLowerCase().includes(themeFilter.toLowerCase())
-      )
-    }
-
-    // Product filter
-    if (activeDrill) {
-      filtered = filtered.filter(i => (i.product || 'Sem Produto') === activeDrill)
-    }
-
-    return filtered
-  }, [issues, activeDrill, themeFilter, matrixDrill])
-
-  // Drill title
-  const drillTitle = useMemo(() => {
-    if (matrixDrill) return `${matrixDrill.row} × ${matrixDrill.col}`
-    if (themeFilter && activeDrill) return `${activeDrill} — "${themeFilter}"`
-    if (themeFilter) return `Tema: "${themeFilter}"`
-    return activeDrill || ''
-  }, [matrixDrill, themeFilter, activeDrill])
-
-  const drillSubtitle = useMemo(() => {
-    if (matrixDrill) return matrixDrill.field === 'dev' ? 'Produto × Responsável' : 'Produto × Account'
-    return null
-  }, [matrixDrill])
-
-  const handleSort = useCallback((key) => {
-    if (sortKey === key) setSortAsc(v => !v)
-    else { setSortKey(key); setSortAsc(false) }
-  }, [sortKey])
-
-  const handleProductClick = useCallback((name) => {
-    setMatrixDrill(null)
-    setThemeFilter(null)
-    setDrillProduct(prev => prev === name ? null : name)
-  }, [])
-
-  const handleThemeClick = useCallback((word) => {
-    setMatrixDrill(null)
-    setThemeFilter(prev => prev === word ? null : word)
-  }, [])
-
-  const handleMatrixClick = useCallback((row, col, field) => {
-    setThemeFilter(null)
-    setDrillProduct(null)
-    setMatrixDrill({ row, col, field })
-  }, [])
-
-  const clearDrill = useCallback(() => {
-    setDrillProduct(null)
-    setThemeFilter(null)
-    setMatrixDrill(null)
-  }, [])
-
-  // Big numbers
-  const totalIssues  = issues.length
-  const totalOverdue = issues.filter(i => i.is_overdue).length
-  const totalInProg  = issues.filter(i => i.status?.category === 'indeterminate' && !i.status?.name?.toLowerCase().includes('aguard')).length
-  const totalWaiting = issues.filter(i => i.status?.name?.toLowerCase().includes('aguard')).length
-  const uniqueProducts = new Set(issues.map(i => i.product || 'Sem Produto')).size
+  const drillIssues = useMemo(
+    () => issues.filter(i => (i.product || 'Sem Produto') === activeDrill),
+    [issues, activeDrill]
+  )
 
   return (
     <div className="pv-root">
@@ -496,82 +383,23 @@ export default function ProductView({ data }) {
         </div>
       </div>
 
-      {/* Big numbers */}
-      <div className="pv-kpis">
-        <div className="pv-kpi">
-          <span className="pv-kpi-value">{totalIssues}</span>
-          <span className="pv-kpi-label">Issues</span>
-        </div>
-        <div className="pv-kpi">
-          <span className="pv-kpi-value" style={{color:'var(--azul-claro)'}}>{uniqueProducts}</span>
-          <span className="pv-kpi-label">Produtos</span>
-        </div>
-        <div className="pv-kpi">
-          <span className="pv-kpi-value" style={{color:'var(--azul-primario)'}}>{totalInProg}</span>
-          <span className="pv-kpi-label">Andamento</span>
-        </div>
-        <div className="pv-kpi">
-          <span className="pv-kpi-value" style={{color:'var(--amarelo)'}}>{totalWaiting}</span>
-          <span className="pv-kpi-label">Aguardando</span>
-        </div>
-        <div className="pv-kpi">
-          <span className="pv-kpi-value" style={{color:'var(--rosa)'}}>{totalOverdue}</span>
-          <span className="pv-kpi-label">Atrasadas</span>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="pv-search-row">
-        <input
-          type="text"
-          className="pv-search-input"
-          placeholder="Filtrar produto..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-        />
-        {searchQuery && (
-          <button className="pv-search-clear" onClick={() => setSearchQuery('')}>✕</button>
-        )}
-        {/* Active filters indicator */}
-        {(themeFilter || matrixDrill) && (
-          <div className="pv-active-filters">
-            {themeFilter && (
-              <span className="pv-filter-chip" onClick={() => setThemeFilter(null)}>
-                Tema: {themeFilter} ✕
-              </span>
-            )}
-            {matrixDrill && (
-              <span className="pv-filter-chip" onClick={() => setMatrixDrill(null)}>
-                {matrixDrill.row} × {matrixDrill.col} ✕
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Row 1: Volume + Radar */}
       <div className="pv-grid-2">
         <div className="pv-panel">
           <h3 className="pv-panel-title">Comparativo de Volume</h3>
           <div className="pv-bars">
             {ranked.map((p, i) => (
-              <HBar key={p.name} product={p} maxTotal={maxTotal} color={COLORS[i % COLORS.length]}
-                isActive={activeDrill === p.name && !matrixDrill}
-                onClick={() => handleProductClick(p.name)} />
+              <HBar key={p.name} product={p} maxTotal={maxTotal} color={COLORS[i % COLORS.length]} />
             ))}
           </div>
         </div>
 
         <div className="pv-panel pv-radar-panel">
           <h3 className="pv-panel-title">Radar Geral</h3>
-          <MultiRadar products={ranked.slice(0, 6)} maxTotal={maxTotal}
-            activeProduct={activeDrill}
-            onClickProduct={handleProductClick} />
+          <MultiRadar products={ranked.slice(0, 6)} maxTotal={maxTotal} />
           <div className="pv-radar-legend">
             {ranked.slice(0, 6).map((p, i) => (
-              <div key={p.name}
-                className={`pv-radar-leg-item ${activeDrill === p.name && !matrixDrill ? 'pv-radar-leg-item--active' : ''}`}
-                onClick={() => handleProductClick(p.name)}>
+              <div key={p.name} className="pv-radar-leg-item">
                 <span className="pv-radar-leg-dot" style={{ background: COLORS[i % COLORS.length] }} />
                 <span className="pv-radar-leg-label">{p.name}</span>
               </div>
@@ -583,13 +411,11 @@ export default function ProductView({ data }) {
       {/* Row 2: Temas + Prioridade */}
       <div className="pv-grid-2">
         <div className="pv-panel">
-          <h3 className="pv-panel-title">Temas mais Frequentes <span className="pv-panel-hint">clique para filtrar</span></h3>
+          <h3 className="pv-panel-title">Temas mais Frequentes</h3>
           {themes.length === 0
             ? <p className="pv-empty">Nenhum tema recorrente encontrado</p>
             : themes.map(([word, count]) => (
-                <ThemeBar key={word} word={word} count={count} maxCount={themes[0][1]}
-                  isActive={themeFilter === word}
-                  onClick={() => handleThemeClick(word)} />
+                <ThemeBar key={word} word={word} count={count} maxCount={themes[0][1]} />
               ))
           }
         </div>
@@ -605,9 +431,7 @@ export default function ProductView({ data }) {
           </div>
           <div className="pv-bars">
             {prioStats.map(p => (
-              <PriorityBar key={p.name} product={p} maxCount={prioMaxCount}
-                isActive={activeDrill === p.name && !matrixDrill}
-                onClick={() => handleProductClick(p.name)} />
+              <PriorityBar key={p.name} product={p} maxCount={prioMaxCount} />
             ))}
           </div>
         </div>
@@ -616,28 +440,24 @@ export default function ProductView({ data }) {
       {/* Row 3: Matrizes */}
       <div className="pv-grid-2">
         <div className="pv-panel">
-          <h3 className="pv-panel-title">Produto × Responsável <span className="pv-panel-hint">clique na célula</span></h3>
+          <h3 className="pv-panel-title">Produto × Responsável</h3>
           <MatrixTable
             label="Produto ↓ / Dev →"
             rows={devMatrix.rows}
             cols={devMatrix.cols}
             matrix={devMatrix.matrix}
             maxVal={devMatrix.maxVal}
-            activeProduct={activeDrill}
-            onClickCell={(row, col) => handleMatrixClick(row, col, 'dev')}
           />
         </div>
 
         <div className="pv-panel">
-          <h3 className="pv-panel-title">Produto × Account <span className="pv-panel-hint">clique na célula</span></h3>
+          <h3 className="pv-panel-title">Produto × Account</h3>
           <MatrixTable
             label="Produto ↓ / Account →"
             rows={accountMatrix.rows}
             cols={accountMatrix.cols}
             matrix={accountMatrix.matrix}
             maxVal={accountMatrix.maxVal}
-            activeProduct={activeDrill}
-            onClickCell={(row, col) => handleMatrixClick(row, col, 'account')}
           />
         </div>
       </div>
@@ -646,15 +466,7 @@ export default function ProductView({ data }) {
       <div className="pv-panel">
         <div className="pv-table-heading">
           <h3 className="pv-panel-title" style={{margin:0}}>Detalhamento</h3>
-          <div className="pv-sort-btns">
-            {SORT_OPTIONS.map(opt => (
-              <button key={opt.key}
-                className={`pv-sort-btn ${sortKey === opt.key ? 'active' : ''}`}
-                onClick={() => handleSort(opt.key)}>
-                {opt.label} {sortKey === opt.key ? (sortAsc ? '↑' : '↓') : ''}
-              </button>
-            ))}
-          </div>
+          <span className="pv-table-hint">Clique em um produto para ver as issues</span>
         </div>
         <div className="pv-table-wrap">
           <table className="pv-table">
@@ -667,8 +479,8 @@ export default function ProductView({ data }) {
             <tbody>
               {ranked.map((p, i) => (
                 <tr key={p.name}
-                    className={`pv-table-row-click${activeDrill === p.name && !matrixDrill ? ' pv-table-row-active' : ''}`}
-                    onClick={() => handleProductClick(p.name)}>
+                    className={`pv-table-row-click${activeDrill === p.name ? ' pv-table-row-active' : ''}`}
+                    onClick={() => setDrillProduct(p.name)}>
                   <td><span className="pv-rank" style={{ background: COLORS[i % COLORS.length] }}>#{i+1}</span></td>
                   <td className="pv-td-name">{p.name}</td>
                   <td className="pv-td-num">{p.total}</td>
@@ -688,13 +500,12 @@ export default function ProductView({ data }) {
       </div>
 
       {/* Drill-down */}
-      {(activeDrill || themeFilter || matrixDrill) && drillIssues.length > 0 && (
+      {activeDrill && drillIssues.length > 0 && (
         <DrillPanel
-          title={drillTitle}
-          subtitle={drillSubtitle}
+          productName={activeDrill}
           issues={drillIssues}
           jiraBaseUrl={data.jira_base_url}
-          onClose={clearDrill}
+          onClose={() => setDrillProduct(null)}
         />
       )}
 
