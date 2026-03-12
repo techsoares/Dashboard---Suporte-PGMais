@@ -763,3 +763,50 @@ def build_management_data(done_issues: list[Issue], period_weeks: int) -> Manage
         period_weeks=period_weeks,
         last_updated=datetime.now(timezone.utc).isoformat(),
     )
+
+
+# ---------------------------------------------------------------------------
+# Fetch all active Jira users (for admin BU management)
+# ---------------------------------------------------------------------------
+
+async def fetch_all_jira_users() -> list[dict]:
+    """
+    Busca todos os usuários ativos do Jira Cloud usando o endpoint /users/search.
+    Retorna lista de {account_id, display_name, avatar_url, email}.
+    """
+    users: list[dict] = []
+    start_at = 0
+    max_results = 200
+
+    async with httpx.AsyncClient() as client:
+        while True:
+            params = {"startAt": start_at, "maxResults": max_results}
+            resp = await client.get(
+                f"{API_BASE}/users/search",
+                params=params,
+                headers=_auth_header(),
+            )
+            resp.raise_for_status()
+            batch = resp.json()
+            if not batch:
+                break
+
+            for u in batch:
+                # Skip inactive users, app users, and system accounts
+                if not u.get("active", False):
+                    continue
+                if u.get("accountType") != "atlassian":
+                    continue
+                users.append({
+                    "account_id": u.get("accountId", ""),
+                    "display_name": u.get("displayName", ""),
+                    "avatar_url": (u.get("avatarUrls") or {}).get("48x48", ""),
+                    "email": u.get("emailAddress", ""),
+                })
+
+            if len(batch) < max_results:
+                break
+            start_at += max_results
+
+    users.sort(key=lambda u: u["display_name"].lower())
+    return users

@@ -5,26 +5,30 @@
     "members": [
       "Cleyton Kevin de Lima",
       "Vinícius Ribas Quadros"
-    ]
+    ],
+    "bu_type": "operacional"
   },
   {
     "id": "30af8a72-bc63-481e-9b0c-5a5035902f30",
     "name": "Desenvolvimento ONE",
     "members": [
       "Rafael Borsatto"
-    ]
+    ],
+    "bu_type": "operacional"
   },
   {
     "id": "5c95e521-1323-4e95-a713-6e053f91bed0",
     "name": "Desenvolvimento DOC",
     "members": [
       "Aldinei Sampaio"
-    ]
+    ],
+    "bu_type": "operacional"
   },
   {
     "id": "9e89f091-f5b0-4967-9e9f-6f6eb7a870b2",
     "name": "Files",
-    "members": []
+    "members": [],
+    "bu_type": "operacional"
   },
   {
     "id": "f00cf631-c3ee-4b65-9ce3-eb6ec4e10156",
@@ -32,25 +36,35 @@
     "members": [
       "Herick Borgo",
       "João Marcos Jocowski Pinto"
-    ]
+    ],
+    "bu_type": "operacional"
   },
   {
     "id": "1f37619b-1da8-4e70-b8cb-3061d0e50d82",
     "name": "Strategy",
     "members": [
       "Victor da Costa Wosiack"
-    ]
+    ],
+    "bu_type": "operacional"
   },
   {
     "id": "51338b8e-067c-4794-a322-e0525ff258bf",
     "name": "Consultor operacional",
     "members": [
       "suellen aparecida candido"
-    ]
+    ],
+    "bu_type": "operacional"
   },
   {
     "id": "3c96d843-19ad-43b9-9f64-85f0ea029f05",
     "name": "Projetos",
-    "members": []
+    "members": [],
+    "bu_type": "operacional"
+  },
+  {
+    "id": "8196025d-616f-4f75-9daa-f40e5b3e83f1",
+    "name": "C-LEVEL",
+    "members": [],
+    "bu_type": "operacional"
   }
 ]

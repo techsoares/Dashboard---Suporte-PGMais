@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 
 from cache import cache
-from jira_client import fetch_active_issues, fetch_done_this_week, fetch_done_last_week, build_dashboard, fetch_done_last_n_weeks, build_management_data
+from jira_client import fetch_active_issues, fetch_done_this_week, fetch_done_last_week, build_dashboard, fetch_done_last_n_weeks, build_management_data, fetch_all_jira_users
 from models import DashboardResponse, KpiSummary, ManagementData
 from mock_data import get_mock_dashboard, get_mock_management
 
@@ -73,10 +73,12 @@ class AIChatRequest(BaseModel):
 
 class BUCreate(BaseModel):
     name: str
+    bu_type: str = "operacional"   # "operacional" | "gestao"
 
 class BUUpdate(BaseModel):
     name: str
     members: list[str]
+    bu_type: str = "operacional"
 
 class AccountRankingUpdate(BaseModel):
     accounts: list[str]
@@ -85,6 +87,7 @@ class PriorityRequest(BaseModel):
     issue_key: str
     requester_name: str
     justification: str
+    requester_bu: str = ""         # nome da BU do solicitante
     issue_summary: str = ""
     issue_type: str = ""
     account: str = ""
@@ -169,6 +172,16 @@ def _save_bus(bus_list: list[dict]):
         json.dump(bus_list, f, ensure_ascii=False, indent=2)
 
 
+@app.get("/api/jira/users", tags=["jira"], summary="Lista todos os usuários ativos do Jira")
+async def list_jira_users():
+    try:
+        users = await fetch_all_jira_users()
+        return users
+    except Exception as e:
+        logger.error("Erro ao buscar usuários do Jira: %s", e)
+        raise HTTPException(status_code=502, detail="Não foi possível buscar usuários do Jira")
+
+
 @app.get("/api/admin/bus", tags=["admin"], summary="Lista todas as BUs")
 async def list_bus():
     return _load_bus()
@@ -179,7 +192,7 @@ async def create_bu(body: BUCreate):
     if not body.name.strip():
         raise HTTPException(status_code=400, detail="Nome da BU é obrigatório")
     bus = _load_bus()
-    new_bu = {"id": str(uuid.uuid4()), "name": body.name.strip(), "members": []}
+    new_bu = {"id": str(uuid.uuid4()), "name": body.name.strip(), "members": [], "bu_type": body.bu_type}
     bus.append(new_bu)
     _save_bus(bus)
     return new_bu
@@ -190,7 +203,7 @@ async def update_bu(bu_id: str, body: BUUpdate):
     bus = _load_bus()
     for i, b in enumerate(bus):
         if b["id"] == bu_id:
-            bus[i] = {"id": bu_id, "name": body.name.strip(), "members": body.members}
+            bus[i] = {"id": bu_id, "name": body.name.strip(), "members": body.members, "bu_type": body.bu_type}
             _save_bus(bus)
             return bus[i]
     raise HTTPException(status_code=404, detail="BU não encontrada")
@@ -272,6 +285,15 @@ async def create_priority_request(body: PriorityRequest):
         if r["issue_key"] == body.issue_key and r["requester_name"].strip().lower() == body.requester_name.strip().lower():
             return {"error": "duplicate", "message": f"{body.requester_name} já solicitou prioridade para {body.issue_key}"}
 
+    # Determine BU type of requester for boost multiplier
+    bu_type = "operacional"
+    if body.requester_bu:
+        bus_list = _load_bus()
+        for bu in bus_list:
+            if bu["name"] == body.requester_bu:
+                bu_type = bu.get("bu_type", "operacional")
+                break
+
     # AI evaluation
     boost = 150  # default if AI fails
     ai_verdict = "Avaliação automática padrão."
@@ -291,6 +313,7 @@ async def create_priority_request(body: PriorityRequest):
             f"Título: {body.issue_summary}\n"
             f"Tipo: {body.issue_type}\n"
             f"Account: {body.account}\n"
+            f"BU do solicitante: {body.requester_bu} (tipo: {bu_type})\n"
             f"Justificativa do solicitante: {body.justification}"
         )
 
@@ -328,11 +351,17 @@ async def create_priority_request(body: PriorityRequest):
         except Exception as e:
             logger.warning("AI priority evaluation failed: %s", e)
 
+    # Multiplicador por tipo de BU: gestão tem 1.5x de impacto
+    if bu_type == "gestao":
+        boost = min(750, int(boost * 1.5))
+
     request_entry = {
         "id": str(uuid.uuid4()),
         "issue_key": body.issue_key,
         "requester_name": body.requester_name.strip(),
         "justification": body.justification.strip(),
+        "requester_bu": body.requester_bu,
+        "bu_type": bu_type,
         "boost": boost,
         "ai_verdict": ai_verdict,
         "created_at": datetime.now().isoformat(),
@@ -350,6 +379,33 @@ async def delete_priority_request(request_id: str):
     requests = [r for r in requests if r["id"] != request_id]
     _save_priority_requests(requests)
     return {"status": "deleted"}
+
+
+class DeprioritizeRequest(BaseModel):
+    issue_key: str
+    requester_name: str
+    requester_bu: str
+
+
+@app.post("/api/priority-requests/deprioritize", tags=["priority"], summary="Desprioriza um chamado (apenas BU gestão)")
+async def deprioritize_issue(body: DeprioritizeRequest):
+    """Remove todas as solicitações de prioridade de um chamado. Apenas BUs de tipo gestão podem fazer isso."""
+    bus_list = _load_bus()
+    bu_type = "operacional"
+    for bu in bus_list:
+        if bu["name"] == body.requester_bu:
+            bu_type = bu.get("bu_type", "operacional")
+            break
+
+    if bu_type != "gestao":
+        raise HTTPException(status_code=403, detail="Apenas BUs de gestão (Diretoria / C-Level) podem despriorizar chamados.")
+
+    requests = _load_priority_requests()
+    before = len(requests)
+    requests = [r for r in requests if r["issue_key"] != body.issue_key]
+    removed = before - len(requests)
+    _save_priority_requests(requests)
+    return {"status": "deprioritized", "issue_key": body.issue_key, "removed": removed}
 
 
 @app.post(

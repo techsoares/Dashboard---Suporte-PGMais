@@ -53,6 +53,101 @@
   flex-shrink: 0;
 }
 
+/* ===== KPIs ===== */
+.pv-kpis {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pv-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 90px;
+  flex: 1;
+  transition: border-color 0.2s;
+}
+.pv-kpi:hover { border-color: var(--border-strong); }
+
+.pv-kpi-value {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.pv-kpi-label {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* ===== Search ===== */
+.pv-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pv-search-input {
+  flex: 0 1 280px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text);
+  font-family: 'Lato', sans-serif;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.pv-search-input:focus { border-color: var(--azul-claro); }
+.pv-search-input::placeholder { color: var(--text-muted); }
+
+.pv-search-clear {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.pv-search-clear:hover { color: var(--rosa); border-color: var(--rosa); }
+
+.pv-active-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pv-filter-chip {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--azul-claro);
+  background: rgba(61,183,244,0.1);
+  border: 1px solid rgba(61,183,244,0.3);
+  border-radius: 20px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pv-filter-chip:hover { background: rgba(61,183,244,0.2); }
+
 /* ===== Period filter buttons ===== */
 .pv-period-btns {
   display: flex;
@@ -81,6 +176,32 @@
   background: var(--azul-primario);
   border-color: var(--azul-primario);
   color: #fff;
+}
+
+/* ===== Sort buttons ===== */
+.pv-sort-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.pv-sort-btn {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.pv-sort-btn:hover { border-color: var(--border-strong); color: var(--text-secondary); }
+.pv-sort-btn.active {
+  background: rgba(53,89,235,0.15);
+  border-color: rgba(53,89,235,0.4);
+  color: var(--azul-claro);
 }
 
 /* ===== 2-column responsive grid ===== */
@@ -116,6 +237,15 @@
   margin: 0 0 1rem 0;
 }
 
+.pv-panel-hint {
+  font-weight: 400;
+  font-size: 0.68rem;
+  text-transform: none;
+  letter-spacing: normal;
+  opacity: 0.6;
+  margin-left: 8px;
+}
+
 .pv-empty {
   font-family: 'Lato', sans-serif;
   font-size: 0.82rem;
@@ -136,6 +266,16 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
+  padding: 3px 6px;
+  margin: -3px -6px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.pv-hbar-row:hover { background: var(--surface-alt); }
+.pv-hbar-row--active {
+  background: rgba(53,89,235,0.1);
+  outline: 1px solid rgba(53,89,235,0.25);
 }
 
 .pv-hbar-label {
@@ -162,6 +302,7 @@
   position: absolute;
   top: 0; left: 0; bottom: 0;
   border-radius: 4px;
+  transition: width 0.4s ease-out;
 }
 
 .pv-hbar-segs {
@@ -170,6 +311,7 @@
   display: flex;
   border-radius: 4px;
   overflow: hidden;
+  transition: width 0.4s ease-out;
 }
 
 .pv-hbar-total {
@@ -189,6 +331,10 @@
   gap: 12px;
 }
 
+.pv-radar-svg {
+  transition: transform 0.2s;
+}
+
 .pv-radar-legend {
   display: flex;
   flex-direction: column;
@@ -200,6 +346,15 @@
   display: flex;
   align-items: center;
   gap: 7px;
+  cursor: pointer;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.pv-radar-leg-item:hover { background: var(--surface-alt); }
+.pv-radar-leg-item--active {
+  background: rgba(53,89,235,0.1);
 }
 
 .pv-radar-leg-dot {
@@ -223,6 +378,17 @@
   align-items: center;
   gap: 8px;
   margin-bottom: 7px;
+  cursor: pointer;
+  padding: 3px 6px;
+  margin-left: -6px;
+  margin-right: -6px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.pv-theme-row:hover { background: var(--surface-alt); }
+.pv-theme-row--active {
+  background: rgba(61,183,244,0.12);
+  outline: 1px solid rgba(61,183,244,0.3);
 }
 
 .pv-theme-word {
@@ -233,6 +399,7 @@
   flex-shrink: 0;
   text-transform: lowercase;
 }
+.pv-theme-row--active .pv-theme-word { color: var(--azul-claro); font-weight: 700; }
 
 .pv-theme-track {
   flex: 1;
@@ -247,7 +414,7 @@
   background: linear-gradient(90deg, var(--azul-claro), var(--azul-primario));
   border-radius: 3px;
   opacity: 0.75;
-  transition: width 0.3s;
+  transition: width 0.4s ease-out;
 }
 
 .pv-theme-count {
@@ -288,6 +455,17 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+  cursor: pointer;
+  padding: 3px 6px;
+  margin-left: -6px;
+  margin-right: -6px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.pv-prio-row:hover { background: var(--surface-alt); }
+.pv-prio-row--active {
+  background: rgba(53,89,235,0.1);
+  outline: 1px solid rgba(53,89,235,0.25);
 }
 
 .pv-prio-label {
@@ -314,11 +492,12 @@
   display: flex;
   border-radius: 4px;
   overflow: hidden;
-  transition: width 0.3s;
+  transition: width 0.4s ease-out;
 }
 
 .pv-prio-bar > div {
   min-width: 2px;
+  transition: flex 0.3s;
 }
 
 .pv-prio-total {
@@ -379,6 +558,10 @@
   max-width: 140px;
 }
 
+.pv-matrix-row--active .pv-matrix-row-head {
+  color: var(--azul-claro);
+}
+
 .pv-matrix-cell {
   text-align: center;
   padding: 6px 8px;
@@ -387,8 +570,18 @@
   font-size: 0.82rem;
   color: var(--text);
   background: rgba(61, 183, 244, calc(var(--intensity, 0) * 0.45));
-  transition: background 0.15s;
+  transition: all 0.15s;
   cursor: default;
+}
+
+.pv-matrix-cell--clickable {
+  cursor: pointer;
+}
+.pv-matrix-cell--clickable:hover {
+  outline: 2px solid var(--azul-claro);
+  outline-offset: -2px;
+  border-radius: 4px;
+  transform: scale(1.08);
 }
 
 .pv-matrix-cell:empty {
@@ -399,6 +592,15 @@
 .pv-matrix-table tbody tr:hover .pv-matrix-cell { filter: brightness(1.1); }
 
 /* ===== Tabela resumo ===== */
+.pv-table-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .pv-table-wrap {
   overflow-x: auto;
 }
@@ -465,20 +667,6 @@
   font-weight: 700;
 }
 
-/* ===== Tabela com drill ===== */
-.pv-table-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-
-.pv-table-hint {
-  font-family: 'Lato', sans-serif;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
 .pv-table-row-click {
   cursor: pointer;
   transition: background 0.12s;
@@ -495,11 +683,11 @@
   border-radius: var(--radius);
   padding: 1.2rem 1.4rem;
   position: relative;
-  animation: drill-in 0.18s ease-out;
+  animation: drill-in 0.22s ease-out;
 }
 
 @keyframes drill-in {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -524,6 +712,12 @@
   font-weight: 700;
   color: var(--azul-claro);
   margin: 0;
+}
+
+.pv-drill-subtitle {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .pv-drill-meta {
@@ -566,6 +760,10 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(61,183,244,0.15) transparent;
 }
 
 .pv-drill-row {
@@ -620,6 +818,17 @@ a.pv-drill-key:hover { text-decoration: underline; }
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+}
+
+.pv-drill-product {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--azul-claro);
+  background: rgba(61,183,244,0.1);
+  padding: 1px 7px;
+  border-radius: 8px;
+  white-space: nowrap;
 }
 
 .pv-drill-assignee {

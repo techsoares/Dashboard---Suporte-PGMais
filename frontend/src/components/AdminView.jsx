@@ -10,14 +10,18 @@ const getApiUrl = () => {
 }
 const API = getApiUrl()
 
-export default function AdminView({ assignees = [], onBusChange }) {
+export default function AdminView({ assignees: fallbackAssignees = [], onBusChange }) {
   const [bus, setBus]         = useState([])
   const [selected, setSelected] = useState(null)   // BU selecionada para editar
   const [editName, setEditName] = useState('')
+  const [editType, setEditType] = useState('operacional')
   const [saving, setSaving]   = useState(false)
   const [newName, setNewName] = useState('')
+  const [newType, setNewType] = useState('operacional')
   const [creating, setCreating] = useState(false)
   const [error, setError]     = useState('')
+  const [jiraUsers, setJiraUsers] = useState([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
 
   const load = () =>
     fetch(`${API}/api/admin/bus`)
@@ -25,11 +29,37 @@ export default function AdminView({ assignees = [], onBusChange }) {
       .then(data => { setBus(data); onBusChange?.(data) })
       .catch(() => setError('Não foi possível carregar as BUs.'))
 
-  useEffect(() => { load() }, [])
+  const loadJiraUsers = () => {
+    setLoadingUsers(true)
+    fetch(`${API}/api/jira/users`)
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setJiraUsers(data)
+          console.log(`Jira users loaded: ${data.length}`)
+        }
+      })
+      .catch(err => {
+        console.warn('Falha ao buscar usuários do Jira:', err)
+        setError('Não foi possível carregar usuários do Jira. Mostrando apenas responsáveis de issues ativas.')
+      })
+      .finally(() => setLoadingUsers(false))
+  }
+
+  useEffect(() => { load(); loadJiraUsers() }, [])
+
+  // Use Jira users if available, otherwise fallback to assignees from dashboard
+  const assignees = jiraUsers.length > 0
+    ? jiraUsers.map(u => u.display_name).filter(Boolean)
+    : fallbackAssignees
 
   const selectBu = (bu) => {
     setSelected(bu)
     setEditName(bu.name)
+    setEditType(bu.bu_type || 'operacional')
     setError('')
   }
 
@@ -48,13 +78,14 @@ export default function AdminView({ assignees = [], onBusChange }) {
       const res = await fetch(`${API}/api/admin/bus/${updated.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: updated.name, members: updated.members }),
+        body: JSON.stringify({ name: updated.name, members: updated.members, bu_type: updated.bu_type || 'operacional' }),
       })
       if (!res.ok) throw new Error()
       const saved = await res.json()
       setBus(prev => prev.map(b => b.id === saved.id ? saved : b))
       setSelected(saved)
       setEditName(saved.name)
+      setEditType(saved.bu_type || 'operacional')
       onBusChange?.(bus.map(b => b.id === saved.id ? saved : b))
     } catch {
       setError('Erro ao salvar. Tente novamente.')
@@ -65,7 +96,14 @@ export default function AdminView({ assignees = [], onBusChange }) {
 
   const handleRename = async () => {
     if (!selected || !editName.trim()) return
-    await saveBu({ ...selected, name: editName.trim() })
+    await saveBu({ ...selected, name: editName.trim(), bu_type: editType })
+  }
+
+  const handleTypeChange = async (newType) => {
+    setEditType(newType)
+    if (selected) {
+      await saveBu({ ...selected, bu_type: newType })
+    }
   }
 
   const createBu = async () => {
@@ -76,15 +114,17 @@ export default function AdminView({ assignees = [], onBusChange }) {
       const res = await fetch(`${API}/api/admin/bus`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName.trim() }),
+        body: JSON.stringify({ name: newName.trim(), bu_type: newType }),
       })
       if (!res.ok) throw new Error()
       const created = await res.json()
       const updated = [...bus, created]
       setBus(updated)
       setNewName('')
+      setNewType('operacional')
       setSelected(created)
       setEditName(created.name)
+      setEditType(created.bu_type || 'operacional')
       onBusChange?.(updated)
     } catch {
       setError('Erro ao criar BU.')
@@ -110,7 +150,11 @@ export default function AdminView({ assignees = [], onBusChange }) {
     <div className="admin-root">
       <div className="admin-header">
         <h2 className="admin-title">Unidades de Negócio</h2>
-        <p className="admin-subtitle">Agrupe responsáveis em BUs para usar como filtro no dashboard</p>
+        <p className="admin-subtitle">
+          Agrupe responsáveis em BUs para usar como filtro no dashboard
+          {jiraUsers.length > 0 && <span className="admin-user-count"> — {jiraUsers.length} profissionais ativos no Jira</span>}
+          {loadingUsers && <span className="admin-user-count"> — carregando usuários do Jira...</span>}
+        </p>
       </div>
 
       {error && <div className="admin-error">{error}</div>}
@@ -129,7 +173,10 @@ export default function AdminView({ assignees = [], onBusChange }) {
               onClick={() => selectBu(b)}
             >
               <div className="admin-bu-item-info">
-                <span className="admin-bu-item-name">{b.name}</span>
+                <span className="admin-bu-item-name">
+                  {b.name}
+                  {b.bu_type === 'gestao' && <span className="admin-bu-type-badge">Gestão</span>}
+                </span>
                 <span className="admin-bu-item-count">{b.members.length} membro{b.members.length !== 1 ? 's' : ''}</span>
               </div>
               <button
@@ -150,6 +197,14 @@ export default function AdminView({ assignees = [], onBusChange }) {
               placeholder="Nome da nova BU..."
               className="admin-new-bu-input"
             />
+            <select
+              value={newType}
+              onChange={e => setNewType(e.target.value)}
+              className="admin-type-select admin-type-select--small"
+            >
+              <option value="operacional">Operacional</option>
+              <option value="gestao">Gestão</option>
+            </select>
             <button
               className="admin-new-bu-btn"
               onClick={createBu}
@@ -172,11 +227,20 @@ export default function AdminView({ assignees = [], onBusChange }) {
                 onBlur={handleRename}
                 className="admin-editor-name"
               />
+              <select
+                value={editType}
+                onChange={e => handleTypeChange(e.target.value)}
+                className="admin-type-select"
+              >
+                <option value="operacional">Operacional</option>
+                <option value="gestao">Gestão (Diretoria / C-Level)</option>
+              </select>
               {saving && <span className="admin-saving">salvando...</span>}
             </div>
 
             <div className="admin-editor-section-label">
               Membros &mdash; clique para adicionar ou remover
+              {editType === 'gestao' && <span className="admin-gestao-hint"> — membros desta BU podem despriorizar chamados</span>}
             </div>
 
             {assignees.length === 0 && (

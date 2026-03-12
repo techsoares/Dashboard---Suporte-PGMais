@@ -100,7 +100,7 @@ function TypeBadge({ type }) {
   )
 }
 
-export default function PrioritizationView({ data }) {
+export default function PrioritizationView({ data, bus = [] }) {
   const [ranking, setRanking]               = useState([])
   const [productionKeys, setProductionKeys] = useState([])
   const [classifying, setClassifying]       = useState(false)
@@ -112,8 +112,9 @@ export default function PrioritizationView({ data }) {
   const [searchQuery, setSearchQuery]       = useState('')
   const [prioRequests, setPrioRequests]     = useState([])    // all priority requests
   const [prioForm, setPrioForm]             = useState(null)   // { issueKey, summary, type, account } or null
-  const [prioName, setPrioName]             = useState('')
+  const [prioName, setPrioName]             = useState(() => localStorage.getItem('prio_user_name') || '')
   const [prioJustification, setPrioJustification] = useState('')
+  const [prioBu, setPrioBu]                 = useState('')
   const [prioSubmitting, setPrioSubmitting] = useState(false)
   const [showHelp, setShowHelp]             = useState(false)
 
@@ -146,7 +147,7 @@ export default function PrioritizationView({ data }) {
 
   // Submit priority request
   const submitPrioRequest = useCallback(() => {
-    if (!prioForm || !prioName.trim() || !prioJustification.trim()) return
+    if (!prioForm || !prioName.trim() || !prioJustification.trim() || !prioBu) return
     setPrioSubmitting(true)
     fetch(`${API}/api/priority-requests`, {
       method: 'POST',
@@ -155,6 +156,7 @@ export default function PrioritizationView({ data }) {
         issue_key: prioForm.issueKey,
         requester_name: prioName.trim(),
         justification: prioJustification.trim(),
+        requester_bu: prioBu,
         issue_summary: prioForm.summary || '',
         issue_type: prioForm.type || '',
         account: prioForm.account || '',
@@ -165,15 +167,24 @@ export default function PrioritizationView({ data }) {
         if (r.error === 'duplicate') {
           alert(r.message)
         } else {
+          localStorage.setItem('prio_user_name', prioName.trim())
           loadPrioRequests()
           setPrioForm(null)
-          setPrioName('')
           setPrioJustification('')
+          setPrioBu('')
         }
       })
       .catch(() => {})
       .finally(() => setPrioSubmitting(false))
-  }, [prioForm, prioName, prioJustification, loadPrioRequests])
+  }, [prioForm, prioName, prioJustification, prioBu, loadPrioRequests])
+
+  // Deprioritize — remove a specific priority request by ID
+  const removePrioRequest = useCallback((requestId, requesterName) => {
+    if (!confirm(`Remover a priorização de ${requesterName}?`)) return
+    fetch(`${API}/api/priority-requests/${requestId}`, { method: 'DELETE' })
+      .then(() => loadPrioRequests())
+      .catch(() => {})
+  }, [loadPrioRequests])
 
   // Compute boost per issue from priority requests
   const boostByKey = useMemo(() => {
@@ -462,10 +473,18 @@ export default function PrioritizationView({ data }) {
                         {issue.prioRequests.length > 0 && (
                           <div className="prio-boost-history">
                             {issue.prioRequests.map(r => (
-                              <div key={r.id} className="prio-boost-entry">
+                              <div key={r.id} className={`prio-boost-entry ${r.bu_type === 'gestao' ? 'prio-boost-entry--gestao' : ''}`}>
                                 <span className="prio-boost-name">{r.requester_name}</span>
+                                {r.requester_bu && <span className="prio-boost-bu">{r.requester_bu}</span>}
                                 <span className="prio-boost-reason">{r.ai_verdict}</span>
                                 <span className="prio-boost-value">+{r.boost}</span>
+                                {prioName.trim().toLowerCase() === r.requester_name.toLowerCase() && (
+                                  <button
+                                    className="prio-deprio-btn"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); removePrioRequest(r.id, r.requester_name) }}
+                                    title="Remover sua priorização"
+                                  >✕</button>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -587,6 +606,21 @@ export default function PrioritizationView({ data }) {
               />
             </div>
             <div className="prio-modal-field">
+              <label>Sua BU</label>
+              <select
+                value={prioBu}
+                onChange={e => setPrioBu(e.target.value)}
+                className="prio-modal-select"
+              >
+                <option value="">Selecione sua BU...</option>
+                {bus.map(b => (
+                  <option key={b.id} value={b.name}>
+                    {b.name}{b.bu_type === 'gestao' ? ' (Gestão)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="prio-modal-field">
               <label>Justificativa</label>
               <textarea
                 value={prioJustification}
@@ -595,11 +629,16 @@ export default function PrioritizationView({ data }) {
                 rows={3}
               />
             </div>
-            <p className="prio-modal-hint">A IA avaliará sua justificativa e determinará o nível de boost na fila.</p>
+            <p className="prio-modal-hint">
+              A IA avaliará sua justificativa e determinará o nível de boost na fila.
+              {bus.find(b => b.name === prioBu)?.bu_type === 'gestao' && (
+                <span className="prio-modal-gestao-hint"> BUs de gestão recebem multiplicador de impacto.</span>
+              )}
+            </p>
             <button
               className="prio-modal-submit"
               onClick={submitPrioRequest}
-              disabled={prioSubmitting || !prioName.trim() || !prioJustification.trim()}
+              disabled={prioSubmitting || !prioName.trim() || !prioJustification.trim() || !prioBu}
             >
               {prioSubmitting ? 'Avaliando...' : 'Enviar solicitação'}
             </button>

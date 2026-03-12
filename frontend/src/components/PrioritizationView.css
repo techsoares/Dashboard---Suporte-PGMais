@@ -866,6 +866,70 @@
 .prio-modal-submit:hover:not(:disabled) { opacity: 0.9; }
 .prio-modal-submit:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* Deprioritize button */
+.prio-deprio-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(254,112,189,0.3);
+  background: rgba(254,112,189,0.06);
+  color: var(--rosa);
+  font-size: 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+.prio-deprio-btn:hover {
+  background: rgba(254,112,189,0.2);
+  border-color: var(--rosa);
+}
+
+/* Modal BU select */
+.prio-modal-select {
+  width: 100%;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.88rem;
+  color: var(--text);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.prio-modal-select:focus {
+  outline: none;
+  border-color: var(--azul-claro);
+}
+
+.prio-modal-gestao-hint {
+  color: var(--rosa);
+  font-weight: 600;
+}
+
+/* Boost entry BU badge */
+.prio-boost-bu {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--azul-claro);
+  background: rgba(61,183,244,0.1);
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+.prio-boost-entry--gestao .prio-boost-bu {
+  color: var(--rosa);
+  background: rgba(254,112,189,0.1);
+}
+.prio-boost-entry--gestao .prio-boost-value {
+  color: var(--rosa);
+}
+
 @media (max-width: 1100px) {
   .prio-body { grid-template-columns: 1fr; }
   .prio-ranking-panel { position: static; }

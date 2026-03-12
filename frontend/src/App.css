@@ -10,11 +10,11 @@
   --verde:         #40EB4F;
 
   /* Dark mode (padrão) */
-  --bg:            #070d1f;
-  --surface:       #0e1a3a;
-  --surface-alt:   #132048;
-  --border:        rgba(61,183,244,0.12);
-  --border-strong: rgba(61,183,244,0.25);
+  --bg:            #060c1c;
+  --surface:       #0b1530;
+  --surface-alt:   #101d42;
+  --border:        rgba(61,183,244,0.10);
+  --border-strong: rgba(61,183,244,0.22);
 
   --text:          #ffffff;
   --text-secondary: rgba(255,255,255,0.70);
@@ -54,10 +54,9 @@ body {
 
 .app[data-theme="dark"] {
   background-image:
-    radial-gradient(ellipse 70% 55% at 5%   0%,   rgba(1,32,235,0.40) 0%, transparent 65%),
-    radial-gradient(ellipse 45% 50% at 95%  95%,  rgba(53,89,235,0.28) 0%, transparent 60%),
-    radial-gradient(ellipse 35% 35% at 55%  45%,  rgba(36,58,131,0.20) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 80%  10%,  rgba(61,183,244,0.12) 0%, transparent 55%);
+    radial-gradient(ellipse 60% 55% at 72% 38%, rgba(53,89,235,0.40) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 45% at 16% 80%, rgba(61,183,244,0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 94% 88%, rgba(254,112,189,0.15) 0%, transparent 60%);
 }
 
 /* Background light mode */

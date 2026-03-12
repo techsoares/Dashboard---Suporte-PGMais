@@ -406,7 +406,7 @@ export default function App() {
       {currentView === 'product' && filteredData && <ProductView data={filteredData} />}
       {currentView === 'kanban' && data && <KanbanView data={data} />}
       {currentView === 'admin' && <AdminView assignees={filterOptions.assignees} onBusChange={setBus} />}
-      {currentView === 'prioritization' && data && <PrioritizationView data={data} />}
+      {currentView === 'prioritization' && data && <PrioritizationView data={data} bus={bus} />}
 
       <footer className="app-footer">
         Desenvolvido por <span className="app-footer-name">Andressa Soares</span>
