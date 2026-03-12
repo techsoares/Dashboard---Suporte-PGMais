@@ -64,7 +64,45 @@
   {
     "id": "8196025d-616f-4f75-9daa-f40e5b3e83f1",
     "name": "C-LEVEL",
-    "members": [],
-    "bu_type": "operacional"
+    "members": [
+      "Marissa dos Reis Guimarães Rosa",
+      "Ronaldo Nogami",
+      "Sirlene A Aveiro Honório"
+    ],
+    "bu_type": "gestao"
+  },
+  {
+    "id": "53006ab8-3d7d-4717-bbfd-d70fb48fbd0c",
+    "name": "Diretoria",
+    "members": [
+      "samir",
+      "Augusto Mello",
+      "FRANCIANE APARECIDA WINTER",
+      "Jahir Silva Jr",
+      "Izabela Camargo"
+    ],
+    "bu_type": "gestao"
+  },
+  {
+    "id": "57370577-5d43-4e51-b116-672b08784f03",
+    "name": "Gestores gerais",
+    "members": [
+      "rita.kloster",
+      "Murilo Nascimento",
+      "Milton Kowalewski de Souza",
+      "Lucas Yuri Torquette Gomes",
+      "Luciano Jocowski",
+      "Mahara Cristina dos Santos",
+      "Luanda Fernandes Silva",
+      "Humberto Vieira",
+      "Ismadel Santos",
+      "Cristhiane Garcia",
+      "Conrado Miozzo",
+      "Clovis Bacelar",
+      "christian.macedo",
+      "Andressa Soares",
+      "Anderson Wiginieski"
+    ],
+    "bu_type": "gestao"
   }
 ]

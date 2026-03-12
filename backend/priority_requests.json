@@ -7,5 +7,16 @@
     "boost": 210,
     "ai_verdict": "Risco de churn de cliente justifica atenção elevada, mas sem evidência de impacto operacional imediato ou perda financeira confirmada.",
     "created_at": "2026-03-12T09:34:58.980036"
+  },
+  {
+    "id": "304eb3da-60b2-4d3f-8ab0-7b2bb4451005",
+    "issue_key": "ON-36148",
+    "requester_name": "Andressa Soares",
+    "justification": "favor priorizar, essa entrega evita perda de faturamento e afeta diretamente a produção de hoje",
+    "requester_bu": "Gestores gerais",
+    "bu_type": "gestao",
+    "boost": 630,
+    "ai_verdict": "Cliente de grande porte (Lojas Renner) com falha em produção na emissão de boletos via API, gerando perda de faturamento imediata e impacto direto na operação do dia.",
+    "created_at": "2026-03-12T14:30:13.025967"
   }
 ]
