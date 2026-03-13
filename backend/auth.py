@@ -254,23 +254,35 @@ def authenticate_user(email: str, password: str = "") -> UserProfile:
 def _get_user_bu_from_bus_file(user_name: str) -> Optional[dict]:
     """Busca a BU do usuário no arquivo bus.json pelo nome."""
     if not user_name:
+        logger.warning("_get_user_bu_from_bus_file: user_name vazio")
         return None
     
     bus_file = os.path.join(os.path.dirname(__file__), "bus.json")
     if not os.path.exists(bus_file):
+        logger.warning("_get_user_bu_from_bus_file: bus.json não encontrado")
         return None
     
     try:
         with open(bus_file, "r", encoding="utf-8") as f:
             bus_list = json.load(f)
         
+        logger.info("Buscando BU para usuário: '%s'", user_name)
+        
         for bu in bus_list:
-            if user_name in bu.get("members", []):
-                return {
-                    "bu_id": bu["id"],
-                    "bu_name": bu["name"],
-                    "bu_type": bu.get("bu_type", "operacional")
-                }
+            members = bu.get("members", [])
+            logger.debug("Verificando BU '%s' com %d membros", bu.get("name"), len(members))
+            
+            # Busca exata e case-insensitive
+            for member in members:
+                if member.strip().lower() == user_name.strip().lower():
+                    logger.info("BU encontrada para '%s': %s (%s)", user_name, bu["name"], bu.get("bu_type"))
+                    return {
+                        "bu_id": bu["id"],
+                        "bu_name": bu["name"],
+                        "bu_type": bu.get("bu_type", "operacional")
+                    }
+        
+        logger.warning("Nenhuma BU encontrada para usuário: '%s'", user_name)
     except Exception as e:
         logger.error("Erro ao buscar BU do usuário: %s", e)
     
