@@ -224,7 +224,7 @@ def authenticate_user(email: str, password: str = "") -> UserProfile:
         _save_users(users)
         logger.info("Usuário promovido a admin: %s", email_lower)
     
-    # Sincronizar BU do bus.json se o usuário estiver vinculado
+    # SEMPRE sincronizar BU do bus.json (tanto para novos quanto existentes)
     bu_info = _get_user_bu_from_bus_file(user_bu.get("name", ""))
     if bu_info:
         user_bu["bu_id"] = bu_info["bu_id"]
