@@ -162,6 +162,7 @@ export default function App() {
 
   const handleLoginSuccess = (loggedInUser) => {
     setUser(loggedInUser)
+    setCurrentView('dashboard')
     setLoading(true)
     fetchDashboard()
   }
