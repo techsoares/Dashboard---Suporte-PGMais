@@ -526,6 +526,25 @@ async def get_me(user: UserProfile = Depends(get_current_user)):
     return user
 
 
+@app.post("/api/auth/sync-bu", tags=["auth"], summary="Força sincronização de BU do usuário")
+async def sync_bu(user: UserProfile = Depends(get_current_user)):
+    """Força sincronização da BU do usuário com bus.json."""
+    from auth import _get_user_bu_from_bus_file, _load_users, _save_users
+    
+    bu_info = _get_user_bu_from_bus_file(user.name)
+    if bu_info:
+        users = _load_users()
+        if user.email in users:
+            users[user.email]["bu_id"] = bu_info["bu_id"]
+            users[user.email]["bu_name"] = bu_info["bu_name"]
+            users[user.email]["bu_type"] = bu_info["bu_type"]
+            _save_users(users)
+            logger.info("BU sincronizada manualmente para %s: %s (%s)", user.email, bu_info["bu_name"], bu_info["bu_type"])
+            return {"status": "synced", "bu_name": bu_info["bu_name"], "bu_type": bu_info["bu_type"]}
+    
+    return {"status": "not_found", "message": "BU não encontrada no bus.json"}
+
+
 @app.put("/api/auth/users/{email}/bu", tags=["auth", "admin"], summary="Associa usuário a uma BU (admin)")
 async def assign_user_to_bu(
     email: str,
