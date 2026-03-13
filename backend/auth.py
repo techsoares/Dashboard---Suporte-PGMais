@@ -1,0 +1,289 @@
+"""
+Autenticação simplificada com email/senha.
+Usuário admin pré-configurado: admin / pg@dash123
+"""
+
+import os
+import json
+import logging
+from datetime import datetime, timezone
+from typing import Optional
+
+import jwt
+from fastapi import HTTPException, Header
+from pydantic import BaseModel
+
+logger = logging.getLogger("pgmais.auth")
+
+JWT_SECRET = os.getenv("JWT_SECRET", "pgmais-secret-key-change-in-prod")
+JWT_ALGORITHM = "HS256"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Models
+# ─────────────────────────────────────────────────────────────────────────────
+
+class UserProfile(BaseModel):
+    """Perfil do usuário autenticado."""
+    user_id: str
+    email: str
+    name: str
+    bu_id: Optional[str] = None
+    bu_name: Optional[str] = None
+    bu_type: Optional[str] = None
+    roles: list[str] = []
+    permissions: list[str] = []
+
+
+class LoginRequest(BaseModel):
+    """Requisição de login."""
+    email: str
+    password: str = ""  # Senha opcional
+
+
+class LoginResponse(BaseModel):
+    """Resposta de login."""
+    access_token: str
+    token_type: str = "Bearer"
+    user: UserProfile
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Configuração de Admins
+# ─────────────────────────────────────────────────────────────────────────────
+
+ADMIN_CREDENTIALS = {
+    "andressa.soares@pgmais.com.br": "Admin@2025",
+}
+
+ALLOWED_DOMAINS = ["@pgmais", "@ciclo"]
+
+
+def get_admin_credentials() -> dict:
+    """Retorna dicionário de credenciais de admin."""
+    return ADMIN_CREDENTIALS
+
+
+def add_admin(email: str, password: str):
+    """Adiciona um novo admin."""
+    ADMIN_CREDENTIALS[email.lower()] = password
+    logger.info("Novo admin adicionado: %s", email.lower())
+
+
+def remove_admin(email: str):
+    """Remove um admin."""
+    if email.lower() in ADMIN_CREDENTIALS:
+        del ADMIN_CREDENTIALS[email.lower()]
+        logger.info("Admin removido: %s", email.lower())
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JWT Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def create_jwt_token(user: UserProfile) -> str:
+    """Cria um JWT com dados do usuário."""
+    payload = {
+        "sub": user.user_id,
+        "email": user.email,
+        "name": user.name,
+        "bu_id": user.bu_id,
+        "bu_name": user.bu_name,
+        "bu_type": user.bu_type,
+        "roles": user.roles,
+        "permissions": user.permissions,
+        "iat": datetime.now(timezone.utc),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def decode_jwt_token(token: str) -> dict:
+    """Decodifica e valida um JWT."""
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expirado")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# User-BU Mapping (Local Storage)
+# ─────────────────────────────────────────────────────────────────────────────
+
+USERS_FILE = os.path.join(os.path.dirname(__file__), "users.json")
+
+
+def _load_users() -> dict:
+    """Carrega mapeamento de usuários → BUs."""
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def _save_users(users: dict):
+    """Salva mapeamento de usuários → BUs."""
+    with open(USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(users, f, ensure_ascii=False, indent=2)
+
+
+def get_user_bu(email: str) -> Optional[dict]:
+    """Retorna BU e permissões do usuário pelo email."""
+    users = _load_users()
+    return users.get(email.lower())
+
+
+def set_user_bu(email: str, bu_id: str, bu_name: str, bu_type: str, roles: list[str], password: str = "pgmais123"):
+    """Associa um usuário a uma BU."""
+    users = _load_users()
+    users[email.lower()] = {
+        "email": email,
+        "password": password,  # Senha padrão ou fornecida
+        "name": email.split('@')[0].title() if '@' in email else email,
+        "bu_id": bu_id,
+        "bu_name": bu_name,
+        "bu_type": bu_type,
+        "roles": roles,
+        "permissions": _roles_to_permissions(roles),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _save_users(users)
+
+
+def _roles_to_permissions(roles: list[str]) -> list[str]:
+    """Converte roles em permissões."""
+    perms = ["read"]
+    if "dev" in roles or "manager" in roles:
+        perms.append("write")
+    if "admin" in roles or "gestao" in roles:
+        perms.extend(["admin", "manage_users"])
+    return perms
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Login
+# ─────────────────────────────────────────────────────────────────────────────
+
+def authenticate_user(email: str, password: str = "") -> UserProfile:
+    """Autentica usuário com email e senha.
+    
+    - Admins: Requerem senha obrigatória
+    - Usuários normais: Login sem senha para domínios permitidos
+    """
+    email_lower = email.strip().lower()
+    
+    # Verificar se é domínio permitido (@pgmais ou @ciclo)
+    is_allowed_domain = any(domain in email_lower for domain in ALLOWED_DOMAINS)
+    
+    if not is_allowed_domain:
+        logger.warning("Domínio não permitido: %s", email_lower)
+        raise HTTPException(status_code=401, detail="Apenas emails @pgmais ou @ciclo são permitidos")
+    
+    # Verificar se é admin
+    is_admin = email_lower in [admin.lower() for admin in ADMIN_CREDENTIALS.keys()]
+    
+    # ADMIN: Requer senha obrigatória
+    if is_admin:
+        if not password:
+            logger.warning("Admin tentou login sem senha: %s", email_lower)
+            raise HTTPException(status_code=401, detail="Senha obrigatória para administradores")
+        
+        correct_password = ADMIN_CREDENTIALS.get(email_lower)
+        if password != correct_password:
+            logger.warning("Senha incorreta para admin: %s", email_lower)
+            raise HTTPException(status_code=401, detail="Email ou senha incorretos")
+        
+        logger.info("Admin autenticado com sucesso: %s", email_lower)
+    
+    # Buscar ou criar usuário
+    user_bu = get_user_bu(email_lower)
+    
+    if not user_bu:
+        # Auto-cadastro para domínios permitidos
+        name = email_lower.split('@')[0].replace('.', ' ').title()
+        user_bu = {
+            "email": email_lower,
+            "name": name,
+            "bu_id": "default",
+            "bu_name": "PGMais",
+            "bu_type": "operacional",
+            "roles": ["admin", "dev"] if is_admin else ["dev"],
+            "permissions": ["read", "write", "admin", "manage_users"] if is_admin else ["read"],
+        }
+        # Salvar novo usuário
+        users = _load_users()
+        users[email_lower] = user_bu
+        _save_users(users)
+        logger.info("Novo usuário auto-cadastrado: %s (admin=%s)", email_lower, is_admin)
+    
+    # Atualizar permissões se mudou para admin
+    if is_admin and "admin" not in user_bu.get("roles", []):
+        user_bu["roles"] = ["admin", "dev"]
+        user_bu["permissions"] = ["read", "write", "admin", "manage_users"]
+        users = _load_users()
+        users[email_lower] = user_bu
+        _save_users(users)
+        logger.info("Usuário promovido a admin: %s", email_lower)
+    
+    user = UserProfile(
+        user_id=email_lower,
+        email=email_lower,
+        name=user_bu.get("name", email_lower),
+        bu_id=user_bu.get("bu_id"),
+        bu_name=user_bu.get("bu_name"),
+        bu_type=user_bu.get("bu_type", "operacional"),
+        roles=user_bu.get("roles", ["dev"]),
+        permissions=user_bu.get("permissions", ["read"]),
+    )
+    
+    logger.info("Login bem-sucedido: %s (admin=%s)", email_lower, is_admin)
+    return user
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dependency Injection
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def get_current_user(authorization: str | None = Header(None)) -> UserProfile:
+    """Extrai e valida o usuário do header Authorization."""
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Token não fornecido")
+    
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise ValueError("Scheme inválido")
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Formato de Authorization inválido")
+    
+    payload = decode_jwt_token(token)
+    
+    return UserProfile(
+        user_id=payload.get("sub"),
+        email=payload.get("email"),
+        name=payload.get("name"),
+        bu_id=payload.get("bu_id"),
+        bu_name=payload.get("bu_name"),
+        bu_type=payload.get("bu_type"),
+        roles=payload.get("roles", []),
+        permissions=payload.get("permissions", []),
+    )
+
+
+def require_permission(permission: str):
+    """Decorator para verificar permissão."""
+    async def dependency(authorization: str | None = Header(None)) -> UserProfile:
+        user = await get_current_user(authorization)
+        if permission not in user.permissions:
+            raise HTTPException(status_code=403, detail=f"Permissão '{permission}' necessária")
+        return user
+    return dependency
+
+
+def require_role(role: str):
+    """Decorator para verificar role."""
+    async def dependency(authorization: str | None = Header(None)) -> UserProfile:
+        user = await get_current_user(authorization)
+        if role not in user.roles:
+            raise HTTPException(status_code=403, detail=f"Role '{role}' necessária")
+        return user
+    return dependency

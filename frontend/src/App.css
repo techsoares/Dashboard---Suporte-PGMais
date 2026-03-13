@@ -879,3 +879,63 @@ body {
     font-size: 1rem;
   }
 }
+
+
+/* ===== Logout Button ===== */
+.logout-btn {
+  background: transparent;
+  border: 1.5px solid var(--border-strong);
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Lato', sans-serif;
+}
+
+.logout-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.logout-text {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.logout-btn:hover {
+  background: var(--surface-alt);
+  border-color: var(--rosa);
+  color: var(--rosa);
+  transform: scale(1.05);
+}
+
+.logout-btn:active {
+  transform: scale(0.95);
+}
+
+/* ===== User Info ===== */
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.user-name {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.user-bu {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}

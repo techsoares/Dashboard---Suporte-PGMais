@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import LoginView from './components/LoginView'
+import SSOCallback from './components/SSOCallback'
 import KpiBar from './components/KpiBar'
 import DevGrid from './components/DevGrid'
 import BacklogPanel from './components/BacklogPanel'
@@ -14,6 +16,7 @@ import AdminView from './components/AdminView'
 import PrioritizationView from './components/PrioritizationView'
 import { API_BASE_URL } from './apiUrl'
 import './App.css'
+
 const REFRESH_SECRET = import.meta.env.VITE_REFRESH_SECRET ?? ''
 const REFRESH_INTERVAL = 5 * 60 * 1000
 
@@ -23,7 +26,6 @@ const issuePrio = i => PRIO_ORDER[i.priority?.name] ?? 2
 
 const sortIssues = (issues) =>
   [...issues].sort((a, b) => {
-    // Overdue primeiro dentro da mesma prioridade
     if (a.is_overdue !== b.is_overdue) return a.is_overdue ? -1 : 1
     return issuePrio(a) - issuePrio(b)
   })
@@ -31,24 +33,47 @@ const sortIssues = (issues) =>
 const EMPTY_FILTERS = { bu: [], assignee: [], account: [], product: [], issue_type: [], status: [] }
 
 export default function App() {
-  const [data, setData]             = useState(null)
-  const [error, setError]           = useState(null)
-  const [loading, setLoading]       = useState(true)
+  const [user, setUser] = useState(null)
+  const [data, setData] = useState(null)
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [lastFetch, setLastFetch]   = useState(null)
+  const [lastFetch, setLastFetch] = useState(null)
   const [currentView, setCurrentView] = useState('dashboard')
-  const [bus, setBus]               = useState([])
-  const [filters, setFilters]       = useState(EMPTY_FILTERS)
+  const [bus, setBus] = useState([])
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
-  const [nightMode, setNightMode]       = useState(false)
-  const [lightMode, setLightMode]       = useState(false)
+  const [nightMode, setNightMode] = useState(false)
+  const [lightMode, setLightMode] = useState(false)
   const [notifications, setNotifications] = useState([])
-  const [backlogOpen, setBacklogOpen]     = useState(false)
+  const [backlogOpen, setBacklogOpen] = useState(false)
   const prevKeysRef = useRef(null)
+
+  // Verificar se está na página de callback
+  const isCallback = window.location.pathname === '/callback'
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', lightMode ? 'light' : 'dark')
   }, [lightMode])
+
+  // Carregar usuário do localStorage
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    const storedUser = localStorage.getItem('user')
+    
+    if (token && storedUser) {
+      try {
+        setUser(JSON.parse(storedUser))
+        setLoading(false)
+      } catch (e) {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('user')
+        setLoading(false)
+      }
+    } else {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -64,21 +89,33 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [backlogOpen])
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('access_token')
+    return token ? { 'Authorization': `Bearer ${token}` } : {}
+  }
+
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/dashboard`)
+      const res = await fetch(`${API_BASE_URL}/api/dashboard`, {
+        headers: getAuthHeaders()
+      })
+      if (res.status === 401) {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('user')
+        setUser(null)
+        return
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
 
-      // Detecta issues novas e dispara notificações (ignora o primeiro carregamento)
       const currentKeys = new Set(json.backlog.map(i => i.key))
       if (prevKeysRef.current !== null) {
         const newIssues = json.backlog.filter(i => !prevKeysRef.current.has(i.key))
         if (newIssues.length > 0) {
           const toasts = newIssues.slice(0, 5).map(i => ({
-            id:       i.key + '_' + Date.now(),
-            key:      i.key,
-            summary:  i.summary,
+            id: i.key + '_' + Date.now(),
+            key: i.key,
+            summary: i.summary,
             assignee: i.assignee?.display_name,
             priority: i.priority?.name,
           }))
@@ -105,7 +142,10 @@ export default function App() {
     try {
       await fetch(`${API_BASE_URL}/api/refresh`, {
         method: 'POST',
-        headers: REFRESH_SECRET ? { 'X-Refresh-Secret': REFRESH_SECRET } : {},
+        headers: {
+          ...getAuthHeaders(),
+          ...(REFRESH_SECRET ? { 'X-Refresh-Secret': REFRESH_SECRET } : {})
+        },
       })
       await fetchDashboard()
     } finally {
@@ -113,41 +153,59 @@ export default function App() {
     }
   }
 
-  useEffect(() => {
+  const handleLogout = () => {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('user')
+    setUser(null)
+    setData(null)
+  }
+
+  const handleLoginSuccess = (loggedInUser) => {
+    setUser(loggedInUser)
+    setLoading(true)
     fetchDashboard()
-    const interval = setInterval(fetchDashboard, REFRESH_INTERVAL)
-    return () => clearInterval(interval)
-  }, [fetchDashboard])
+  }
+
+  useEffect(() => {
+    if (user && !isCallback) {
+      fetchDashboard()
+      const interval = setInterval(fetchDashboard, REFRESH_INTERVAL)
+      return () => clearInterval(interval)
+    }
+  }, [user, fetchDashboard, isCallback])
 
   // Load BUs on startup
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/admin/bus`)
-      .then(r => r.json())
-      .then(r => setBus(Array.isArray(r) ? r : []))
-      .catch(() => {})
-  }, [])
+    if (user) {
+      fetch(`${API_BASE_URL}/api/admin/bus`, {
+        headers: getAuthHeaders()
+      })
+        .then(r => r.json())
+        .then(r => setBus(Array.isArray(r) ? r : []))
+        .catch(() => {})
+    }
+  }, [user])
 
   // Opções de filtro derivadas dos dados
   const filterOptions = useMemo(() => {
     if (!data) return { accounts: [], products: [], assignees: [], issueTypes: [], statuses: [] }
     const allIssues = [...data.backlog, ...data.devs.flatMap(d => d.active_issues)]
     return {
-      accounts:   [...new Set(allIssues.map(i => i.account).filter(Boolean))].sort(),
-      products:   [...new Set(allIssues.map(i => i.product).filter(Boolean))].sort(),
-      assignees:  [...new Set(data.devs.map(d => d.assignee?.display_name).filter(Boolean))].sort(),
+      accounts: [...new Set(allIssues.map(i => i.account).filter(Boolean))].sort(),
+      products: [...new Set(allIssues.map(i => i.product).filter(Boolean))].sort(),
+      assignees: [...new Set(data.devs.map(d => d.assignee?.display_name).filter(Boolean))].sort(),
       issueTypes: [...new Set(allIssues.map(i => i.issue_type?.name).filter(Boolean))].sort(),
-      statuses:   [...new Set(allIssues.map(i => i.status?.name).filter(Boolean))].sort(),
+      statuses: [...new Set(allIssues.map(i => i.status?.name).filter(Boolean))].sort(),
     }
   }, [data])
 
-  // Filtragem client-side com multi-select + busca + ordenação por prioridade
+  // Filtragem client-side
   const filteredData = useMemo(() => {
-    if (!data) return data
+    if (!data) return null
     let devs = data.devs
     let backlog = data.backlog
     let doneIssues = data.done_issues || []
 
-    // Expande filtro de BU para lista de assignees
     const buAssignees = filters.bu.length > 0
       ? bus.filter(b => filters.bu.includes(b.name)).flatMap(b => b.members)
       : []
@@ -156,10 +214,10 @@ export default function App() {
       let result = issues
       if (buAssignees.length) result = result.filter(i => buAssignees.includes(i.assignee?.display_name))
       else if (filters.assignee.length) result = result.filter(i => filters.assignee.includes(i.assignee?.display_name))
-      if (filters.account.length)  result = result.filter(i => filters.account.includes(i.account))
-      if (filters.product.length)  result = result.filter(i => filters.product.includes(i.product))
+      if (filters.account.length) result = result.filter(i => filters.account.includes(i.account))
+      if (filters.product.length) result = result.filter(i => filters.product.includes(i.product))
       if (filters.issue_type.length) result = result.filter(i => filters.issue_type.includes(i.issue_type?.name))
-      if (filters.status.length)   result = result.filter(i => filters.status.includes(i.status?.name))
+      if (filters.status.length) result = result.filter(i => filters.status.includes(i.status?.name))
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase()
         result = result.filter(i =>
@@ -178,19 +236,19 @@ export default function App() {
     }
     if (filters.account.length) {
       devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(i => filters.account.includes(i.account)) }))
-                 .filter(d => d.active_issues.length > 0)
+        .filter(d => d.active_issues.length > 0)
     }
     if (filters.product.length) {
       devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(i => filters.product.includes(i.product)) }))
-                 .filter(d => d.active_issues.length > 0)
+        .filter(d => d.active_issues.length > 0)
     }
     if (filters.issue_type.length) {
       devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(i => filters.issue_type.includes(i.issue_type?.name)) }))
-                 .filter(d => d.active_issues.length > 0)
+        .filter(d => d.active_issues.length > 0)
     }
     if (filters.status.length) {
       devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(i => filters.status.includes(i.status?.name)) }))
-                 .filter(d => d.active_issues.length > 0)
+        .filter(d => d.active_issues.length > 0)
     }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase()
@@ -199,18 +257,46 @@ export default function App() {
         i.summary?.toLowerCase().includes(q) ||
         i.assignee?.display_name?.toLowerCase().includes(q)
       devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(match) }))
-                 .filter(d => d.active_issues.length > 0)
+        .filter(d => d.active_issues.length > 0)
     }
 
     backlog = filterIssue(backlog)
     doneIssues = filterIssue(doneIssues)
 
-    // Ordenar por prioridade (overdue primeiro, depois Highest → Lowest)
     devs = devs.map(d => ({ ...d, active_issues: sortIssues(d.active_issues) }))
     backlog = sortIssues(backlog)
 
     return { ...data, devs, backlog, done_issues: doneIssues }
   }, [data, filters, searchQuery, bus])
+
+  const hasAnyFilter = Object.values(filters).some(v => v.length > 0) || searchQuery
+
+  const filteredKpis = useMemo(() => {
+    if (!filteredData || !hasAnyFilter) return data?.kpis
+    const issues = filteredData.backlog
+    return {
+      total_sprint: issues.length,
+      in_progress: issues.filter(i =>
+        i.status?.category === 'indeterminate' &&
+        !i.status?.name?.toLowerCase().includes('aguard')
+      ).length,
+      waiting: issues.filter(i =>
+        i.status?.name?.toLowerCase().includes('aguard')
+      ).length,
+      done_this_week: (filteredData.done_issues || []).length,
+      overdue: issues.filter(i => i.is_overdue).length,
+    }
+  }, [filteredData, hasAnyFilter, data])
+
+  // Se está na página de callback, mostrar componente de callback
+  if (isCallback) {
+    return <SSOCallback />
+  }
+
+  // Se não está autenticado, mostrar tela de login
+  if (!user) {
+    return <LoginView onLoginSuccess={handleLoginSuccess} />
+  }
 
   const toggleFilter = (key, value) => {
     setFilters(prev => {
@@ -219,25 +305,6 @@ export default function App() {
     })
   }
   const clearFilter = (key) => setFilters(prev => ({ ...prev, [key]: [] }))
-  const hasAnyFilter = Object.values(filters).some(v => v.length > 0) || searchQuery
-
-  // KPIs calculados a partir dos dados filtrados client-side (deve vir após hasAnyFilter)
-  const filteredKpis = useMemo(() => {
-    if (!filteredData || !hasAnyFilter) return data?.kpis
-    const issues = filteredData.backlog
-    return {
-      total_sprint:   issues.length,
-      in_progress:    issues.filter(i =>
-        i.status?.category === 'indeterminate' &&
-        !i.status?.name?.toLowerCase().includes('aguard')
-      ).length,
-      waiting:        issues.filter(i =>
-        i.status?.name?.toLowerCase().includes('aguard')
-      ).length,
-      done_this_week: (filteredData.done_issues || []).length,
-      overdue:        issues.filter(i => i.is_overdue).length,
-    }
-  }, [filteredData, hasAnyFilter, data])
 
   if (loading) {
     return (
@@ -272,7 +339,6 @@ export default function App() {
   return (
     <div className="app" data-theme={lightMode ? 'light' : 'dark'}>
 
-      {/* ── Notificações de novos Jiras ─────────────────────────── */}
       {notifications.length > 0 && (
         <div className="notif-stack" role="region" aria-live="polite" aria-label="Notificações de novos Jiras">
           {notifications.map(n => (
@@ -311,6 +377,12 @@ export default function App() {
           </div>
         </nav>
         <div className="header-right">
+          {user && (
+            <div className="user-info">
+              <span className="user-name">{user.name}</span>
+              {user.bu_name && <span className="user-bu">{user.bu_name}</span>}
+            </div>
+          )}
           {lastFetch && (
             <span className="last-updated" aria-live="polite" aria-label={`Dados atualizados às ${lastFetch.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}>
               atualizado às {lastFetch.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -323,20 +395,26 @@ export default function App() {
           <button className={`refresh-btn ${refreshing ? 'loading' : ''}`} onClick={handleRefresh} disabled={refreshing} aria-label={refreshing ? 'Atualizando dados' : 'Atualizar dados agora'}>
             {refreshing ? 'atualizando...' : '↻ atualizar'}
           </button>
-          <button className="admin-toggle-btn" onClick={() => setCurrentView(currentView === 'admin' ? 'dashboard' : 'admin')} aria-label="Abrir painel admin" title="Admin">⚙️</button>
+          {user?.permissions?.includes('admin') && (
+            <button className="admin-toggle-btn" onClick={() => setCurrentView(currentView === 'admin' ? 'dashboard' : 'admin')} aria-label="Abrir painel admin" title="Admin">⚙️</button>
+          )}
+          <button className="logout-btn" onClick={handleLogout} aria-label="Fazer logout" title="Sair">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="18" height="18" fill="currentColor">
+              <path d="M255.15 468.625H63.787c-11.737 0-21.262-9.526-21.262-21.262V64.638c0-11.737 9.526-21.262 21.262-21.262H255.15c11.758 0 21.262-9.504 21.262-21.262S266.908.85 255.15.85H63.787C28.619.85 0 29.47 0 64.638v382.724c0 35.168 28.619 63.787 63.787 63.787H255.15c11.758 0 21.262-9.504 21.262-21.262 0-11.758-9.504-21.262-21.262-21.262z"/>
+              <path d="M505.664 240.861L376.388 113.286c-8.335-8.25-21.815-8.143-30.065.213s-8.165 21.815.213 30.065l92.385 91.173H191.362c-11.758 0-21.262 9.504-21.262 21.262 0 11.758 9.504 21.263 21.262 21.263h247.559l-92.385 91.173c-8.377 8.25-8.441 21.709-.213 30.065a21.255 21.255 0 0015.139 6.336c5.401 0 10.801-2.041 14.926-6.124l129.276-127.575c4.04-3.997 6.336-9.441 6.336-15.139s-2.295-11.163-6.336-15.139z"/>
+            </svg>
+          </button>
         </div>
       </header>
 
       {currentView === 'dashboard' && filteredData && (
         <>
-          {/* KPIs + Produtos compactos */}
           <div className="kpi-product-row" role="region" aria-label="Indicadores de desempenho">
             <KpiBar kpis={filteredKpis} delta={hasAnyFilter ? null : data.kpi_delta} />
             <div className="kpi-product-divider" aria-hidden="true" />
             <ProductStrip issues={filteredData.backlog} />
           </div>
 
-          {/* Barra de filtros multi-select */}
           <div className="filter-bar" role="region" aria-label="Filtros e busca">
             <div className="search-wrapper">
               <span className="search-icon" aria-hidden="true">🔍</span>
@@ -414,7 +492,6 @@ export default function App() {
             <DevGrid devs={filteredData.devs} jiraBaseUrl={filteredData.jira_base_url} bus={bus} />
           </main>
 
-          {/* Backlog drawer */}
           <button className="backlog-toggle-btn" onClick={() => setBacklogOpen(v => !v)} aria-label={backlogOpen ? 'Fechar backlog' : `Abrir backlog com ${filteredData.backlog.length} items`} aria-expanded={backlogOpen}>
             {backlogOpen ? '✕' : `Backlog (${filteredData.backlog.length})`}
           </button>
@@ -429,8 +506,8 @@ export default function App() {
       {currentView === 'ai' && data && <AIInsightsView data={data} />}
       {currentView === 'product' && filteredData && <ProductView data={filteredData} />}
       {currentView === 'kanban' && data && <KanbanView data={data} />}
-      {currentView === 'admin' && <AdminView assignees={filterOptions.assignees} onBusChange={setBus} />}
-      {currentView === 'prioritization' && data && <PrioritizationView data={data} bus={bus} />}
+      {currentView === 'admin' && user?.permissions?.includes('admin') && <AdminView assignees={filterOptions.assignees} onBusChange={setBus} user={user} />}
+      {currentView === 'prioritization' && data && <PrioritizationView data={data} bus={bus} user={user} />}
 
       <footer className="app-footer">
         Desenvolvido por <span className="app-footer-name">Andressa Soares</span>

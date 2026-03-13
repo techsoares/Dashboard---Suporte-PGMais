@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, timezone, date, timedelta
 
 import httpx
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -36,6 +36,12 @@ from performance import (
 from jira_client import fetch_active_issues, fetch_done_this_week, fetch_done_last_week, build_dashboard, fetch_done_last_n_weeks, build_management_data, fetch_all_jira_users
 from models import DashboardResponse, KpiSummary, ManagementData
 from mock_data import get_mock_dashboard, get_mock_management
+from auth import (
+    UserProfile, LoginRequest, LoginResponse, create_jwt_token, decode_jwt_token,
+    get_current_user, require_permission, require_role,
+    get_user_bu, set_user_bu, authenticate_user,
+    get_admin_credentials, add_admin, remove_admin
+)
 
 load_dotenv()
 
@@ -83,7 +89,7 @@ app.add_middleware(
     allow_origin_regex=f"({'|'.join(_origin_parts)})",
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "X-Refresh-Secret"],
+    allow_headers=["Content-Type", "X-Refresh-Secret", "Authorization"],
 )
 
 class AIChatRequest(BaseModel):
@@ -111,6 +117,7 @@ class PriorityRequest(BaseModel):
     issue_summary: str = ""
     issue_type: str = ""
     account: str = ""
+
 
 
 def _strip_markdown(text: str) -> str:
@@ -492,6 +499,110 @@ async def classify_production(body: dict):
 
 
 # ---------------------------------------------------------------------------
+# Authentication Routes
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/login", response_model=LoginResponse, tags=["auth"], summary="Login com email corporativo")
+async def login(body: LoginRequest):
+    """Realiza login com email corporativo (@pgmais ou @ciclo).
+    
+    Senha não é necessária para domínios permitidos.
+    Usuários são auto-cadastrados no primeiro login.
+    Admins são configurados em ADMIN_EMAILS no auth.py.
+    """
+    try:
+        user = authenticate_user(body.email, body.password)
+        access_token = create_jwt_token(user)
+        logger.info("Login bem-sucedido: %s (BU: %s, Admin: %s)", user.email, user.bu_name or "sem BU", "admin" in user.roles)
+        return LoginResponse(access_token=access_token, user=user)
+    except HTTPException:
+        raise
+
+
+
+@app.get("/api/auth/me", response_model=UserProfile, tags=["auth"], summary="Retorna perfil do usuário autenticado")
+async def get_me(user: UserProfile = Depends(get_current_user)):
+    """Retorna informações do usuário autenticado."""
+    return user
+
+
+@app.put("/api/auth/users/{email}/bu", tags=["auth", "admin"], summary="Associa usuário a uma BU (admin)")
+async def assign_user_to_bu(
+    email: str,
+    bu_id: str,
+    bu_name: str,
+    bu_type: str,
+    roles: list[str],
+    password: str = "pgmais123",
+    admin_user: UserProfile = Depends(require_permission("admin"))
+):
+    """Associa um usuário a uma BU. Requer permissão 'admin'."""
+    set_user_bu(email.lower(), bu_id, bu_name, bu_type, roles, password)
+    return {"status": "updated", "email": email, "bu_name": bu_name}
+
+
+# ---------------------------------------------------------------------------
+# Admin Management Routes
+# ---------------------------------------------------------------------------
+
+class AdminCreate(BaseModel):
+    email: str
+    password: str
+
+
+@app.get("/api/admin/admins", tags=["admin"], summary="Lista todos os administradores")
+async def list_admins(admin_user: UserProfile = Depends(require_permission("admin"))):
+    """Lista todos os administradores do sistema. Requer permissão 'admin'."""
+    admins = get_admin_credentials()
+    return [{"email": email} for email in admins.keys()]
+
+
+@app.post("/api/admin/admins", tags=["admin"], status_code=201, summary="Adiciona novo administrador")
+async def create_admin(body: AdminCreate, admin_user: UserProfile = Depends(require_permission("admin"))):
+    """Adiciona um novo administrador. Requer permissão 'admin'."""
+    if not body.email.strip() or not body.password.strip():
+        raise HTTPException(status_code=400, detail="Email e senha são obrigatórios")
+    
+    # Verificar se já existe
+    admins = get_admin_credentials()
+    if body.email.lower() in admins:
+        raise HTTPException(status_code=400, detail="Admin já existe")
+    
+    add_admin(body.email.strip(), body.password.strip())
+    return {"status": "created", "email": body.email.strip()}
+
+
+@app.delete("/api/admin/admins/{email}", tags=["admin"], summary="Remove um administrador")
+async def delete_admin(email: str, admin_user: UserProfile = Depends(require_permission("admin"))):
+    """Remove um administrador. Requer permissão 'admin'."""
+    # Não permitir remover a si mesmo
+    if email.lower() == admin_user.email.lower():
+        raise HTTPException(status_code=400, detail="Você não pode remover a si mesmo")
+    
+    admins = get_admin_credentials()
+    if email.lower() not in admins:
+        raise HTTPException(status_code=404, detail="Admin não encontrado")
+    
+    remove_admin(email)
+    return {"status": "deleted", "email": email}
+
+
+@app.put("/api/admin/admins/{email}", tags=["admin"], summary="Atualiza senha de um administrador")
+async def update_admin(email: str, body: dict, admin_user: UserProfile = Depends(require_permission("admin"))):
+    """Atualiza a senha de um administrador. Requer permissão 'admin'."""
+    password = body.get('password', '').strip()
+    if not password:
+        raise HTTPException(status_code=400, detail="Senha é obrigatória")
+    
+    admins = get_admin_credentials()
+    if email.lower() not in admins:
+        raise HTTPException(status_code=404, detail="Admin não encontrado")
+    
+    add_admin(email, password)  # add_admin sobrescreve se já existe
+    return {"status": "updated", "email": email}
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -866,7 +977,6 @@ async def _fetch_all():
 
 if __name__ == "__main__":
     import uvicorn
-    init_db()
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
