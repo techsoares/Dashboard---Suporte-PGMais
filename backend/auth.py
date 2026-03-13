@@ -224,6 +224,18 @@ def authenticate_user(email: str, password: str = "") -> UserProfile:
         _save_users(users)
         logger.info("Usuário promovido a admin: %s", email_lower)
     
+    # Sincronizar BU do bus.json se o usuário estiver vinculado
+    bu_info = _get_user_bu_from_bus_file(user_bu.get("name", ""))
+    if bu_info:
+        user_bu["bu_id"] = bu_info["bu_id"]
+        user_bu["bu_name"] = bu_info["bu_name"]
+        user_bu["bu_type"] = bu_info["bu_type"]
+        # Atualizar no arquivo users.json
+        users = _load_users()
+        users[email_lower] = user_bu
+        _save_users(users)
+        logger.info("BU sincronizada para %s: %s (%s)", email_lower, bu_info["bu_name"], bu_info["bu_type"])
+    
     user = UserProfile(
         user_id=email_lower,
         email=email_lower,
@@ -235,8 +247,34 @@ def authenticate_user(email: str, password: str = "") -> UserProfile:
         permissions=user_bu.get("permissions", ["read"]),
     )
     
-    logger.info("Login bem-sucedido: %s (admin=%s)", email_lower, is_admin)
+    logger.info("Login bem-sucedido: %s (admin=%s, bu_type=%s)", email_lower, is_admin, user.bu_type)
     return user
+
+
+def _get_user_bu_from_bus_file(user_name: str) -> Optional[dict]:
+    """Busca a BU do usuário no arquivo bus.json pelo nome."""
+    if not user_name:
+        return None
+    
+    bus_file = os.path.join(os.path.dirname(__file__), "bus.json")
+    if not os.path.exists(bus_file):
+        return None
+    
+    try:
+        with open(bus_file, "r", encoding="utf-8") as f:
+            bus_list = json.load(f)
+        
+        for bu in bus_list:
+            if user_name in bu.get("members", []):
+                return {
+                    "bu_id": bu["id"],
+                    "bu_name": bu["name"],
+                    "bu_type": bu.get("bu_type", "operacional")
+                }
+    except Exception as e:
+        logger.error("Erro ao buscar BU do usuário: %s", e)
+    
+    return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -381,7 +381,10 @@ export default function App() {
           {user && (
             <div className="user-info">
               <span className="user-name">{user.name}</span>
-              {user.bu_name && <span className="user-bu">{user.bu_name}</span>}
+              <div className="user-bu-row">
+                {user.bu_name && <span className="user-bu">{user.bu_name}</span>}
+                {user.bu_type === 'gestao' && <span className="user-bu-badge">gestão</span>}
+              </div>
             </div>
           )}
           {lastFetch && (
