@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pgmais-db
+    environment:
+      POSTGRES_USER: pgmais
+      POSTGRES_PASSWORD: pgmais_dev_password
+      POSTGRES_DB: pgmais_dashboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgmais_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pgmais"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pgmais-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pgmais-backend
+    environment:
+      JIRA_EMAIL: ${JIRA_EMAIL}
+      JIRA_TOKEN: ${JIRA_TOKEN}
+      JIRA_BASE_URL: ${JIRA_BASE_URL:-https://pgmais.atlassian.net}
+      JIRA_PROJECT: ${JIRA_PROJECT:-ON}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      REFRESH_SECRET: ${REFRESH_SECRET}
+      DATABASE_URL: postgresql://pgmais:pgmais_dev_password@postgres:5432/pgmais_dashboard
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - pgmais-network
+    command: python main.py
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pgmais-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - pgmais-network
+    command: npm run dev
+
+volumes:
+  pgmais_data:
+    driver: local
+
+networks:
+  pgmais-network:
+    driver: bridge

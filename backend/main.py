@@ -25,6 +25,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 
 from cache import cache
+from database import init_db, get_bus, save_bus, get_priority_requests, save_priority_request
 from jira_client import fetch_active_issues, fetch_done_this_week, fetch_done_last_week, build_dashboard, fetch_done_last_n_weeks, build_management_data, fetch_all_jira_users
 from models import DashboardResponse, KpiSummary, ManagementData
 from mock_data import get_mock_dashboard, get_mock_management
@@ -822,7 +823,7 @@ async def _fetch_all():
 
 if __name__ == "__main__":
     import uvicorn
-
+    init_db()
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
