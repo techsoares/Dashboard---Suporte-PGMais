@@ -24,5 +24,6 @@ echo.
 echo Backend: http://localhost:8000
 echo Frontend: http://localhost:5173
 echo.
-timeout /t 3
+echo Esta janela fechara em 3 segundos...
+timeout /t 3 /nobreak >nul
 exit
