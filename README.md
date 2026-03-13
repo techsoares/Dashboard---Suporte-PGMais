@@ -1,199 +1,235 @@
 # PGMais Dashboard
 
-Dashboard de acompanhamento de times integrado ao Jira Cloud com análise de dados, filtros avançados e múltiplas visualizações.
+Dashboard de gestão de equipe integrado com Jira Cloud com autenticação JWT, gestão de unidades de negócio e priorização inteligente de chamados.
 
-Exibe issues ativas por desenvolvedor, backlog geral, KPIs em tempo real, análise com IA, visão de produtos e kanban.
+## 🚀 Início Rápido
 
----
-
-## 🎯 Funcionalidades
-
-- **Dashboard Principal**: Visão geral com KPIs, devs e backlog
-- **Filtros Avançados**: Filtrar por Account, Produto, Responsável e Tipo de Item
-- **IA Insights**: Análise automática e chat interativo sobre os dados
-- **Visão Produto**: Ranking de produtos com gráfico radar de eficiência
-- **Kanban**: Visualização de colunas por status do Jira
-- **Cache Inteligente**: 5 minutos de cache com invalidação por filtros
-- **Dados Mock**: Funciona sem credenciais Jira para testes
-
----
-
-## 📋 Pré-requisitos
-
+### Pré-requisitos
 - Python 3.11+
-- Node.js 18+
-- Token de API do Jira Cloud (opcional para testes com dados mock)
+- Node.js 18+ (testado com Node 20.18)
 
----
+### 1️⃣ Primeira vez - Configurar (apenas uma vez)
 
-## 🚀 Quickstart Local
-
-### ⚡ Automático (Recomendado)
+**Windows:**
+```bash
+setup.bat
+```
 
 **Linux/Mac:**
 ```bash
-git clone https://github.com/techsoares/Dashboards-pgmais.git
-cd Dashboards-pgmais
 chmod +x setup.sh
 ./setup.sh
 ```
 
-**Windows:**
-```bash
-git clone https://github.com/techsoares/Dashboards-pgmais.git
-cd Dashboards-pgmais
-setup.bat
-```
+### 2️⃣ Usar o Dashboard
 
-### 🔧 Manual
+**Iniciar:**
+- Windows: Clique 2x em `🚀 INICIAR DASHBOARD.bat`
 
-### 1️⃣ Clonar e acessar
+**Parar:**
+- Windows: Clique 2x em `⛔ PARAR DASHBOARD.bat`
+- Ou feche as janelas do Backend e Frontend
 
-```bash
-git clone https://github.com/techsoares/Dashboards-pgmais.git
-cd Dashboards-pgmais
-```
+**Verificar:**
+- Windows: Clique 2x em `VERIFICAR.bat`
 
-### 2️⃣ Backend
+> 💡 O script abre automaticamente 2 janelas (Backend + Frontend). Não precisa digitar nada!
 
+### 🔧 Setup Manual (alternativa)
+
+<details>
+<summary>Clique para expandir</summary>
+
+#### Backend
 ```bash
 cd backend
-
-# Criar ambiente virtual
 python -m venv .venv
+.venv\Scripts\activate  # Windows
+# ou
+source .venv/bin/activate  # Linux/Mac
 
-# Ativar (Unix/Mac)
-source .venv/bin/activate
-# Ativar (Windows)
-# .venv\Scripts\activate
-
-# Instalar dependências
 pip install -r requirements.txt
 
-# Configurar credenciais (opcional - funciona com dados mock sem isso)
-cp .env.example .env
-# Editar .env com suas credenciais Jira
+# Copiar e configurar .env
+copy .env.example .env  # Windows
+# ou
+cp .env.example .env  # Linux/Mac
 
-# Rodar
+# Editar .env com suas credenciais Jira
 python main.py
 ```
 
-Backend rodará em: **http://localhost:8000**  
-Swagger Docs: **http://localhost:8000/docs**
-
-### 3️⃣ Frontend (novo terminal)
-
+#### Frontend
 ```bash
 cd frontend
-
-# Instalar dependências
 npm install
-
-# Rodar dev server
 npm run dev
 ```
 
-Frontend rodará em: **http://localhost:5173**
+</details>
 
----
+## 🌐 Acessos
 
-## 🔧 Estrutura
+- **Dashboard**: http://localhost:5173
+- **API Docs**: http://localhost:8000/docs
+- **API Health**: http://localhost:8000/api/health
 
-```
-Dashboards-pgmais/
-├── backend/
-│   ├── main.py              # App FastAPI + rotas
-│   ├── jira_client.py       # Cliente do Jira Cloud
-│   ├── models.py            # Pydantic models
-│   ├── cache.py             # Cache em memória
-│   ├── mock_data.py         # Dados mock para desenvolvimento
-│   ├── requirements.txt      # Dependências Python
-│   └── .env.example         # Template de variáveis de ambiente
-│
-└── frontend/
-    ├── src/
-    │   ├── App.jsx          # Componente principal com rotas
-    │   ├── App.css          # Estilos globais
-    │   └── components/
-    │       ├── KpiBar.jsx            # KPIs em cards
-    │       ├── DevGrid.jsx           # Grid de desenvolvedores
-    │       ├── BacklogPanel.jsx      # Painel de backlog
-    │       ├── FiltersView.jsx       # Tela de filtros
-    │       ├── AIInsightsView.jsx    # IA com análise
-    │       ├── ProductView.jsx       # Ranking de produtos
-    │       └── KanbanView.jsx        # Visão kanban
-    ├── package.json
-    ├── vite.config.js
-    └── .env.local           # Config local (não versionado)
+## 💾 Banco de Dados
+
+O sistema utiliza **SQLite** (`backend/pgmais.db`) para armazenamento local.
+Não é necessário configurar nenhum banco de dados externo.
+
+## 📝 Configuração
+
+### Backend (.env)
+```env
+JIRA_EMAIL=seu-email@empresa.com.br
+JIRA_TOKEN=seu-token-aqui
+JIRA_BASE_URL=https://sua-empresa.atlassian.net
+JIRA_PROJECT=XX
+OPENROUTER_API_KEY=sua-chave-aqui
+JWT_SECRET=sua-chave-secreta-jwt
+REFRESH_SECRET=sua-chave-refresh
 ```
 
----
-
-## 📡 API Endpoints
-
-| Método | Rota            | Descrição                                    | Filters        |
-|--------|-----------------|----------------------------------------------|----------------|
-| GET    | `/api/health`   | Status do serviço                            | N/A            |
-| GET    | `/api/dashboard`| Dados consolidados (cache 5min)              | account, product, assignee, issue_type |
-| POST   | `/api/refresh`  | Força atualização (requer X-Refresh-Secret)  | N/A            |
-
-**Exemplo de requisição com filtros:**
-```bash
-curl "http://localhost:8000/api/dashboard?account=PGMais&product=MIDWAY"
+### Frontend (.env.local)
+```env
+# Deixe vazio para usar http://localhost:8000 automaticamente
+VITE_API_URL=
+VITE_REFRESH_SECRET=sua-chave-refresh
 ```
 
----
+## 🔐 Autenticação
 
-## 🔐 Segurança
+O sistema utiliza **autenticação JWT** com login via email corporativo.
 
-- ✅ Credenciais Jira ficam **apenas no backend**
-- ✅ `.env` está no `.gitignore` (nunca é versionado)
-- ✅ CORS configurado com regex para localhost e tunnels
-- ✅ Erros internos não são expostos
-- ✅ Cache com TTL de 5 minutos
+### Login
+- **Domínios permitidos**: @pgmais ou @ciclo
+- **Auto-cadastro**: Usuários são criados automaticamente no primeiro login
+- **Admins**: Requerem senha obrigatória configurada no painel administrativo
 
----
+### Primeiro Admin
+Para criar o primeiro administrador, adicione suas credenciais em `backend/auth.py`:
 
-## 🛠 Desenvolvimento
-
-### Estrutura de Código
-
-- **Backend**: FastAPI middleware-based, logging estruturado, cache genérico
-- **Frontend**: React hooks, componentes funcionais, CSS-in-JS com variáveis CSS
-- **Comunicação**: Fetch API direct, sem axios/libraries
-
-### Build & Deploy
-
-**Frontend:**
-```bash
-cd frontend
-npm run build   # Output: dist/
-npm run dev     # Dev server com HMR
+```python
+ADMIN_CREDENTIALS = {
+    "seu-email@pgmais.com.br": "SuaSenhaSegura123",
+}
 ```
 
-**Backend:**
-```bash
-python main.py  # Dev com reload automático
-```
+Após o primeiro login como admin, você pode gerenciar outros administradores pelo painel.
 
----
+## 👥 Gestão de Usuários e BUs
 
-## 🚀 Deployment
+### Painel Administrativo
+Acesse o painel admin clicando no ícone ⚙️ no header (disponível apenas para admins).
 
-### Produção
+**Funcionalidades:**
+- ✅ Criar e gerenciar Unidades de Negócio (BUs)
+- ✅ Vincular usuários do Jira às BUs
+- ✅ Definir tipo de BU (Operacional ou Gestão)
+- ✅ Visualizar usuários sem BU vinculada
+- ✅ Gerenciar administradores do sistema
+- ✅ Drag & drop para vincular usuários
 
-1. **Backend** (Docker ou servidor):
-   - Configurar `.env` com credenciais Jira reais
-   - Usar `gunicorn` ou similar: `gunicorn -w 4 -b 0.0.0.0:8000 main:app`
-   - CORS: Adicionar domínios reais em `ALLOWED_ORIGINS`
+### Tipos de BU
+- **Operacional**: Equipes de desenvolvimento e suporte
+- **Gestão**: Diretoria e C-Level (podem despriorizar chamados)
 
-2. **Frontend** (CDN ou servidor estático):
-   - Build: `npm run build`
-   - Servir `dist/` em HTTP/HTTPS
-   - `.env.local` configurar `VITE_API_URL` para API em produção
+## 🎯 Priorização Inteligente
 
----
+O sistema utiliza **IA (Claude Sonnet 4.6)** para avaliar solicitações de prioridade.
 
-## 📝 Licença
+### Como funciona
+1. Usuário solicita priorização de um chamado com justificativa
+2. IA avalia urgência e atribui boost (0-500 pontos)
+3. BUs de Gestão recebem multiplicador 1.5x (até 750 pontos)
+4. Chamados são reordenados automaticamente por score
 
-Propriedade de PGMais Tecnologia
+### Critérios de Avaliação
+- **400-500**: Produção parada, perda financeira imediata
+- **250-399**: Impacto significativo em cliente grande
+- **100-249**: Impacto moderado, cliente insatisfeito
+- **0-99**: Baixa urgência, sem impacto real
+
+## 📊 Funcionalidades
+
+### Dashboard Principal
+- KPIs em tempo real (total sprint, em progresso, aguardando, concluídos, atrasados)
+- Grid de desenvolvedores com issues ativas
+- Backlog lateral com filtros avançados
+- Notificações de novos chamados
+- Modo noturno/resumo
+
+### Análise
+- **Gestão**: Dados históricos de entrega e SLA
+- **IA Insights**: Análise inteligente do backlog
+- **Produto**: Visão por produto/account
+
+### Visualização
+- **Kanban**: Board visual por status
+- **Priorização**: Gestão de solicitações de prioridade
+
+### Filtros
+- Por BU, responsável, account, produto, tipo e status
+- Busca por chave, título ou pessoa
+- Filtros persistem entre visualizações
+
+## 🛠️ Tecnologias
+
+### Backend
+- **Framework**: FastAPI + Python 3.11
+- **Autenticação**: JWT (PyJWT)
+- **Banco**: SQLite
+- **API Externa**: Jira Cloud REST API
+- **IA**: OpenRouter (Claude Sonnet 4.6)
+- **Cache**: Sistema de cache em memória com TTL
+
+### Frontend
+- **Framework**: React 18 + Vite
+- **Estilo**: CSS Modules com variáveis CSS
+- **Estado**: React Hooks (useState, useEffect, useMemo)
+- **HTTP**: Fetch API nativa
+- **Autenticação**: JWT em localStorage
+
+## 🔒 Segurança
+
+- ✅ Autenticação JWT com tokens Bearer
+- ✅ Validação de entrada em todos os endpoints
+- ✅ Sanitização de dados
+- ✅ Headers de segurança (CSP, X-Frame-Options, etc)
+- ✅ Rate limiting em endpoints críticos
+- ✅ CORS configurado para origens permitidas
+- ✅ Senhas obrigatórias para administradores
+
+## 📈 Performance
+
+- Cache inteligente de 5 minutos para dados do dashboard
+- Cache de 1 hora para dados históricos
+- Paginação e lazy loading
+- Filtros client-side para melhor UX
+- Requisições paralelas ao Jira
+
+## 🎨 UI/UX
+
+- Design system baseado na identidade visual PGMais
+- Modo claro e escuro
+- Responsivo (desktop, tablet, mobile)
+- Atalhos de teclado (Ctrl+K para busca, Esc para fechar)
+- Notificações toast para novos chamados
+- Drag & drop para gestão de BUs
+
+## 📝 Logs e Monitoramento
+
+- Logs estruturados com níveis (INFO, WARNING, ERROR)
+- Arquivo `backend.log` com histórico de operações
+- Endpoint `/api/health` para healthcheck
+- Métricas de cache e performance
+
+## 🤝 Contribuindo
+
+Desenvolvido e mantido por **Andressa Soares**.
+
+## 📄 Licença
+
+Uso interno PGMais.
