@@ -26,6 +26,13 @@ from dotenv import load_dotenv
 
 from cache import cache
 from database import init_db, get_bus, save_bus, get_priority_requests, save_priority_request
+from security import (
+    InputValidator, DataSanitizer, SecurityLogger, SECURITY_HEADERS,
+    api_limiter, auth_limiter
+)
+from performance import (
+    PaginationParams, paginate, lazy_loader, performance_monitor
+)
 from jira_client import fetch_active_issues, fetch_done_this_week, fetch_done_last_week, build_dashboard, fetch_done_last_n_weeks, build_management_data, fetch_all_jira_users
 from models import DashboardResponse, KpiSummary, ManagementData
 from mock_data import get_mock_dashboard, get_mock_management
@@ -49,6 +56,15 @@ app = FastAPI(
     description="Proxy e cache da API do Jira Cloud para o TV Dashboard",
     version="1.0.0",
 )
+
+# Adiciona headers de segurança a todas as respostas
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    """Middleware que adiciona headers de segurança a todas as respostas."""
+    response = await call_next(request)
+    for header, value in SECURITY_HEADERS.items():
+        response.headers[header] = value
+    return response
 
 # CORS com suporte para GitHub Codespaces tunnels e origens extras via env
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "")
@@ -481,7 +497,10 @@ async def classify_production(body: dict):
 
 @app.get("/api/health", tags=["infra"])
 async def health():
-    """Healthcheck simples."""
+    """
+    Healthcheck simples.
+    Retorna status do serviço e informações de cache.
+    """
     missing = _validate_env()
     status = "ok" if not missing else "degraded"
     return {
@@ -574,6 +593,30 @@ async def get_dashboard(
     assignee: str | None = None,
     issue_type: str | None = None,
 ):
+    """
+    Retorna dados consolidados do dashboard com cache inteligente.
+    
+    Aplica filtros client-side para melhor performance.
+    Valida entrada e sanitiza dados antes de retornar.
+    
+    Args:
+        account: Filtro por account (validado)
+        product: Filtro por produto (validado)
+        assignee: Filtro por responsável (validado)
+        issue_type: Filtro por tipo de issue (validado)
+        
+    Returns:
+        DashboardResponse com dados filtrados
+    """
+    # Valida parâmetros de entrada
+    if account and not InputValidator.sanitize_string(account):
+        SecurityLogger.log_invalid_input("/api/dashboard", "Invalid account", account)
+        raise HTTPException(status_code=400, detail="Invalid account parameter")
+    
+    if product and not InputValidator.sanitize_string(product):
+        SecurityLogger.log_invalid_input("/api/dashboard", "Invalid product", product)
+        raise HTTPException(status_code=400, detail="Invalid product parameter")
+    
     missing = _validate_env()
 
     # Se não houver credenciais, usar dados mock para desenvolvimento
