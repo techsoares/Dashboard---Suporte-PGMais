@@ -50,6 +50,20 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', lightMode ? 'light' : 'dark')
   }, [lightMode])
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        document.querySelector('.search-input')?.focus()
+      }
+      if (e.key === 'Escape' && backlogOpen) {
+        setBacklogOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [backlogOpen])
+
   const fetchDashboard = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/dashboard`)
@@ -260,9 +274,9 @@ export default function App() {
 
       {/* ── Notificações de novos Jiras ─────────────────────────── */}
       {notifications.length > 0 && (
-        <div className="notif-stack">
+        <div className="notif-stack" role="region" aria-live="polite" aria-label="Notificações de novos Jiras">
           {notifications.map(n => (
-            <div key={n.id} className="notif-card">
+            <div key={n.id} className="notif-card" role="alert">
               <div className="notif-top">
                 <span className="notif-label">Novo Jira</span>
                 <span className="notif-key">{n.key}</span>
@@ -276,50 +290,65 @@ export default function App() {
 
       <header className="app-header">
         <p className="tagline">tech, but <em>people first.</em></p>
+        <nav className="header-nav">
+          <button className={`nav-pill ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentView('dashboard')} aria-label="Ir para Dashboard">Dashboard</button>
+          
+          <div className="nav-pill-group">
+            <button className={`nav-pill ${['management', 'ai', 'product'].includes(currentView) ? 'active' : ''}`} aria-label="Abrir menu de análise" aria-expanded={['management', 'ai', 'product'].includes(currentView)}>Análise</button>
+            <div className="nav-pill-submenu">
+              <button className={`nav-pill-item ${currentView === 'management' ? 'active' : ''}`} onClick={() => setCurrentView('management')}>Gestão</button>
+              <button className={`nav-pill-item ${currentView === 'ai' ? 'active' : ''}`} onClick={() => setCurrentView('ai')}>IA Insights</button>
+              <button className={`nav-pill-item ${currentView === 'product' ? 'active' : ''}`} onClick={() => setCurrentView('product')}>Produto</button>
+            </div>
+          </div>
+          
+          <div className="nav-pill-group">
+            <button className={`nav-pill ${['kanban', 'prioritization'].includes(currentView) ? 'active' : ''}`} aria-label="Abrir menu de visualização" aria-expanded={['kanban', 'prioritization'].includes(currentView)}>Visualização</button>
+            <div className="nav-pill-submenu">
+              <button className={`nav-pill-item ${currentView === 'kanban' ? 'active' : ''}`} onClick={() => setCurrentView('kanban')}>Kanban</button>
+              <button className={`nav-pill-item ${currentView === 'prioritization' ? 'active' : ''}`} onClick={() => setCurrentView('prioritization')}>Priorização</button>
+            </div>
+          </div>
+        </nav>
         <div className="header-right">
-          <button className={`view-btn ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentView('dashboard')}>Dashboard</button>
-          <button className={`view-btn ${currentView === 'management' ? 'active' : ''}`} onClick={() => setCurrentView('management')}>Gestão</button>
-          <button className={`view-btn ${currentView === 'ai' ? 'active' : ''}`} onClick={() => setCurrentView('ai')}>IA Insights</button>
-          <button className={`view-btn ${currentView === 'product' ? 'active' : ''}`} onClick={() => setCurrentView('product')}>Visão Produto</button>
-          <button className={`view-btn ${currentView === 'kanban' ? 'active' : ''}`} onClick={() => setCurrentView('kanban')}>Kanban</button>
-          <button className={`view-btn ${currentView === 'admin' ? 'active' : ''}`} onClick={() => setCurrentView('admin')}>Admin</button>
-          <button className={`view-btn ${currentView === 'prioritization' ? 'active' : ''}`} onClick={() => setCurrentView('prioritization')}>Priorização</button>
           {lastFetch && (
-            <span className="last-updated">
+            <span className="last-updated" aria-live="polite" aria-label={`Dados atualizados às ${lastFetch.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}>
               atualizado às {lastFetch.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
-          <button className="theme-toggle-btn" onClick={() => setLightMode(p => !p)} title={lightMode ? 'Modo escuro' : 'Modo claro'}>
+          <button className="theme-toggle-btn" onClick={() => setLightMode(p => !p)} aria-label={lightMode ? 'Ativar modo escuro' : 'Ativar modo claro'} title={lightMode ? 'Modo escuro' : 'Modo claro'}>
             {lightMode ? '🌙' : '☀️'}
           </button>
-          <button className="night-btn" onClick={() => setNightMode(true)} title="Modo resumo">🌙</button>
-          <button className={`refresh-btn ${refreshing ? 'loading' : ''}`} onClick={handleRefresh} disabled={refreshing}>
+          <button className="night-btn" onClick={() => setNightMode(true)} aria-label="Ativar modo resumo" title="Modo resumo">🌙</button>
+          <button className={`refresh-btn ${refreshing ? 'loading' : ''}`} onClick={handleRefresh} disabled={refreshing} aria-label={refreshing ? 'Atualizando dados' : 'Atualizar dados agora'}>
             {refreshing ? 'atualizando...' : '↻ atualizar'}
           </button>
+          <button className="admin-toggle-btn" onClick={() => setCurrentView(currentView === 'admin' ? 'dashboard' : 'admin')} aria-label="Abrir painel admin" title="Admin">⚙️</button>
         </div>
       </header>
 
       {currentView === 'dashboard' && filteredData && (
         <>
           {/* KPIs + Produtos compactos */}
-          <div className="kpi-product-row">
+          <div className="kpi-product-row" role="region" aria-label="Indicadores de desempenho">
             <KpiBar kpis={filteredKpis} delta={hasAnyFilter ? null : data.kpi_delta} />
-            <div className="kpi-product-divider" />
+            <div className="kpi-product-divider" aria-hidden="true" />
             <ProductStrip issues={filteredData.backlog} />
           </div>
 
           {/* Barra de filtros multi-select */}
-          <div className="filter-bar">
+          <div className="filter-bar" role="region" aria-label="Filtros e busca">
             <div className="search-wrapper">
-              <span className="search-icon">🔍</span>
+              <span className="search-icon" aria-hidden="true">🔍</span>
               <input
                 className="search-input"
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Buscar issue, chave ou pessoa..."
+                placeholder="Buscar issue, chave ou pessoa... (Ctrl+K)"
+                aria-label="Buscar issues, chaves ou pessoas"
               />
-              {searchQuery && <button className="search-clear" onClick={() => setSearchQuery('')}>✕</button>}
+              {searchQuery && <button className="search-clear" onClick={() => setSearchQuery('')} aria-label="Limpar busca">✕</button>}
             </div>
 
             {bus.length > 0 && (
@@ -368,9 +397,12 @@ export default function App() {
             />
 
             {hasAnyFilter && (
-              <button className="clear-filters-btn" onClick={() => { setFilters(EMPTY_FILTERS); setSearchQuery('') }}>
-                ✕ limpar tudo
-              </button>
+              <div className="filter-status" role="status" aria-live="polite">
+                <span className="filter-status-text">Dados filtrados</span>
+                <button className="clear-filters-btn" onClick={() => { setFilters(EMPTY_FILTERS); setSearchQuery('') }} aria-label="Limpar todos os filtros">
+                  ✕ limpar tudo
+                </button>
+              </div>
             )}
 
             {data.stale_issues?.length > 0 && (
@@ -378,12 +410,12 @@ export default function App() {
             )}
           </div>
 
-          <main className="app-body app-body--full">
+          <main className="app-body app-body--full" role="main" aria-label="Grid de desenvolvedores">
             <DevGrid devs={filteredData.devs} jiraBaseUrl={filteredData.jira_base_url} bus={bus} />
           </main>
 
           {/* Backlog drawer */}
-          <button className="backlog-toggle-btn" onClick={() => setBacklogOpen(v => !v)}>
+          <button className="backlog-toggle-btn" onClick={() => setBacklogOpen(v => !v)} aria-label={backlogOpen ? 'Fechar backlog' : `Abrir backlog com ${filteredData.backlog.length} items`} aria-expanded={backlogOpen}>
             {backlogOpen ? '✕' : `Backlog (${filteredData.backlog.length})`}
           </button>
           <div className={`backlog-drawer ${backlogOpen ? 'backlog-drawer--open' : ''}`}>

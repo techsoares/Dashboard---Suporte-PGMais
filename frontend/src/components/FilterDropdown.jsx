@@ -8,10 +8,15 @@ export default function FilterDropdown({ label, options, selected, onToggle, onC
   useEffect(() => {
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+      if (e.key === 'Escape' && open) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+    document.addEventListener('keydown', handler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('keydown', handler)
+    }
+  }, [open])
 
   const hasSelection = selected.length > 0
 
@@ -20,6 +25,8 @@ export default function FilterDropdown({ label, options, selected, onToggle, onC
       <button
         className={`fd-trigger ${hasSelection ? 'fd-trigger--active' : ''}`}
         onClick={() => setOpen(o => !o)}
+        aria-label={`Filtrar por ${label}${hasSelection ? ` (${selected.length} selecionado${selected.length !== 1 ? 's' : ''})` : ''}`}
+        aria-expanded={open}
       >
         <span className="fd-label">{label}</span>
         {hasSelection && <span className="fd-count">{selected.length}</span>}

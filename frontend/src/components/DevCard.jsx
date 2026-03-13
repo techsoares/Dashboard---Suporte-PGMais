@@ -69,7 +69,7 @@ export default function DevCard({ dev, jiraBaseUrl }) {
   const overdueCount = active_issues.filter(i => i.is_overdue).length
 
   return (
-    <div className={`dev-card ${overdueCount > 0 ? 'dev-card-alert' : ''}`}>
+    <div className={`dev-card ${overdueCount > 0 ? 'dev-card-alert' : ''}`} role="article" aria-label={`Card do desenvolvedor ${assignee.display_name} com ${issue_count} issue${issue_count !== 1 ? 's' : ''}`}>
       <div className="dev-card-header">
         <Avatar assignee={assignee} />
         <div className="dev-info">

@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PGMais Dashboard — Guia de Arquitetura e Código</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-soft: #121933;
+      --panel: #161f3f;
+      --panel-2: #1b2750;
+      --text: #edf2ff;
+      --muted: #b9c3e3;
+      --line: rgba(255,255,255,0.1);
+      --brand: #7c9cff;
+      --brand-2: #59d0ff;
+      --ok: #42d392;
+      --warn: #f6c453;
+      --danger: #ff7a90;
+      --shadow: 0 20px 40px rgba(0,0,0,0.28);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(89,208,255,.14), transparent 26%),
+        radial-gradient(circle at top left, rgba(124,156,255,.18), transparent 25%),
+        var(--bg);
+      color: var(--text);
+    }
+
+    .hero {
+      padding: 36px 24px 18px;
+      border-bottom: 1px solid var(--line);
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(10px);
+      background: rgba(11,16,32,0.88);
+      z-index: 20;
+    }
+
+    .hero-inner, .layout {
+      max-width: 1360px;
+      margin: 0 auto;
+    }
+
+    .title {
+      margin: 0 0 8px;
+      font-size: clamp(1.8rem, 2.4vw, 3rem);
+      line-height: 1.08;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      max-width: 980px;
+      line-height: 1.6;
+    }
+
+    .topbar {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .search {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: var(--bg-soft);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 12px 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .search input {
+      width: 100%;
+      background: transparent;
+      border: 0;
+      outline: none;
+      color: var(--text);
+      font-size: 1rem;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.95rem;
+      text-align: right;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    aside {
+      position: sticky;
+      top: 176px;
+      align-self: start;
+      background: rgba(18,25,51,.85);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    aside h2 {
+      margin-top: 0;
+      font-size: 1rem;
+      color: var(--brand-2);
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav a {
+      color: var(--text);
+      text-decoration: none;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      transition: .2s ease;
+    }
+
+    .nav a:hover, .nav a.active {
+      background: var(--panel);
+      border-color: var(--line);
+    }
+
+    main {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    section {
+      background: rgba(18,25,51,.86);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    section h2 {
+      margin: 0 0 8px;
+      font-size: 1.45rem;
+    }
+
+    section p, li {
+      color: var(--muted);
+      line-height: 1.62;
+    }
+
+    .badge-row, .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .badge, .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: .92rem;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+      color: #fff;
+    }
+
+    .callout {
+      border-left: 4px solid var(--brand-2);
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: rgba(89,208,255,0.08);
+      margin-top: 14px;
+    }
+
+    .warn { border-left-color: var(--warn); background: rgba(246,196,83,.08); }
+    .danger { border-left-color: var(--danger); background: rgba(255,122,144,.08); }
+    .ok { border-left-color: var(--ok); background: rgba(66,211,146,.08); }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      margin-top: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+      background: var(--panel);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--panel-2);
+      color: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    td code, .inline-code {
+      font-family: Consolas, monospace;
+      background: rgba(255,255,255,.08);
+      border-radius: 8px;
+      padding: 2px 6px;
+      color: #fff;
+    }
+
+    .tree {
+      background: #0d1429;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      overflow: auto;
+      color: #d8e2ff;
+      font-family: Consolas, monospace;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+
+    .empty {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      background: rgba(255,255,255,.03);
+    }
+
+    mark {
+      background: rgba(246,196,83,.28);
+      color: #fff;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+
+    .footer {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 0 24px 32px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1100px) {
+      .layout, .topbar { grid-template-columns: 1fr; }
+      aside { position: relative; top: 0; }
+      .hint { text-align: left; }
+      .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <h1 class="title">PGMais Dashboard — arquitetura, regras e mapa do código</h1>
+      <p class="subtitle">
+        Esta página foi feita para explicar o projeto de forma clara para desenvolvedores e também para pessoas não técnicas.
+        Ela mostra como o sistema funciona, quais decisões são importantes, quais riscos existem, onde mexer no código e em qual arquivo
+        procurar cada funcionalidade.
+      </p>
+
+      <div class="topbar">
+        <label class="search" aria-label="Pesquisar no guia">
+          <span>🔎</span>
+          <input id="searchInput" type="search" placeholder="Pesquise por: filtro, Jira, API, backlog, IA, BU, prioridade, arquivo..." />
+        </label>
+        <div class="hint">
+          Dica: pesquise por nomes de arquivos, funções, telas, endpoints ou termos de negócio.
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <h2>Navegação</h2>
+      <nav class="nav">
+        <a href="#overview">1. Visão geral</a>
+        <a href="#architecture">2. Arquitetura</a>
+        <a href="#features">3. Funcionalidades</a>
+        <a href="#security">4. Segurança</a>
+        <a href="#ux">5. Usabilidade</a>
+        <a href="#practices">6. Boas práticas</a>
+        <a href="#flows">7. Fluxos principais</a>
+        <a href="#files">8. Mapa de arquivos e funções</a>
+        <a href="#where-to-change">9. Onde alterar cada coisa</a>
+        <a href="#risks">10. Riscos e melhorias</a>
+      </nav>
+    </aside>
+
+    <main id="content">
+      <section id="overview" data-search="visão geral overview projeto dashboard jira react fastapi frontend backend backlog gestão produtos ia">
+        <h2>1. Visão geral</h2>
+        <div class="badge-row">
+          <span class="badge">Frontend: React + Vite</span>
+          <span class="badge">Backend: FastAPI</span>
+          <span class="badge">Integração: Jira Cloud</span>
+          <span class="badge">IA: OpenRouter / Claude</span>
+          <span class="badge">Cache em memória</span>
+        </div>
+
+        <p>
+          O projeto é um dashboard operacional e gerencial. Ele centraliza dados do Jira Cloud e os transforma em painéis que ajudam
+          a responder perguntas como: quem está mais sobrecarregado, quais chamados estão atrasados, qual produto está pior,
+          quais contas são mais críticas e o que merece priorização imediata.
+        </p>
+
+        <div class="grid cols-3">
+          <div class="card">
+            <h3>Para leigos</h3>
+            <p>
+              Pense nele como uma “central de monitoramento” do time. Em vez de abrir muitos chamados manualmente no Jira,
+              a pessoa vê em uma tela o estado do trabalho, os gargalos e os riscos.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Para devs</h3>
+            <p>
+              O frontend consome APIs próprias do backend. O backend fala com Jira, aplica parsing, calcula métricas,
+              usa cache e expõe respostas mais prontas para a interface.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Objetivo real</h3>
+            <p>
+              Reduzir tempo para decisão. O sistema tenta transformar dados brutos em leitura rápida para operação, gestão e priorização.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout ok">
+          O projeto já suporta operação local com dados mock quando credenciais do Jira não existem, o que facilita demonstrações e desenvolvimento.
+        </div>
+      </section>
+
+      <section id="architecture" data-search="arquitetura camadas api dashboard app jsx apiUrl fastapi cache jira_client models mock_data componentes">
+        <h2>2. Arquitetura do sistema</h2>
+        <div class="tree">Usuário
+  ↓
+Frontend React (Vite)
+  ├─ App.jsx controla telas, estado, filtros, busca e refresh
+  ├─ Components mostram KPIs, backlog, cards, IA, produto, gestão e admin
+  └─ apiUrl.js decide para qual backend apontar
+  ↓
+Backend FastAPI
+  ├─ main.py expõe endpoints e regras de orquestração
+  ├─ jira_client.py consulta Jira e converte dados crus em objetos úteis
+  ├─ models.py define o formato oficial dos dados
+  ├─ cache.py evita consultas repetidas ao Jira
+  └─ mock_data.py mantém o sistema funcional sem credenciais
+  ↓
+Jira Cloud / OpenRouter / Arquivos JSON locais</div>
+
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Frontend</h3>
+            <p>
+              Responsável por experiência visual, navegação entre visões, filtros, busca textual, notificações e organização dos dados na tela.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Backend</h3>
+            <p>
+              Responsável por segurança das credenciais, integração com Jira, cache, consolidação dos dados, lógica histórica e recursos de IA.
+            </p>
+          </div>
+        </div>
+
+        <div class="callout">
+          A principal separação de responsabilidades está correta: credenciais e chamadas externas ficam no backend; exibição e interação ficam no frontend.
+        </div>
+      </section>
+
+      <section id="features" data-search="funcionalidades dashboard gestão ai insights kanban produto admin priorização filtros backlog resumo noturno notificações">
+        <h2>3. Funcionalidades existentes</h2>
+        <div class="grid cols-3">
+          <div class="card"><h3>Dashboard</h3><p>KPIs, cards por desenvolvedor, backlog lateral, filtros múltiplos, busca e visualização rápida do trabalho ativo.</p></div>
+          <div class="card"><h3>Gestão</h3><p>Visão histórica para liderança com entregas por período, SLA, comparações semanais e radar por pessoa.</p></div>
+          <div class="card"><h3>IA Insights</h3><p>Perguntas em linguagem natural com contexto do dashboard para interpretação e recomendações.</p></div>
+          <div class="card"><h3>Visão Produto</h3><p>Comparativos entre produtos, temas recorrentes, prioridades, matriz analítica e drill-down de chamados.</p></div>
+          <div class="card"><h3>Kanban</h3><p>Agrupa jiras por estágio/status e ajuda a entender fluxo de trabalho.</p></div>
+          <div class="card"><h3>Admin / BUs</h3><p>Cadastro e manutenção de BUs, membros e tipos de unidade para alimentar filtros e regras de negócio.</p></div>
+          <div class="card"><h3>Priorização</h3><p>Score para ordenar urgências com ranking de accounts, classificação de produção e pedidos de prioridade com IA.</p></div>
+          <div class="card"><h3>Resumo Noturno</h3><p>Modo alternativo de leitura resumida para acompanhamento mais passivo.</p></div>
+          <div class="card"><h3>Atualização manual</h3><p>Botão para invalidar cache e buscar novos dados imediatamente.</p></div>
+        </div>
+      </section>
+
+      <section id="security" data-search="segurança cors env secret refresh token jira openrouter debug fields credenciais proteção endpoint">
+        <h2>4. Regras de segurança e pontos sensíveis</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Medidas já presentes</h3>
+            <ul>
+              <li>Credenciais do Jira e da IA ficam no backend, não no navegador.</li>
+              <li><span class="inline-code">REFRESH_SECRET</span> protege o refresh forçado quando configurado.</li>
+              <li>CORS é limitado para localhost, 127.0.0.1 e tunnels permitidos.</li>
+              <li>O endpoint de debug exige secret e valida o formato do ticket.</li>
+              <li>Há fallback para dados mock em desenvolvimento.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Atenções importantes</h3>
+            <ul>
+              <li>Arquivos JSON locais funcionam bem para desenvolvimento, mas não escalam para concorrência alta.</li>
+              <li>OpenRouter depende de chave ativa; falhas externas devem sempre ter fallback elegante.</li>
+              <li>Se o CORS for ampliado em produção sem critério, aumenta superfície de risco.</li>
+              <li>O endpoint de refresh sem secret em produção seria um problema operacional.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="callout danger">
+          Em produção, o mínimo recomendado é: secret obrigatório, origem restrita, logs revisados, armazenamento persistente apropriado e variáveis sensíveis fora do repositório.
+        </div>
+      </section>
+
+      <section id="ux" data-search="usabilidade ux pesquisa busca filtros dropdown backlog drawer tema escuro claro night mode acessibilidade feedback loading erro">
+        <h2>5. Usabilidade e experiência do usuário</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Acertos</h3>
+            <ul>
+              <li>Busca textual rápida por chave, resumo ou pessoa.</li>
+              <li>Filtros multi-seleção por BU, responsável, account, produto, tipo e status.</li>
+              <li>Estados claros de carregamento e erro.</li>
+              <li>Alternância de tema claro/escuro e modo resumo.</li>
+              <li>Separação por visões ajuda cada perfil a ir direto ao que importa.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Melhorias possíveis</h3>
+            <ul>
+              <li>Adicionar legenda dos termos para quem não conhece Jira.</li>
+              <li>Melhorar acessibilidade de contraste, foco visível e navegação por teclado em todos os componentes.</li>
+              <li>Salvar filtros no navegador para o usuário voltar ao último contexto.</li>
+              <li>Adicionar ajuda contextual explicando cada KPI em linguagem simples.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="practices" data-search="boas práticas separação responsabilidades hooks usememo usecallback cache modelagem tipagem validação reuso organização">
+        <h2>6. Boas práticas percebidas no código</h2>
+        <div class="grid cols-3">
+          <div class="card">
+            <h3>Separação por camadas</h3>
+            <p>O backend faz integração e regra; o frontend renderiza. Isso reduz exposição indevida e facilita manutenção.</p>
+          </div>
+          <div class="card">
+            <h3>Reuso de componentes</h3>
+            <p>O frontend está quebrado em componentes especializados, o que ajuda evolução visual e lógica isolada.</p>
+          </div>
+          <div class="card">
+            <h3>Uso de cache</h3>
+            <p>Evita bater no Jira a cada carregamento, reduz latência e melhora estabilidade.</p>
+          </div>
+        </div>
+
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Boas decisões técnicas</h3>
+            <ul>
+              <li><span class="inline-code">useMemo</span> e <span class="inline-code">useCallback</span> no frontend para evitar recomputações desnecessárias.</li>
+              <li>Modelos no backend padronizam a estrutura devolvida para a UI.</li>
+              <li>Fallback para mock acelera onboarding e testes locais.</li>
+              <li>Funções auxiliares pequenas em muitos componentes melhoram legibilidade.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Pontos para vigiar</h3>
+            <ul>
+              <li><span class="inline-code">App.jsx</span> concentra muita responsabilidade e pode crescer demais.</li>
+              <li>Algumas telas possuem bastante lógica local e podem pedir extração de hooks/utilitários.</li>
+              <li>Arquivos muito longos, como gestão e produto, tendem a ficar mais difíceis de manter com o tempo.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="flows" data-search="fluxos principais carregar dashboard refresh filtros busca ai prioridade gestão usuário passo a passo">
+        <h2>7. Fluxos principais do sistema</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Fluxo do dashboard</h3>
+            <ol>
+              <li>O navegador abre o frontend.</li>
+              <li><span class="inline-code">App.jsx</span> chama <span class="inline-code">/api/dashboard</span>.</li>
+              <li>O backend usa cache ou busca no Jira.</li>
+              <li>Os dados voltam consolidados para a tela.</li>
+              <li>O usuário filtra, busca, muda de visão e atualiza se necessário.</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>Fluxo da IA</h3>
+            <ol>
+              <li>A tela monta um contexto textual com dados do dashboard.</li>
+              <li>O backend valida a pergunta e a chave de IA.</li>
+              <li>O prompt é enviado ao OpenRouter.</li>
+              <li>A resposta é higienizada e exibida para o usuário.</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="callout warn">
+          A IA é útil para interpretação, mas decisões críticas continuam devendo revisão humana, especialmente em priorização e impacto em produção.
+        </div>
+      </section>
+
+      <section id="files" data-search="arquivos funções mapa código onde mexer app jsx main py jira_client cache models mock_data components apiUrl pesquisa">
+        <h2>8. Mapa de arquivos e funções</h2>
+        <p>
+          A tabela abaixo foi montada para servir como “mapa de manutenção”. Se alguém quiser alterar comportamento, layout, regra de negócio,
+          filtros, endpoints ou lógica de integração, aqui está o ponto de partida.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Arquivo / Função</th>
+                <th>O que faz</th>
+                <th>Quando mexer aqui</th>
+                <th>Termos úteis para pesquisa</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-search="frontend src app jsx app principal estado telas filtros busca refresh notificações night mode light mode backlog">
+                <td><code>frontend/src/App.jsx</code></td>
+                <td>Componente principal. Controla carregamento do dashboard, troca de abas, filtros, busca, refresh, notificações, tema e backlog lateral.</td>
+                <td>Quando quiser mudar navegação, filtros globais, fluxo de atualização, busca principal, layout mestre ou composição das telas.</td>
+                <td>dashboard, filtros, busca, refresh, currentView, backlog, tema</td>
+              </tr>
+              <tr data-search="frontend src apiUrl js getApiUrl api base url localhost tunnels codespaces">
+                <td><code>frontend/src/apiUrl.js</code><br><code>getApiUrl()</code></td>
+                <td>Resolve automaticamente a URL do backend com base em variável de ambiente, localhost ou host derivado.</td>
+                <td>Quando a aplicação apontar para API errada, usar túnel, rodar em outro host ou preparar produção.</td>
+                <td>API_BASE_URL, VITE_API_URL, localhost:8000, tunnel</td>
+              </tr>
+              <tr data-search="backend main py fastapi endpoints cors refresh health dashboard management ai admin priority">
+                <td><code>backend/main.py</code></td>
+                <td>Arquivo central do backend. Expõe endpoints, configura CORS, valida ambiente, orquestra cache, integra IA, admin e refresh.</td>
+                <td>Quando for criar rotas, ajustar segurança, mudar regras de refresh, IA, BUs, priorização ou endpoints disponíveis.</td>
+                <td>FastAPI, CORS, /api/dashboard, /api/refresh, /api/management, /api/ai/chat</td>
+              </tr>
+              <tr data-search="backend main _validate_env _build_and_cache force_refresh get_dashboard get_management ai_chat health debug_fields">
+                <td><code>_validate_env()</code>, <code>_build_and_cache()</code>, <code>get_dashboard()</code>, <code>get_management()</code>, <code>ai_chat()</code>, <code>force_refresh()</code></td>
+                <td>São as funções-chave do backend para validar ambiente, montar resposta, servir dashboard, visão gerencial, IA e atualização manual.</td>
+                <td>Quando a API estiver errando, entregando dados inesperados, respondendo lento ou precisando de novos filtros e regras.</td>
+                <td>cache, dashboard, management, IA, refresh, health</td>
+              </tr>
+              <tr data-search="backend jira_client py consulta jira parsing issue build dashboard active issues done">
+                <td><code>backend/jira_client.py</code></td>
+                <td>Concentra a conversa com o Jira: autenticação, downloads, parsing dos campos, classificação de status e montagem dos objetos.</td>
+                <td>Quando vier campo novo do Jira, mudar JQL, corrigir parsing, recalcular métricas ou entender origem dos dados.</td>
+                <td>fetch_active_issues, fetch_done_this_week, build_dashboard, parse, status</td>
+              </tr>
+              <tr data-search="backend cache py memory cache ttl invalidate pattern">
+                <td><code>backend/cache.py</code><br><code>MemoryCache</code></td>
+                <td>Implementa cache em memória com TTL, limpeza por chave ou padrão e cálculo de idade do cache.</td>
+                <td>Quando quiser alterar tempo de vida, estratégia de invalidação ou investigar dados desatualizados.</td>
+                <td>ttl, cache, invalidate, age_seconds</td>
+              </tr>
+              <tr data-search="backend models py pydantic response issue assignee kpi management">
+                <td><code>backend/models.py</code></td>
+                <td>Define os modelos oficiais do sistema: jira, responsável, prioridade, KPIs, resposta do dashboard e visão de gestão.</td>
+                <td>Quando adicionar novo campo ao contrato da API ou corrigir formato esperado pelo frontend.</td>
+                <td>DashboardResponse, Issue, KpiSummary, ManagementData</td>
+              </tr>
+              <tr data-search="backend mock_data py desenvolvimento testes demo">
+                <td><code>backend/mock_data.py</code></td>
+                <td>Entrega dados falsos realistas para o projeto funcionar sem Jira.</td>
+                <td>Quando precisar melhorar demos, testes locais, onboarding ou exemplos de comportamento.</td>
+                <td>mock, desenvolvimento, fallback, demo</td>
+              </tr>
+              <tr data-search="components kpibar devgrid devcard backlog issuerow stalebanner filterdropdown productstrip">
+                <td><code>KpiBar.jsx</code>, <code>DevGrid.jsx</code>, <code>DevCard.jsx</code>, <code>BacklogPanel.jsx</code>, <code>IssueRow.jsx</code>, <code>StaleBanner.jsx</code>, <code>FilterDropdown.jsx</code>, <code>ProductStrip.jsx</code></td>
+                <td>Base visual do dashboard principal: KPIs, grid de pessoas, linha do chamado, backlog lateral, banner de parados e filtros.</td>
+                <td>Quando quiser mudar a cara da home, informações dos cards, backlog, filtros ou microinterações do painel principal.</td>
+                <td>card, backlog, issue, dropdown, KPI, stale</td>
+              </tr>
+              <tr data-search="AIInsightsView ManagementView ProductView KanbanView AdminView PrioritizationView NightSummary">
+                <td><code>AIInsightsView.jsx</code>, <code>ManagementView.jsx</code>, <code>ProductView.jsx</code>, <code>KanbanView.jsx</code>, <code>AdminView.jsx</code>, <code>PrioritizationView.jsx</code>, <code>NightSummary.jsx</code></td>
+                <td>São telas especializadas. Cada uma possui lógica e apresentação voltadas para um recorte específico do negócio.</td>
+                <td>Quando a mudança for em uma aba específica e não no aplicativo inteiro.</td>
+                <td>IA, gestão, produto, kanban, admin, priorização, resumo</td>
+              </tr>
+              <tr data-search="AdminView loadJiraUsers selectBu toggleMember createBu deleteBu saveBu">
+                <td><code>AdminView.jsx</code> principais funções</td>
+                <td>Carrega usuários do Jira, seleciona BU, adiciona/remove membros, cria BU, renomeia e exclui.</td>
+                <td>Quando houver mudança no cadastro de BUs, vínculo com pessoas ou tipos de unidade.</td>
+                <td>BU, membros, jira users, rename, create, delete</td>
+              </tr>
+              <tr data-search="AIInsightsView buildContext askAI">
+                <td><code>AIInsightsView.jsx</code><br><code>buildContext()</code> e <code>askAI()</code></td>
+                <td>Monta o contexto textual da tela de IA e envia perguntas para a API.</td>
+                <td>Quando quiser melhorar qualidade das respostas, contexto enviado ou a UX do chat.</td>
+                <td>IA, contexto, pergunta, OpenRouter</td>
+              </tr>
+              <tr data-search="ManagementView WeeklyComparisonChart DevRadarChart DrillDownTable MgmtAIChat">
+                <td><code>ManagementView.jsx</code></td>
+                <td>É a tela de gestão. Tem gráficos comparativos, radar por dev, tabela detalhada e chat gerencial com IA.</td>
+                <td>Quando a liderança pedir novas métricas, períodos, comparativos ou leitura executiva.</td>
+                <td>sla, cycle time, weekly comparison, radar, gestão</td>
+              </tr>
+              <tr data-search="ProductView buildStats buildThemes buildPriorityStats buildMatrix DrillPanel">
+                <td><code>ProductView.jsx</code></td>
+                <td>Analisa por produto: volume, temas, prioridades, matrizes e drill-down dos chamados.</td>
+                <td>Quando quiser melhorar visão por produto, categorização, temas recorrentes ou tabela analítica.</td>
+                <td>produto, tema, prioridade, matrix, drill</td>
+              </tr>
+              <tr data-search="PrioritizationView calcScore ranking produção boost IA account">
+                <td><code>PrioritizationView.jsx</code><br><code>calcScore()</code></td>
+                <td>Calcula score de priorização considerando tipo, ranking de account, impacto em produção e boosts.</td>
+                <td>Quando mudar regra de urgência, pesos, ranking, incidentes ou política de priorização.</td>
+                <td>score, prioridade, produção, account ranking, boost</td>
+              </tr>
+              <tr data-search="backend json bus account ranking priority requests storage local">
+                <td><code>backend/bus.json</code>, <code>backend/account_ranking.json</code>, <code>backend/priority_requests.json</code></td>
+                <td>Armazenamento local simples para BUs, ranking de contas e pedidos de prioridade.</td>
+                <td>Quando precisar inspecionar dados persistidos localmente ou migrar para banco.</td>
+                <td>json local, ranking, bu, priority requests</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="emptyResults" class="empty">
+          Nenhum item encontrado com esse termo. Tente pesquisar por outro nome de arquivo, função, tela, endpoint ou regra.
+        </div>
+      </section>
+
+      <section id="where-to-change" data-search="onde alterar mudar layout endpoint filtro busca produto gestão priorização admin IA tela arquivo">
+        <h2>9. Onde alterar cada tipo de necessidade</h2>
+        <div class="grid cols-2">
+          <div class="card">
+            <h3>Se quiser mudar...</h3>
+            <ul>
+              <li><strong>URL da API</strong> → <code>frontend/src/apiUrl.js</code></li>
+              <li><strong>Filtros, busca e abas principais</strong> → <code>frontend/src/App.jsx</code></li>
+              <li><strong>Cards e backlog do dashboard</strong> → componentes base do dashboard</li>
+              <li><strong>Dados vindos do Jira</strong> → <code>backend/jira_client.py</code></li>
+              <li><strong>Formato da resposta da API</strong> → <code>backend/models.py</code></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>...ou ajustar regra de negócio</h3>
+            <ul>
+              <li><strong>Refresh manual e cache</strong> → <code>backend/main.py</code> + <code>backend/cache.py</code></li>
+              <li><strong>Ranking de accounts</strong> → endpoints admin + <code>account_ranking.json</code></li>
+              <li><strong>Pedidos de prioridade com IA</strong> → <code>create_priority_request()</code> e <code>_evaluate_priority_with_ai()</code></li>
+              <li><strong>Histórico gerencial</strong> → <code>get_management()</code> e <code>build_management_data()</code></li>
+              <li><strong>Experiência das abas específicas</strong> → componente da aba correspondente</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="risks" data-search="riscos melhorias roadmap refatoração acessibilidade persistência banco testes monitoramento">
+        <h2>10. Riscos, débitos e sugestões de evolução</h2>
+        <div class="grid cols-3">
+          <div class="card">
+            <h3>Curto prazo</h3>
+            <ul>
+              <li>Quebrar <code>App.jsx</code> em hooks e módulos menores.</li>
+              <li>Adicionar guia visual com explicação dos KPIs.</li>
+              <li>Persistir filtros do usuário em <code>localStorage</code>.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Médio prazo</h3>
+            <ul>
+              <li>Migrar JSONs locais para banco ou storage mais robusto.</li>
+              <li>Criar testes automatizados para backend e para funções críticas de priorização.</li>
+              <li>Padronizar utilitários compartilhados entre componentes grandes.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Longo prazo</h3>
+            <ul>
+              <li>Autenticação e perfis de acesso.</li>
+              <li>Observabilidade mais forte com métricas, tracing e alertas.</li>
+              <li>Exportação de relatórios e trilha de auditoria de mudanças.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="callout">
+          Resumo executivo: a base do projeto é boa, útil e com separação saudável entre backend e frontend. O principal cuidado daqui para frente é
+          evitar concentração excessiva de lógica em arquivos muito grandes e fortalecer persistência, acessibilidade, testes e segurança operacional.
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="footer">
+    Guia gerado para navegação local do projeto PGMais Dashboard.
+  </div>
+
+  <script>
+    const input = document.getElementById('searchInput');
+    const sections = [...document.querySelectorAll('main section')];
+    const rows = [...document.querySelectorAll('tbody tr')];
+    const empty = document.getElementById('emptyResults');
+    const navLinks = [...document.querySelectorAll('.nav a')];
+
+    function normalize(text) {
+      return (text || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function clearMarks(node) {
+      const marked = node.querySelectorAll('mark');
+      marked.forEach(mark => {
+        const parent = mark.parentNode;
+        parent.replaceChild(document.createTextNode(mark.textContent), mark);
+        parent.normalize();
+      });
+    }
+
+    function markText(node, term) {
+      if (!term) return;
+      const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null);
+      const texts = [];
+      while (walker.nextNode()) texts.push(walker.currentNode);
+
+      texts.forEach(textNode => {
+        const original = textNode.nodeValue;
+        const normalizedOriginal = normalize(original);
+        const normalizedTerm = normalize(term);
+        const index = normalizedOriginal.indexOf(normalizedTerm);
+        if (index === -1) return;
+
+        const before = original.slice(0, index);
+        const match = original.slice(index, index + term.length);
+        const after = original.slice(index + term.length);
+
+        const fragment = document.createDocumentFragment();
+        if (before) fragment.appendChild(document.createTextNode(before));
+        const mark = document.createElement('mark');
+        mark.textContent = match;
+        fragment.appendChild(mark);
+        if (after) fragment.appendChild(document.createTextNode(after));
+        textNode.parentNode.replaceChild(fragment, textNode);
+      });
+    }
+
+    function runSearch() {
+      const term = input.value.trim();
+      const normalizedTerm = normalize(term);
+
+      sections.forEach(section => {
+        clearMarks(section);
+      });
+
+      let visibleRows = 0;
+
+      rows.forEach(row => {
+        const haystack = normalize(row.dataset.search + ' ' + row.innerText);
+        const visible = !normalizedTerm || haystack.includes(normalizedTerm);
+        row.style.display = visible ? '' : 'none';
+        if (visible) visibleRows++;
+        if (visible && term) markText(row, term);
+      });
+
+      empty.style.display = visibleRows === 0 ? 'block' : 'none';
+
+      sections.forEach(section => {
+        const ownText = normalize(section.dataset.search + ' ' + section.innerText);
+        const hasVisibleRow = section.querySelector('tbody') ? visibleRows > 0 : ownText.includes(normalizedTerm) || !normalizedTerm;
+        const shouldShow = section.querySelector('tbody')
+          ? hasVisibleRow
+          : ownText.includes(normalizedTerm) || !normalizedTerm;
+        section.style.display = shouldShow ? '' : 'none';
+        if (shouldShow && term) markText(section, term);
+      });
+    }
+
+    input.addEventListener('input', runSearch);
+
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const id = entry.target.getAttribute('id');
+        const link = navLinks.find(a => a.getAttribute('href') === '#' + id);
+        if (!link) return;
+        if (entry.isIntersecting) {
+          navLinks.forEach(a => a.classList.remove('active'));
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px', threshold: 0.1 });
+
+    sections.forEach(section => observer.observe(section));
+  </script>
+</body>
+</html>
