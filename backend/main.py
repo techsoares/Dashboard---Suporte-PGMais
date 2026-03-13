@@ -8,6 +8,8 @@ Endpoints:
   POST /api/refresh   → invalida cache e força atualização
 """
 
+import asyncio
+import base64
 import json
 import logging
 import os
@@ -15,6 +17,7 @@ import re
 import uuid
 from datetime import datetime, timezone, date, timedelta
 
+import httpx
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -109,25 +112,31 @@ def _strip_markdown(text: str) -> str:
     return text.strip()
 
 
-CACHE_KEY    = "dashboard_data"
-SNAPSHOT_KEY = "kpi_snapshot"       # snapshot diário para delta
-CACHE_TTL    = 300                  # 5 minutos
-SNAPSHOT_TTL = 86400                # 24 horas
-MGMT_TTL     = 3600                 # 1 hora para dados históricos
+CACHE_KEY      = "dashboard_data"
+SNAPSHOT_KEY   = "kpi_snapshot"       # snapshot diário para delta
+CACHE_TTL      = 300                  # 5 minutos
+SNAPSHOT_TTL   = 86400                # 24 horas
+MGMT_TTL       = 3600                 # 1 hora para dados históricos
 REFRESH_SECRET = os.getenv("REFRESH_SECRET", "")
+
+OPENROUTER_URL     = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_MODEL   = "anthropic/claude-sonnet-4.6"
+AI_DEFAULT_BOOST   = 150
+AI_MAX_BOOST       = 500
+GESTAO_MULTIPLIER  = 1.5
+GESTAO_MAX_BOOST   = 750
+HTTP_TIMEOUT       = 30
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+REQUIRED_JIRA_VARS = ("JIRA_EMAIL", "JIRA_TOKEN", "JIRA_BASE_URL")
+
 def _validate_env() -> list[str]:
     """Retorna lista de variáveis de ambiente ausentes."""
-    missing = []
-    for var in ("JIRA_EMAIL", "JIRA_TOKEN", "JIRA_BASE_URL"):
-        if not os.getenv(var):
-            missing.append(var)
-    return missing
+    return [var for var in REQUIRED_JIRA_VARS if not os.getenv(var)]
 
 
 def _build_and_cache(active_issues, done_issues, done_last_week) -> DashboardResponse:
@@ -200,22 +209,22 @@ async def create_bu(body: BUCreate):
 
 @app.put("/api/admin/bus/{bu_id}", tags=["admin"], summary="Atualiza nome e membros de uma BU")
 async def update_bu(bu_id: str, body: BUUpdate):
-    bus = _load_bus()
-    for i, b in enumerate(bus):
-        if b["id"] == bu_id:
-            bus[i] = {"id": bu_id, "name": body.name.strip(), "members": body.members, "bu_type": body.bu_type}
-            _save_bus(bus)
-            return bus[i]
+    bus_list = _load_bus()
+    for index, existing_bu in enumerate(bus_list):
+        if existing_bu["id"] == bu_id:
+            bus_list[index] = {"id": bu_id, "name": body.name.strip(), "members": body.members, "bu_type": body.bu_type}
+            _save_bus(bus_list)
+            return bus_list[index]
     raise HTTPException(status_code=404, detail="BU não encontrada")
 
 
 @app.delete("/api/admin/bus/{bu_id}", tags=["admin"], summary="Remove uma BU")
 async def delete_bu(bu_id: str):
-    bus = _load_bus()
-    new_bus = [b for b in bus if b["id"] != bu_id]
-    if len(new_bus) == len(bus):
+    bus_list = _load_bus()
+    filtered_bus = [bu for bu in bus_list if bu["id"] != bu_id]
+    if len(filtered_bus) == len(bus_list):
         raise HTTPException(status_code=404, detail="BU não encontrada")
-    _save_bus(new_bus)
+    _save_bus(filtered_bus)
     return {"status": "deleted"}
 
 
@@ -264,6 +273,76 @@ def _save_priority_requests(requests: list[dict]):
         json.dump(requests, f, ensure_ascii=False, indent=2)
 
 
+def _resolve_bu_type(bu_name: str) -> str:
+    """Retorna o tipo da BU ('operacional' ou 'gestao') pelo nome."""
+    if not bu_name:
+        return "operacional"
+    for bu in _load_bus():
+        if bu["name"] == bu_name:
+            return bu.get("bu_type", "operacional")
+    return "operacional"
+
+
+def _build_openrouter_headers() -> dict:
+    """Headers padrão para chamadas à API OpenRouter."""
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    return {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://pgmais-dashboard",
+        "X-Title": "PGMais Dashboard",
+    }
+
+
+async def _evaluate_priority_with_ai(body: "PriorityRequest", bu_type: str) -> tuple[int, str]:
+    """Avalia a urgência de um chamado via IA. Retorna (boost, verdict)."""
+    boost = AI_DEFAULT_BOOST
+    ai_verdict = "Avaliação automática padrão."
+
+    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    if not api_key or not body.justification.strip():
+        return boost, ai_verdict
+
+    prompt = (
+        f"Você é um avaliador de urgência de chamados de suporte técnico. "
+        f"Avalie a justificativa abaixo para priorizar um chamado e responda APENAS com um JSON: "
+        f'{{"boost": <numero de 0 a 500>, "verdict": "<explicação curta em 1 frase>"}}\n\n'
+        f"Critérios de avaliação:\n"
+        f"- 400-500: Produção parada, perda financeira imediata, SLA crítico estourado\n"
+        f"- 250-399: Impacto significativo em cliente grande, degradação grave\n"
+        f"- 100-249: Impacto moderado, cliente insatisfeito mas operando\n"
+        f"- 0-99: Baixa urgência, conveniência, sem impacto real\n\n"
+        f"Chamado: {body.issue_key}\n"
+        f"Título: {body.issue_summary}\n"
+        f"Tipo: {body.issue_type}\n"
+        f"Account: {body.account}\n"
+        f"BU do solicitante: {body.requester_bu} (tipo: {bu_type})\n"
+        f"Justificativa do solicitante: {body.justification}"
+    )
+
+    payload = {
+        "model": OPENROUTER_MODEL,
+        "max_tokens": 300,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            resp = await client.post(OPENROUTER_URL, json=payload, headers=_build_openrouter_headers())
+            resp.raise_for_status()
+            ai_response = resp.json()
+            answer_text = ai_response["choices"][0]["message"]["content"]
+            json_match = re.search(r'\{[^}]+\}', answer_text)
+            if json_match:
+                parsed = json.loads(json_match.group())
+                boost = max(0, min(AI_MAX_BOOST, int(parsed.get("boost", AI_DEFAULT_BOOST))))
+                ai_verdict = parsed.get("verdict", ai_verdict)
+    except Exception as exc:
+        logger.warning("AI priority evaluation failed: %s", exc)
+
+    return boost, ai_verdict
+
+
 @app.get("/api/priority-requests", tags=["priority"], summary="Lista todas as solicitações de prioridade ativas")
 async def get_priority_requests():
     return _load_priority_requests()
@@ -275,85 +354,23 @@ async def create_priority_request(body: PriorityRequest):
     Recebe solicitação de prioridade, avalia com IA e atribui um boost ao score.
     Limita a 1 pedido por pessoa por issue.
     """
-    import httpx
-    from datetime import datetime
+    existing_requests = _load_priority_requests()
+    normalized_requester = body.requester_name.strip().lower()
 
-    requests = _load_priority_requests()
-
-    # Check duplicate: same person + same issue
-    for r in requests:
-        if r["issue_key"] == body.issue_key and r["requester_name"].strip().lower() == body.requester_name.strip().lower():
+    # Verifica duplicata: mesma pessoa + mesma issue
+    for request in existing_requests:
+        if request["issue_key"] == body.issue_key and request["requester_name"].strip().lower() == normalized_requester:
             return {"error": "duplicate", "message": f"{body.requester_name} já solicitou prioridade para {body.issue_key}"}
 
-    # Determine BU type of requester for boost multiplier
-    bu_type = "operacional"
-    if body.requester_bu:
-        bus_list = _load_bus()
-        for bu in bus_list:
-            if bu["name"] == body.requester_bu:
-                bu_type = bu.get("bu_type", "operacional")
-                break
+    # Determina o tipo da BU do solicitante para multiplicador de boost
+    requester_bu_type = _resolve_bu_type(body.requester_bu)
 
-    # AI evaluation
-    boost = 150  # default if AI fails
-    ai_verdict = "Avaliação automática padrão."
-
-    api_key = os.getenv("OPENROUTER_API_KEY", "")
-    if api_key and body.justification.strip():
-        prompt = (
-            f"Você é um avaliador de urgência de chamados de suporte técnico. "
-            f"Avalie a justificativa abaixo para priorizar um chamado e responda APENAS com um JSON: "
-            f'{{"boost": <numero de 0 a 500>, "verdict": "<explicação curta em 1 frase>"}}\n\n'
-            f"Critérios de avaliação:\n"
-            f"- 400-500: Produção parada, perda financeira imediata, SLA crítico estourado\n"
-            f"- 250-399: Impacto significativo em cliente grande, degradação grave\n"
-            f"- 100-249: Impacto moderado, cliente insatisfeito mas operando\n"
-            f"- 0-99: Baixa urgência, conveniência, sem impacto real\n\n"
-            f"Chamado: {body.issue_key}\n"
-            f"Título: {body.issue_summary}\n"
-            f"Tipo: {body.issue_type}\n"
-            f"Account: {body.account}\n"
-            f"BU do solicitante: {body.requester_bu} (tipo: {bu_type})\n"
-            f"Justificativa do solicitante: {body.justification}"
-        )
-
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://pgmais-dashboard",
-            "X-Title": "PGMais Dashboard",
-        }
-        payload = {
-            "model": "anthropic/claude-sonnet-4.6",
-            "max_tokens": 300,
-            "messages": [
-                {"role": "user", "content": prompt},
-            ],
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    json=payload,
-                    headers=headers,
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                answer = data["choices"][0]["message"]["content"]
-                # Parse JSON from response
-                import re
-                json_match = re.search(r'\{[^}]+\}', answer)
-                if json_match:
-                    parsed = json.loads(json_match.group())
-                    boost = max(0, min(500, int(parsed.get("boost", 150))))
-                    ai_verdict = parsed.get("verdict", ai_verdict)
-        except Exception as e:
-            logger.warning("AI priority evaluation failed: %s", e)
+    # Avaliação por IA
+    boost, ai_verdict = await _evaluate_priority_with_ai(body, requester_bu_type)
 
     # Multiplicador por tipo de BU: gestão tem 1.5x de impacto
-    if bu_type == "gestao":
-        boost = min(750, int(boost * 1.5))
+    if requester_bu_type == "gestao":
+        boost = min(GESTAO_MAX_BOOST, int(boost * GESTAO_MULTIPLIER))
 
     request_entry = {
         "id": str(uuid.uuid4()),
@@ -361,23 +378,23 @@ async def create_priority_request(body: PriorityRequest):
         "requester_name": body.requester_name.strip(),
         "justification": body.justification.strip(),
         "requester_bu": body.requester_bu,
-        "bu_type": bu_type,
+        "bu_type": requester_bu_type,
         "boost": boost,
         "ai_verdict": ai_verdict,
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    requests.append(request_entry)
-    _save_priority_requests(requests)
+    existing_requests.append(request_entry)
+    _save_priority_requests(existing_requests)
 
     return request_entry
 
 
 @app.delete("/api/priority-requests/{request_id}", tags=["priority"], summary="Remove uma solicitação de prioridade")
 async def delete_priority_request(request_id: str):
-    requests = _load_priority_requests()
-    requests = [r for r in requests if r["id"] != request_id]
-    _save_priority_requests(requests)
+    all_requests = _load_priority_requests()
+    filtered_requests = [req for req in all_requests if req["id"] != request_id]
+    _save_priority_requests(filtered_requests)
     return {"status": "deleted"}
 
 
@@ -390,22 +407,16 @@ class DeprioritizeRequest(BaseModel):
 @app.post("/api/priority-requests/deprioritize", tags=["priority"], summary="Desprioriza um chamado (apenas BU gestão)")
 async def deprioritize_issue(body: DeprioritizeRequest):
     """Remove todas as solicitações de prioridade de um chamado. Apenas BUs de tipo gestão podem fazer isso."""
-    bus_list = _load_bus()
-    bu_type = "operacional"
-    for bu in bus_list:
-        if bu["name"] == body.requester_bu:
-            bu_type = bu.get("bu_type", "operacional")
-            break
+    requester_bu_type = _resolve_bu_type(body.requester_bu)
 
-    if bu_type != "gestao":
+    if requester_bu_type != "gestao":
         raise HTTPException(status_code=403, detail="Apenas BUs de gestão (Diretoria / C-Level) podem despriorizar chamados.")
 
-    requests = _load_priority_requests()
-    before = len(requests)
-    requests = [r for r in requests if r["issue_key"] != body.issue_key]
-    removed = before - len(requests)
-    _save_priority_requests(requests)
-    return {"status": "deprioritized", "issue_key": body.issue_key, "removed": removed}
+    all_requests = _load_priority_requests()
+    remaining_requests = [req for req in all_requests if req["issue_key"] != body.issue_key]
+    removed_count = len(all_requests) - len(remaining_requests)
+    _save_priority_requests(remaining_requests)
+    return {"status": "deprioritized", "issue_key": body.issue_key, "removed": removed_count}
 
 
 @app.post(
@@ -415,21 +426,18 @@ async def deprioritize_issue(body: DeprioritizeRequest):
 )
 async def classify_production(body: dict):
     """Recebe lista de issues e retorna quais afetam produção."""
-    import httpx
-
     issues = body.get("issues", [])
     if not issues:
         return {"production_affected": []}
 
     api_key = os.getenv("OPENROUTER_API_KEY", "")
     if not api_key:
-        # Sem IA, retorna vazio (graceful degradation)
         return {"production_affected": []}
 
-    # Build issue summaries for classification
-    lines = []
-    for i in issues:
-        lines.append(f"[{i['key']}] {i['summary']} (Tipo: {i.get('type', '-')}, Status: {i.get('status', '-')})")
+    issue_descriptions = [
+        f"[{issue['key']}] {issue['summary']} (Tipo: {issue.get('type', '-')}, Status: {issue.get('status', '-')})"
+        for issue in issues
+    ]
 
     prompt = (
         "Analise a lista de chamados Jira abaixo. Para cada um, determine se está ATUALMENTE "
@@ -437,17 +445,11 @@ async def classify_production(body: dict):
         "erro em plataforma que impede operação, degradação de serviço ativo, etc).\n\n"
         "Retorne APENAS uma lista com as chaves dos chamados que afetam produção, uma por linha. "
         "Se nenhum afetar produção, responda 'NENHUM'. Sem explicações extras.\n\n"
-        "Chamados:\n" + "\n".join(lines)
+        "Chamados:\n" + "\n".join(issue_descriptions)
     )
 
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://pgmais-dashboard",
-        "X-Title": "PGMais Dashboard",
-    }
     payload = {
-        "model": "anthropic/claude-sonnet-4.6",
+        "model": OPENROUTER_MODEL,
         "max_tokens": 500,
         "messages": [
             {"role": "system", "content": "Você é um analista de operações de TI. Classifique chamados que afetam produção do cliente."},
@@ -456,23 +458,17 @@ async def classify_production(body: dict):
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                json=payload,
-                headers=headers,
-            )
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            resp = await client.post(OPENROUTER_URL, json=payload, headers=_build_openrouter_headers())
             resp.raise_for_status()
-            data = resp.json()
-            answer = data["choices"][0]["message"]["content"].strip()
+            ai_response = resp.json()
+            answer_text = ai_response["choices"][0]["message"]["content"].strip()
 
-            if "NENHUM" in answer.upper():
+            if "NENHUM" in answer_text.upper():
                 return {"production_affected": []}
 
-            # Extract issue keys from response
-            import re as _re
-            keys = _re.findall(r'[A-Z][A-Z0-9]+-\d+', answer)
-            return {"production_affected": keys}
+            affected_keys = re.findall(r'[A-Z][A-Z0-9]+-\d+', answer_text)
+            return {"production_affected": affected_keys}
     except Exception as exc:
         logger.error("AI classify-production error: %s", exc)
         return {"production_affected": []}
@@ -518,8 +514,6 @@ async def debug_fields(issue_key: str | None = None, x_refresh_secret: str | Non
         if not _JIRA_KEY_RE.match(issue_key):
             raise HTTPException(status_code=400, detail="issue_key inválido — use o formato PROJ-123")
 
-    import httpx, base64
-
     email = os.getenv("JIRA_EMAIL", "")
     token = os.getenv("JIRA_TOKEN", "")
     base_url = os.getenv("JIRA_BASE_URL", "https://pgmais.atlassian.net")
@@ -528,22 +522,22 @@ async def debug_fields(issue_key: str | None = None, x_refresh_secret: str | Non
     if not email or not token:
         raise HTTPException(status_code=503, detail="Credenciais Jira não configuradas")
 
-    encoded = base64.b64encode(f"{email}:{token}".encode()).decode()
-    headers = {"Authorization": f"Basic {encoded}", "Accept": "application/json"}
+    credentials = base64.b64encode(f"{email}:{token}".encode()).decode()
+    auth_headers = {"Authorization": f"Basic {credentials}", "Accept": "application/json"}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient() as http_client:
         if issue_key:
             # Busca issue específica com todos os fields
-            resp = await client.get(f"{base_url}/rest/api/3/issue/{issue_key}", headers=headers, timeout=15)
+            resp = await http_client.get(f"{base_url}/rest/api/3/issue/{issue_key}", headers=auth_headers, timeout=15)
             resp.raise_for_status()
-            data = resp.json()
-            fields = data.get("fields", {})
+            response_data = resp.json()
+            fields = response_data.get("fields", {})
         else:
             # Busca a primeira issue do projeto
-            resp = await client.get(
+            resp = await http_client.get(
                 f"{base_url}/rest/api/3/search/jql",
                 params={"jql": f'project = "{project}" ORDER BY created DESC', "maxResults": 1, "fields": "*all"},
-                headers=headers,
+                headers=auth_headers,
                 timeout=15,
             )
             resp.raise_for_status()
@@ -601,21 +595,21 @@ async def get_dashboard(
 
     # Aplicar filtros em memória (backlog + done_issues)
     if account:
-        dashboard.devs = [d for d in dashboard.devs if d.active_issues and any(i.account == account for i in d.active_issues)]
-        dashboard.backlog = [i for i in dashboard.backlog if i.account == account]
-        dashboard.done_issues = [i for i in dashboard.done_issues if i.account == account]
+        dashboard.devs = [dev for dev in dashboard.devs if dev.active_issues and any(issue.account == account for issue in dev.active_issues)]
+        dashboard.backlog = [issue for issue in dashboard.backlog if issue.account == account]
+        dashboard.done_issues = [issue for issue in dashboard.done_issues if issue.account == account]
     if product:
-        dashboard.devs = [d for d in dashboard.devs if d.active_issues and any(i.product == product for i in d.active_issues)]
-        dashboard.backlog = [i for i in dashboard.backlog if i.product == product]
-        dashboard.done_issues = [i for i in dashboard.done_issues if i.product == product]
+        dashboard.devs = [dev for dev in dashboard.devs if dev.active_issues and any(issue.product == product for issue in dev.active_issues)]
+        dashboard.backlog = [issue for issue in dashboard.backlog if issue.product == product]
+        dashboard.done_issues = [issue for issue in dashboard.done_issues if issue.product == product]
     if assignee:
-        dashboard.devs = [d for d in dashboard.devs if d.assignee and d.assignee.display_name == assignee]
-        dashboard.backlog = [i for i in dashboard.backlog if i.assignee and i.assignee.display_name == assignee]
-        dashboard.done_issues = [i for i in dashboard.done_issues if i.assignee and i.assignee.display_name == assignee]
+        dashboard.devs = [dev for dev in dashboard.devs if dev.assignee and dev.assignee.display_name == assignee]
+        dashboard.backlog = [issue for issue in dashboard.backlog if issue.assignee and issue.assignee.display_name == assignee]
+        dashboard.done_issues = [issue for issue in dashboard.done_issues if issue.assignee and issue.assignee.display_name == assignee]
     if issue_type:
-        dashboard.devs = [d for d in dashboard.devs if d.active_issues and any(i.issue_type.name == issue_type for i in d.active_issues)]
-        dashboard.backlog = [i for i in dashboard.backlog if i.issue_type.name == issue_type]
-        dashboard.done_issues = [i for i in dashboard.done_issues if i.issue_type.name == issue_type]
+        dashboard.devs = [dev for dev in dashboard.devs if dev.active_issues and any(issue.issue_type.name == issue_type for issue in dev.active_issues)]
+        dashboard.backlog = [issue for issue in dashboard.backlog if issue.issue_type.name == issue_type]
+        dashboard.done_issues = [issue for issue in dashboard.done_issues if issue.issue_type.name == issue_type]
 
     logger.info(
         "Dashboard retornado: %d devs, %d issues ativas, %d concluídas na semana",
@@ -697,8 +691,6 @@ async def ai_chat(body: AIChatRequest):
 
     Body: { "question": "sua pergunta aqui", "context": "dados extras opcionais" }
     """
-    import httpx
-
     question = body.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Campo 'question' é obrigatório")
@@ -755,14 +747,8 @@ async def ai_chat(body: AIChatRequest):
     if extra_context:
         system_prompt += f"\n\nDADOS DO DASHBOARD:\n{extra_context}"
 
-    headers = {
-        "Authorization":  f"Bearer {api_key}",
-        "Content-Type":   "application/json",
-        "HTTP-Referer":   "https://pgmais-dashboard",
-        "X-Title":        "PGMais Dashboard",
-    }
     payload = {
-        "model":      "anthropic/claude-sonnet-4.6",
+        "model":      OPENROUTER_MODEL,
         "max_tokens": 4096,
         "messages": [
             {"role": "system", "content": system_prompt},
@@ -770,24 +756,20 @@ async def ai_chat(body: AIChatRequest):
         ],
     }
 
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=60) as http_client:
         try:
-            resp = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                json=payload,
-                headers=headers,
-            )
+            resp = await http_client.post(OPENROUTER_URL, json=payload, headers=_build_openrouter_headers())
             if resp.status_code == 401:
                 raise HTTPException(status_code=401, detail="OPENROUTER_API_KEY inválida")
             resp.raise_for_status()
-            data = resp.json()
-            answer = _strip_markdown(data["choices"][0]["message"]["content"])
-            return {"answer": answer, "model": data.get("model", "")}
-        except httpx.HTTPStatusError as e:
-            logger.error("OpenRouter API HTTP error: %s — %s", e.response.status_code, e.response.text)
-            raise HTTPException(status_code=502, detail=f"Erro na API OpenRouter: {e.response.status_code}")
-        except httpx.RequestError as e:
-            logger.error("OpenRouter API request error: %s", e)
+            ai_response = resp.json()
+            answer = _strip_markdown(ai_response["choices"][0]["message"]["content"])
+            return {"answer": answer, "model": ai_response.get("model", "")}
+        except httpx.HTTPStatusError as http_err:
+            logger.error("OpenRouter API HTTP error: %s — %s", http_err.response.status_code, http_err.response.text)
+            raise HTTPException(status_code=502, detail=f"Erro na API OpenRouter: {http_err.response.status_code}")
+        except httpx.RequestError as conn_err:
+            logger.error("OpenRouter API request error: %s", conn_err)
             raise HTTPException(status_code=502, detail="Erro de conexão com a API OpenRouter")
 
 
@@ -826,7 +808,6 @@ async def force_refresh(x_refresh_secret: str | None = Header(default=None)):
 
 async def _fetch_all():
     """Dispara as três consultas ao Jira em paralelo."""
-    import asyncio
     active_issues, done_issues, done_last_week = await asyncio.gather(
         fetch_active_issues(),
         fetch_done_this_week(),

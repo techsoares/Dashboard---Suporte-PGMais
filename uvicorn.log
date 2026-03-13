@@ -3015,4 +3015,408 @@ INFO:     127.0.0.1:60781 - "GET /api/dashboard HTTP/1.1" 200 OK
 2026-03-12 17:31:21,453 [INFO] pgmais.dashboard — Dashboard retornado: 11 devs, 86 issues ativas, 32 concluídas na semana
 INFO:     127.0.0.1:50431 - "GET /api/dashboard HTTP/1.1" 200 OK
 WARNING:  WatchFiles detected changes in 'jira_client.py'. Reloading...
- 
+ 2026-03-12 17:36:21,462 [INFO] pgmais.dashboard — Cache MISS — buscando dados no Jira...
+2026-03-12 17:36:25,472 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/search/jql?jql=statusCategory+%3D+Done+AND+statusCategoryChangedDate+%3E%3D+startOfWeek%28%29+AND+project+%3D+%22ON%22&maxResults=100&fields=summary%2Cstatus%2Cassignee%2Cpriority%2Ccomponents%2Ccustomfield_10460%2Ccustomfield_10015%2Ccustomfield_10113%2Cduedate%2Cissuetype%2Ccreated%2Cresolutiondate%2Cstatuscategorychangedate "HTTP/1.1 200 OK"
+2026-03-12 17:36:25,527 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/search/jql?jql=statusCategory+%3D+Done+AND+statusCategoryChangedDate+%3E%3D+startOfWeek%28%22-1w%22%29+AND+statusCategoryChangedDate+%3C+startOfWeek%28%29+AND+project+%3D+%22ON%22&maxResults=100&fields=summary%2Cstatus%2Cassignee%2Cpriority%2Ccomponents%2Ccustomfield_10460%2Ccustomfield_10015%2Ccustomfield_10113%2Cduedate%2Cissuetype%2Ccreated%2Cresolutiondate%2Cstatuscategorychangedate "HTTP/1.1 200 OK"
+2026-03-12 17:36:25,897 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/search/jql?jql=statusCategory+IN+%28%22In+Progress%22%2C+%22New%22%29+AND+issuetype+NOT+IN+subTaskIssueTypes%28%29+AND+project+%3D+%22ON%22+ORDER+BY+assignee%2C+status+DESC&maxResults=100&fields=summary%2Cstatus%2Cassignee%2Cpriority%2Ccomponents%2Ccustomfield_10460%2Ccustomfield_10015%2Ccustomfield_10113%2Cduedate%2Cissuetype%2Ccreated%2Cresolutiondate%2Cstatuscategorychangedate "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,525 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36262/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,744 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36335/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,749 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36277/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,811 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-35864/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,813 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36478/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,816 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36193/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,818 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36462/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,832 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36339/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,835 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36237/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,838 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36372/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,840 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36484/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,843 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36248/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,850 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36435/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,906 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36465/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,910 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36228/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,915 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36184/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,918 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36369/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,990 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36460/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,992 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36424/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,993 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36395/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,995 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36356/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,996 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36453/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,997 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36434/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:26,998 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36451/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,001 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36454/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,004 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36208/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,030 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36481/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,033 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36379/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,093 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36220/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,096 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36374/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,098 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36365/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,104 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36366/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,107 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36342/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,109 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36440/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,111 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36350/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,113 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36378/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,115 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36426/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,119 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36347/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,133 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36304/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,136 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36288/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,138 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36295/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,151 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36344/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,155 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36485/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,178 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36341/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,197 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36325/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,207 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36289/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,210 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36382/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,216 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36309/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,218 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36332/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,220 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36292/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,229 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36331/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,233 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36141/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,299 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36242/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,303 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36483/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,308 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36461/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,317 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36423/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,320 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36438/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,325 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36418/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,327 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36439/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,330 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36420/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,334 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36176/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,337 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-35987/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,341 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36409/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,357 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36230/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,360 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36352/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,365 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-35720/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,367 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36088/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,374 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36247/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,377 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36148/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,382 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36201/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,387 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36371/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,391 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36348/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,393 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36389/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,397 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36345/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,406 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36346/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,411 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36349/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,507 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36356/changelog?startAt=100&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,516 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36340/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,519 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36320/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,530 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36298/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,532 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36244/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,542 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36287/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,546 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36234/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,557 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36224/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,566 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36254/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,614 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36321/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,685 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-34587/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:36:27,699 [INFO] pgmais.dashboard — Dashboard atualizado: 11 devs, 86 issues ativas, 32 concluídas, 4 paralisadas
+2026-03-12 17:36:27,699 [INFO] pgmais.dashboard — Dashboard retornado: 11 devs, 86 issues ativas, 32 concluídas na semana
+INFO:     127.0.0.1:56173 - "GET /api/dashboard HTTP/1.1" 200 OK
+2026-03-12 17:41:21,437 [INFO] pgmais.dashboard — Cache HIT — retornando dados em cache
+2026-03-12 17:41:21,438 [INFO] pgmais.dashboard — Dashboard retornado: 11 devs, 86 issues ativas, 32 concluídas na semana
+INFO:     127.0.0.1:54858 - "GET /api/dashboard HTTP/1.1" 200 OK
+2026-03-12 17:46:21,432 [INFO] pgmais.dashboard — Cache MISS — buscando dados no Jira...
+2026-03-12 17:46:24,222 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/search/jql?jql=statusCategory+%3D+Done+AND+statusCategoryChangedDate+%3E%3D+startOfWeek%28%29+AND+project+%3D+%22ON%22&maxResults=100&fields=summary%2Cstatus%2Cassignee%2Cpriority%2Ccomponents%2Ccustomfield_10460%2Ccustomfield_10015%2Ccustomfield_10113%2Cduedate%2Cissuetype%2Ccreated%2Cresolutiondate%2Cstatuscategorychangedate "HTTP/1.1 200 OK"
+2026-03-12 17:46:24,288 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/search/jql?jql=statusCategory+%3D+Done+AND+statusCategoryChangedDate+%3E%3D+startOfWeek%28%22-1w%22%29+AND+statusCategoryChangedDate+%3C+startOfWeek%28%29+AND+project+%3D+%22ON%22&maxResults=100&fields=summary%2Cstatus%2Cassignee%2Cpriority%2Ccomponents%2Ccustomfield_10460%2Ccustomfield_10015%2Ccustomfield_10113%2Cduedate%2Cissuetype%2Ccreated%2Cresolutiondate%2Cstatuscategorychangedate "HTTP/1.1 200 OK"
+2026-03-12 17:46:24,476 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/search/jql?jql=statusCategory+IN+%28%22In+Progress%22%2C+%22New%22%29+AND+issuetype+NOT+IN+subTaskIssueTypes%28%29+AND+project+%3D+%22ON%22+ORDER+BY+assignee%2C+status+DESC&maxResults=100&fields=summary%2Cstatus%2Cassignee%2Cpriority%2Ccomponents%2Ccustomfield_10460%2Ccustomfield_10015%2Ccustomfield_10113%2Cduedate%2Cissuetype%2Ccreated%2Cresolutiondate%2Cstatuscategorychangedate "HTTP/1.1 200 OK"
+2026-03-12 17:46:24,975 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36262/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,110 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36277/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,126 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36193/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,128 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-35864/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,163 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36295/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,222 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36220/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,249 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36288/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,252 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36483/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,263 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36369/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,266 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36237/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,270 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36248/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,296 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36335/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,305 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36382/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,324 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36461/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,329 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36176/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,343 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36208/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,347 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36395/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,358 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36201/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,415 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36418/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,429 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36426/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,436 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36438/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,438 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36184/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,440 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36484/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,444 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36454/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,447 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36424/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,449 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36478/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,476 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36339/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,487 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36434/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,505 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36365/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,540 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36348/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,551 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36345/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,554 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36372/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,558 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36341/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,562 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36440/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,576 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36340/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,611 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36462/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,655 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36460/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,657 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36420/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,662 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36389/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,675 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36356/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,683 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36423/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,686 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36321/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,700 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36439/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,706 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36435/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,709 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36485/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,713 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36409/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,716 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36379/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,725 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36289/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,728 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36451/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,740 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36378/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,745 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36242/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,785 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36320/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,788 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36244/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,801 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36287/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,804 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36374/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,817 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36228/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,829 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36247/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,830 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36453/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,865 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36230/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,876 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36224/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,880 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36366/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,883 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36371/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,885 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36331/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,887 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36342/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,898 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36344/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,903 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-34587/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,943 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36347/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,947 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36148/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,951 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36465/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,955 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36304/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,956 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36346/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,958 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-35720/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,961 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-35987/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,966 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36325/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:25,987 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36332/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,068 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36298/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,075 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36292/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,077 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36309/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,128 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36234/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,130 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36254/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,132 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36356/changelog?startAt=100&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,171 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36481/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,194 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36088/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,230 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36141/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,349 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36349/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,362 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36350/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,466 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36352/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-12 17:46:26,496 [INFO] pgmais.dashboard — Dashboard atualizado: 11 devs, 86 issues ativas, 32 concluídas, 4 paralisadas
+2026-03-12 17:46:26,496 [INFO] pgmais.dashboard — Dashboard retornado: 11 devs, 86 issues ativas, 32 concluídas na semana
+INFO:     127.0.0.1:63728 - "GET /api/dashboard HTTP/1.1" 200 OK
+2026-03-12 17:51:35,431 [INFO] pgmais.dashboard — Cache MISS — buscando dados no Jira...
+2026-03-12 19:37:14,664 [ERROR] pgmais.dashboard — Erro ao buscar dados no Jira: [Errno 11001] getaddrinfo failed
+Traceback (most recent call last):
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpx\_transports\default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpcore\_async\connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpcore\_async\connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        pool_request.request
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpcore\_async\connection.py", line 101, in handle_async_request
+    raise exc
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpcore\_async\connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpcore\_async\connection.py", line 124, in _connect
+    stream = await self._network_backend.connect_tcp(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpcore\_backends\auto.py", line 31, in connect_tcp
+    return await self._backend.connect_tcp(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpcore\_backends\anyio.py", line 113, in connect_tcp
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectError: [Errno 11001] getaddrinfo failed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\andressa.soares\pgmais-dashboard\backend\main.py", line 596, in get_dashboard
+    active_issues, done_issues, done_last_week = await _fetch_all()
+                                                 ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andressa.soares\pgmais-dashboard\backend\main.py", line 830, in _fetch_all
+    active_issues, done_issues, done_last_week = await asyncio.gather(
+                                                 ^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\andressa.soares\pgmais-dashboard\backend\jira_client.py", line 313, in fetch_active_issues
+    data = await _get(client, SEARCH_URL, params=params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andressa.soares\pgmais-dashboard\backend\jira_client.py", line 256, in _get
+    resp = await client.get(url, params=params or {}, headers=_auth_header(), timeout=30)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpx\_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpx\_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpx\_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpx\_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpx\_transports\default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\andressa.soares\AppData\Roaming\Python\Python313\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectError: [Errno 11001] getaddrinfo failed
+2026-03-13 08:54:52,860 [INFO] pgmais.dashboard — Cache MISS — buscando dados no Jira...
+2026-03-13 08:55:02,405 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/search/jql?jql=statusCategory+%3D+Done+AND+statusCategoryChangedDate+%3E%3D+startOfWeek%28%29+AND+project+%3D+%22ON%22&maxResults=100&fields=summary%2Cstatus%2Cassignee%2Cpriority%2Ccomponents%2Ccustomfield_10460%2Ccustomfield_10015%2Ccustomfield_10113%2Cduedate%2Cissuetype%2Ccreated%2Cresolutiondate%2Cstatuscategorychangedate "HTTP/1.1 200 OK"
+2026-03-13 08:55:03,103 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/search/jql?jql=statusCategory+%3D+Done+AND+statusCategoryChangedDate+%3E%3D+startOfWeek%28%22-1w%22%29+AND+statusCategoryChangedDate+%3C+startOfWeek%28%29+AND+project+%3D+%22ON%22&maxResults=100&fields=summary%2Cstatus%2Cassignee%2Cpriority%2Ccomponents%2Ccustomfield_10460%2Ccustomfield_10015%2Ccustomfield_10113%2Cduedate%2Cissuetype%2Ccreated%2Cresolutiondate%2Cstatuscategorychangedate "HTTP/1.1 200 OK"
+2026-03-13 08:55:03,110 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/search/jql?jql=statusCategory+IN+%28%22In+Progress%22%2C+%22New%22%29+AND+issuetype+NOT+IN+subTaskIssueTypes%28%29+AND+project+%3D+%22ON%22+ORDER+BY+assignee%2C+status+DESC&maxResults=100&fields=summary%2Cstatus%2Cassignee%2Cpriority%2Ccomponents%2Ccustomfield_10460%2Ccustomfield_10015%2Ccustomfield_10113%2Cduedate%2Cissuetype%2Ccreated%2Cresolutiondate%2Cstatuscategorychangedate "HTTP/1.1 200 OK"
+2026-03-13 08:55:04,104 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36262/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:04,269 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36382/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:04,279 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36277/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:04,311 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36193/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:04,313 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36220/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:04,353 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-35864/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:04,355 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36228/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,255 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36486/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,260 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36176/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,324 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36485/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,333 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36352/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,341 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36462/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,373 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36295/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,382 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36248/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,388 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36465/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,400 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36395/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,421 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36356/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,434 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36461/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,445 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36478/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,465 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36208/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,472 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36288/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,493 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36372/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,522 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36184/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,534 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36304/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,543 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36483/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,547 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36435/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,555 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36339/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,570 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36389/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,573 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36237/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,577 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36460/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,583 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36335/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,597 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36369/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,602 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36454/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,605 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36201/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,608 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36440/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,611 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36484/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,615 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36481/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:11,848 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36453/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,152 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36423/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,173 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36434/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,179 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36424/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,207 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36420/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,214 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36379/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,247 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36409/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,286 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36378/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,327 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36374/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,366 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36365/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,391 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36349/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,417 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36350/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,429 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36371/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,449 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36348/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,457 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36366/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,545 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36347/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,594 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36340/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,614 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36344/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,623 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36451/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,627 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36342/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,673 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36418/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,679 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36438/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,682 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36341/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,689 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36439/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,692 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36345/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,827 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36325/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,830 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36331/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,838 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36426/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,850 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36332/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:12,990 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36356/changelog?startAt=100&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,003 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36346/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,009 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36321/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,044 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36320/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,053 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36309/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,276 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36292/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,281 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36289/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,325 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36298/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,337 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36287/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,343 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36254/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,369 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36247/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,411 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36234/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,419 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36242/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,443 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36230/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,468 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36224/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,479 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36141/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,483 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36088/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,512 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36148/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,656 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-34587/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,686 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-36244/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,884 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-35720/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,956 [INFO] httpx — HTTP Request: GET https://pgmais.atlassian.net/rest/api/3/issue/ON-35987/changelog?startAt=0&maxResults=100 "HTTP/1.1 200 OK"
+2026-03-13 08:55:13,983 [INFO] pgmais.dashboard — Dashboard atualizado: 11 devs, 87 issues ativas, 32 concluídas, 4 paralisadas
+2026-03-13 08:55:13,983 [INFO] pgmais.dashboard — Dashboard retornado: 11 devs, 87 issues ativas, 32 concluídas na semana
+INFO:     127.0.0.1:54116 - "GET /api/dashboard HTTP/1.1" 200 OK
+2026-03-13 08:56:18,151 [INFO] pgmais.dashboard — Cache HIT — retornando dados em cache
+2026-03-13 08:56:18,154 [INFO] pgmais.dashboard — Dashboard retornado: 11 devs, 87 issues ativas, 32 concluídas na semana
+INFO:     127.0.0.1:51818 - "GET /api/dashboard HTTP/1.1" 200 OK
+2026-03-13 08:57:57,368 [INFO] pgmais.dashboard — Cache HIT — retornando dados em cache
+2026-03-13 08:57:57,370 [INFO] pgmais.dashboard — Dashboard retornado: 11 devs, 87 issues ativas, 32 concluídas na semana
+INFO:     127.0.0.1:59462 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53141 - "GET /api/admin/bus HTTP/1.1" 200 OK
+2026-03-13 08:57:57,445 [INFO] pgmais.dashboard — Cache HIT — retornando dados em cache
+2026-03-13 08:57:57,447 [INFO] pgmais.dashboard — Dashboard retornado: 11 devs, 87 issues ativas, 32 concluídas na semana
+INFO:     127.0.0.1:59462 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53141 - "GET /api/admin/bus HTTP/1.1" 200 OK
+2026-03-13 08:58:28,543 [INFO] pgmais.dashboard — Cache HIT — retornando dados em cache
+2026-03-13 08:58:28,544 [INFO] pgmais.dashboard — Dashboard retornado: 11 devs, 87 issues ativas, 32 concluídas na semana
+INFO:     127.0.0.1:54453 - "GET /api/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61675 - "OPTIONS /api/ai/classify-production HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57825 - "GET /api/admin/account-ranking HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49262 - "GET /api/priority-requests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58287 - "OPTIONS /api/ai/classify-production HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49262 - "GET /api/priority-requests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57825 - "GET /api/admin/account-ranking HTTP/1.1" 200 OK
+2026-03-13 09:01:23,539 [INFO] httpx — HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-13 09:01:23,574 [INFO] httpx — HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:61675 - "POST /api/ai/classify-production HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58287 - "POST /api/ai/classify-production HTTP/1.1" 200 OK

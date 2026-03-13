@@ -12,16 +12,8 @@ import FilterDropdown from './components/FilterDropdown'
 import ManagementView from './components/ManagementView'
 import AdminView from './components/AdminView'
 import PrioritizationView from './components/PrioritizationView'
+import { API_BASE_URL } from './apiUrl'
 import './App.css'
-
-const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:8000'
-  const host = window.location.host.replace(':5173', ':8000').replace('-5173.', '-8000.')
-  return `${window.location.protocol}//${host}`
-}
-
-const API = getApiUrl()
 const REFRESH_SECRET = import.meta.env.VITE_REFRESH_SECRET ?? ''
 const REFRESH_INTERVAL = 5 * 60 * 1000
 
@@ -60,7 +52,7 @@ export default function App() {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/dashboard`)
+      const res = await fetch(`${API_BASE_URL}/api/dashboard`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
 
@@ -97,7 +89,7 @@ export default function App() {
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
-      await fetch(`${API}/api/refresh`, {
+      await fetch(`${API_BASE_URL}/api/refresh`, {
         method: 'POST',
         headers: REFRESH_SECRET ? { 'X-Refresh-Secret': REFRESH_SECRET } : {},
       })
@@ -115,7 +107,7 @@ export default function App() {
 
   // Load BUs on startup
   useEffect(() => {
-    fetch(`${API}/api/admin/bus`)
+    fetch(`${API_BASE_URL}/api/admin/bus`)
       .then(r => r.json())
       .then(r => setBus(Array.isArray(r) ? r : []))
       .catch(() => {})

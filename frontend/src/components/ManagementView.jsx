@@ -4,48 +4,40 @@ import './ManagementView.css'
 // Renderiza resposta da IA: mistura parágrafos e bullet points
 function renderAIAnswer(text) {
   const blocks = text.split(/\n{2,}/)
-  return blocks.map((block, bi) => {
-    const lines = block.split('\n').filter(l => l.trim() !== '')
-    const isList = lines.every(l => /^[-•]\s/.test(l.trim()))
-    if (isList) {
+  return blocks.map((block, blockIndex) => {
+    const lines = block.split('\n').filter(line => line.trim() !== '')
+    const isBulletList = lines.every(line => /^[-•]\s/.test(line.trim()))
+    if (isBulletList) {
       return (
-        <ul key={bi} className="ai-answer-list">
-          {lines.map((l, li) => (
-            <li key={li}>{l.replace(/^[-•]\s+/, '')}</li>
+        <ul key={blockIndex} className="ai-answer-list">
+          {lines.map((line, lineIndex) => (
+            <li key={lineIndex}>{line.replace(/^[-•]\s+/, '')}</li>
           ))}
         </ul>
       )
     }
     // Bloco misto: separa linhas bullet das de texto
-    const parts = []
-    let currentBullets = []
-    for (const [li, line] of lines.entries()) {
+    const elements = []
+    let pendingBullets = []
+    for (const [lineIndex, line] of lines.entries()) {
       if (/^[-•]\s/.test(line.trim())) {
-        currentBullets.push(line)
+        pendingBullets.push(line)
       } else {
-        if (currentBullets.length) {
-          parts.push(<ul key={`${bi}-ul-${li}`} className="ai-answer-list">{currentBullets.map((b, i) => <li key={i}>{b.replace(/^[-•]\s+/, '')}</li>)}</ul>)
-          currentBullets = []
+        if (pendingBullets.length) {
+          elements.push(<ul key={`${blockIndex}-ul-${lineIndex}`} className="ai-answer-list">{pendingBullets.map((bullet, bulletIdx) => <li key={bulletIdx}>{bullet.replace(/^[-•]\s+/, '')}</li>)}</ul>)
+          pendingBullets = []
         }
-        parts.push(<p key={`${bi}-p-${li}`} className="ai-answer-para">{line}</p>)
+        elements.push(<p key={`${blockIndex}-p-${lineIndex}`} className="ai-answer-para">{line}</p>)
       }
     }
-    if (currentBullets.length) {
-      parts.push(<ul key={`${bi}-ul-end`} className="ai-answer-list">{currentBullets.map((b, i) => <li key={i}>{b.replace(/^[-•]\s+/, '')}</li>)}</ul>)
+    if (pendingBullets.length) {
+      elements.push(<ul key={`${blockIndex}-ul-end`} className="ai-answer-list">{pendingBullets.map((bullet, bulletIdx) => <li key={bulletIdx}>{bullet.replace(/^[-•]\s+/, '')}</li>)}</ul>)
     }
-    return <div key={bi}>{parts}</div>
+    return <div key={blockIndex}>{elements}</div>
   })
 }
 
-// ── API URL ────────────────────────────────────────────────────────────────
-const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    return 'http://localhost:8000'
-  const host = window.location.host.replace(':5173', ':8000').replace('-5173.', '-8000.')
-  return `${window.location.protocol}//${host}`
-}
-const API = getApiUrl()
+import { API_BASE_URL } from '../apiUrl'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const PERIODS = [
@@ -94,10 +86,12 @@ function WeeklyComparisonChart({ mgmtData }) {
     return <div className="mgmt-chart-panel"><p className="mgmt-empty">Sem dados de entregas semanais.</p></div>
   }
 
-  const W = 480, H = 110, pL = 28, pR = 12, pT = 10, pB = 28
-  const cW = W - pL - pR, cH = H - pT - pB
-  const xPos = i => n > 1 ? pL + (i / (n - 1)) * cW : pL + cW / 2
-  const yPos = v => pT + cH - (v / maxVal) * cH
+  const SVG_WIDTH = 480, SVG_HEIGHT = 110
+  const PADDING_LEFT = 28, PADDING_RIGHT = 12, PADDING_TOP = 10, PADDING_BOTTOM = 28
+  const chartWidth = SVG_WIDTH - PADDING_LEFT - PADDING_RIGHT
+  const chartHeight = SVG_HEIGHT - PADDING_TOP - PADDING_BOTTOM
+  const xPos = weekIndex => n > 1 ? PADDING_LEFT + (weekIndex / (n - 1)) * chartWidth : PADDING_LEFT + chartWidth / 2
+  const yPos = value => PADDING_TOP + chartHeight - (value / maxVal) * chartHeight
 
   return (
     <div className="mgmt-chart-panel">
@@ -121,13 +115,13 @@ function WeeklyComparisonChart({ mgmtData }) {
       {filtered.length === 0
         ? <p className="mgmt-empty">Selecione ao menos um responsável.</p>
         : (
-          <svg viewBox={`0 0 ${W} ${H}`} className="mgmt-line-svg">
-            {[0, 0.5, 1].map(t => (
-              <line key={t} x1={pL} y1={yPos(maxVal * t)} x2={pL + cW} y2={yPos(maxVal * t)}
-                stroke="var(--border)" strokeWidth={0.5} strokeDasharray={t > 0 ? '4,3' : ''} />
+          <svg viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`} className="mgmt-line-svg">
+            {[0, 0.5, 1].map(gridLevel => (
+              <line key={gridLevel} x1={PADDING_LEFT} y1={yPos(maxVal * gridLevel)} x2={PADDING_LEFT + chartWidth} y2={yPos(maxVal * gridLevel)}
+                stroke="var(--border)" strokeWidth={0.5} strokeDasharray={gridLevel > 0 ? '4,3' : ''} />
             ))}
-            {weekLabels.map((lbl, i) => (
-              <text key={i} x={xPos(i)} y={H - 6} textAnchor="middle" className="mgmt-chart-label">{lbl}</text>
+            {weekLabels.map((label, weekIdx) => (
+              <text key={weekIdx} x={xPos(weekIdx)} y={SVG_HEIGHT - 6} textAnchor="middle" className="mgmt-chart-label">{label}</text>
             ))}
             {filtered.map(dev => {
               const colorIdx = allDevs.findIndex(d => d.name === dev.name)
@@ -317,12 +311,12 @@ function DrillDownTable({ issues, periodLabel }) {
 
   const filtered = useMemo(() => {
     if (!search.trim()) return issues ?? []
-    const q = search.trim().toLowerCase()
-    return (issues ?? []).filter(i =>
-      i.key?.toLowerCase().includes(q) ||
-      i.summary?.toLowerCase().includes(q) ||
-      i.assignee?.display_name?.toLowerCase().includes(q) ||
-      i.product?.toLowerCase().includes(q)
+    const searchTerm = search.trim().toLowerCase()
+    return (issues ?? []).filter(issue =>
+      issue.key?.toLowerCase().includes(searchTerm) ||
+      issue.summary?.toLowerCase().includes(searchTerm) ||
+      issue.assignee?.display_name?.toLowerCase().includes(searchTerm) ||
+      issue.product?.toLowerCase().includes(searchTerm)
     )
   }, [issues, search])
 
@@ -414,6 +408,7 @@ function MgmtAIChat({ mgmtData, dashData }) {
   const [history,  setHistory]  = useState([])
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
+  const [pendingQuestion, setPendingQuestion] = useState('')
   const chatEndRef = useRef(null)
   const inputRef   = useRef(null)
 
@@ -430,41 +425,42 @@ function MgmtAIChat({ mgmtData, dashData }) {
       `Ciclo médio: ${mgmtData.avg_cycle_days ?? 0}d`,
       '', '--- POR SEMANA ---',
     ]
-    for (const w of mgmtData.weeks ?? []) {
-      lines.push(`${w.week_label}: ${w.done_count} entregues (${w.on_time} no prazo, ciclo ${w.avg_cycle_days}d)`)
+    for (const week of mgmtData.weeks ?? []) {
+      lines.push(`${week.week_label}: ${week.done_count} entregues (${week.on_time} no prazo, ciclo ${week.avg_cycle_days}d)`)
     }
     lines.push('', '--- POR DEV ---')
-    for (const d of mgmtData.by_dev ?? []) {
-      lines.push(`${d.name}: ${d.done_count} entregues, ciclo médio ${d.avg_cycle_days}d`)
+    for (const dev of mgmtData.by_dev ?? []) {
+      lines.push(`${dev.name}: ${dev.done_count} entregues, ciclo médio ${dev.avg_cycle_days}d`)
     }
     lines.push('', '--- POR PRODUTO ---')
-    for (const p of mgmtData.by_product ?? []) {
-      lines.push(`${p.product}: ${p.done_count} entregues`)
+    for (const product of mgmtData.by_product ?? []) {
+      lines.push(`${product.product}: ${product.done_count} entregues`)
     }
     if (dashData?.backlog) {
-      const active = dashData.backlog
+      const activeIssues = dashData.backlog
       lines.push('', '--- BACKLOG ATUAL ---',
-        `Total ativo: ${active.length}`,
-        `Atrasados: ${active.filter(i => i.is_overdue).length}`,
+        `Total ativo: ${activeIssues.length}`,
+        `Atrasados: ${activeIssues.filter(issue => issue.is_overdue).length}`,
         `Paralisados: ${(dashData.stale_issues ?? []).length}`,
       )
     }
     return lines.join('\n')
   }
 
-  const askAI = async (q) => {
-    const text = (q ?? question).trim()
+  const askAI = async (directQuestion) => {
+    const text = (directQuestion ?? question).trim()
     if (!text || loading) return
     setError('')
+    setPendingQuestion(text)
     setLoading(true)
 
-    const recent = history.slice(-3).map(h =>
-      `Pergunta anterior: ${h.question}\nResposta anterior: ${h.answer}`
+    const recent = history.slice(-3).map(entry =>
+      `Pergunta anterior: ${entry.question}\nResposta anterior: ${entry.answer}`
     ).join('\n\n')
     const ctx = buildContext() + (recent ? `\n\n--- HISTÓRICO ---\n${recent}` : '')
 
     try {
-      const res  = await fetch(`${API}/api/ai/chat`, {
+      const res  = await fetch(`${API_BASE_URL}/api/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: text, context: ctx }),
@@ -517,7 +513,7 @@ function MgmtAIChat({ mgmtData, dashData }) {
             <div className="mgmt-ai-exchange">
               <div className="mgmt-ai-bubble mgmt-ai-bubble--user">
                 <span className="mgmt-ai-who">Você</span>
-                {question}
+                {pendingQuestion}
               </div>
               <div className="mgmt-ai-bubble mgmt-ai-bubble--ai">
                 <span className="mgmt-ai-who">✦ IA</span>
@@ -580,7 +576,7 @@ export default function ManagementView({ data, filters }) {
     setError('')
     setMgmtData(null)
 
-    fetch(`${API}/api/management?period=${periodKey}`, { signal })
+    fetch(`${API_BASE_URL}/api/management?period=${periodKey}`, { signal })
       .then(res => {
         if (!res.ok) return res.json().then(j => Promise.reject(j.detail ?? `HTTP ${res.status}`))
         return res.json()
@@ -605,8 +601,8 @@ export default function ManagementView({ data, filters }) {
   // ── Risk items: from live dashboard data ────────────────────────────────
   const riskItems = useMemo(() => {
     const overdue = (data?.backlog ?? [])
-      .filter(i => i.is_overdue)
-      .sort((a, b) => (a.due_date ?? '') < (b.due_date ?? '') ? -1 : 1)
+      .filter(issue => issue.is_overdue)
+      .sort((issueA, issueB) => (issueA.due_date ?? '') < (issueB.due_date ?? '') ? -1 : 1)
       .slice(0, 8)
     const stale = (data?.stale_issues ?? []).slice(0, 6)
     return { overdue, stale }
@@ -626,11 +622,11 @@ export default function ManagementView({ data, filters }) {
     const issues = mgmtData?.done_issues ?? []
     if (!filters) return issues
     let result = issues
-    if (filters.assignee?.length)    result = result.filter(i => filters.assignee.includes(i.assignee?.display_name))
-    if (filters.account?.length)     result = result.filter(i => filters.account.includes(i.account))
-    if (filters.product?.length)     result = result.filter(i => filters.product.includes(i.product))
-    if (filters.issue_type?.length)  result = result.filter(i => filters.issue_type.includes(i.issue_type?.name))
-    if (filters.status?.length)      result = result.filter(i => filters.status.includes(i.status?.name))
+    if (filters.assignee?.length)    result = result.filter(issue => filters.assignee.includes(issue.assignee?.display_name))
+    if (filters.account?.length)     result = result.filter(issue => filters.account.includes(issue.account))
+    if (filters.product?.length)     result = result.filter(issue => filters.product.includes(issue.product))
+    if (filters.issue_type?.length)  result = result.filter(issue => filters.issue_type.includes(issue.issue_type?.name))
+    if (filters.status?.length)      result = result.filter(issue => filters.status.includes(issue.status?.name))
     return result
   }, [mgmtData, filters])
 

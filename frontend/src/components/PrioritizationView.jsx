@@ -1,14 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { API_BASE_URL } from '../apiUrl'
 import './PrioritizationView.css'
-
-const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    return 'http://localhost:8000'
-  const host = window.location.host.replace(':5173', ':8000').replace('-5173.', '-8000.')
-  return `${window.location.protocol}//${host}`
-}
-const API = getApiUrl()
 
 const SCORE_WEIGHTS = {
   production:  1000,
@@ -20,32 +12,32 @@ const SCORE_WEIGHTS = {
 }
 
 // Normalize: remove accents, lowercase, strip extra spaces
-function norm(s) {
-  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+function normalizeText(text) {
+  return (text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
 }
 
 // Find the ranking index for a Jira account using fuzzy matching
 // Rules: case-insensitive, accent-insensitive, partial contains in both directions
 function findRankIndex(account, ranking) {
   if (!account) return -1
-  const a = norm(account)
-  for (let i = 0; i < ranking.length; i++) {
-    const r = norm(ranking[i])
+  const normalizedAccount = normalizeText(account)
+  for (let rankIdx = 0; rankIdx < ranking.length; rankIdx++) {
+    const normalizedRankEntry = normalizeText(ranking[rankIdx])
     // Exact normalized match
-    if (a === r) return i
+    if (normalizedAccount === normalizedRankEntry) return rankIdx
     // One contains the other (handles "99Pay" ↔ "99 PAY", "FRANQUIAS BOTICARIO [S]" ↔ "EUDORA / BOTICÁRIO")
     // Split ranking entry by / to check each part (e.g. "EUDORA / BOTICÁRIO" → ["eudora", "boticario"])
-    const rParts = r.split(/[\s\/]+/).filter(p => p.length > 2)
-    const aParts = a.split(/[\s\/\[\]]+/).filter(p => p.length > 2)
+    const rankWords = normalizedRankEntry.split(/[\s\/]+/).filter(word => word.length > 2)
+    const accountWords = normalizedAccount.split(/[\s\/\[\]]+/).filter(word => word.length > 2)
     // Check if any significant word from ranking appears in the account or vice versa
-    if (rParts.some(rp => a.includes(rp)) || aParts.some(ap => r.includes(ap))) return i
+    if (rankWords.some(rWord => normalizedAccount.includes(rWord)) || accountWords.some(aWord => normalizedRankEntry.includes(aWord))) return rankIdx
   }
   return -1
 }
 
 // Check if account matches any of the top N ranked accounts
-function isInTopAccounts(account, ranking, n) {
-  return findRankIndex(account, ranking.slice(0, n)) >= 0
+function isInTopAccounts(account, ranking, topCount) {
+  return findRankIndex(account, ranking.slice(0, topCount)) >= 0
 }
 
 function calcScore(issue, ranking, productionKeys, boost = 0) {
@@ -121,15 +113,15 @@ export default function PrioritizationView({ data, bus = [] }) {
   // All unique accounts from data
   const allAccounts = useMemo(() => {
     if (!data?.backlog) return []
-    const set = new Set()
-    data.backlog.forEach(i => { if (i.account) set.add(i.account) })
-    data.devs?.forEach(d => d.active_issues?.forEach(i => { if (i.account) set.add(i.account) }))
-    return [...set].sort()
+    const accountSet = new Set()
+    data.backlog.forEach(issue => { if (issue.account) accountSet.add(issue.account) })
+    data.devs?.forEach(dev => dev.active_issues?.forEach(issue => { if (issue.account) accountSet.add(issue.account) }))
+    return [...accountSet].sort()
   }, [data])
 
   // Load ranking
   useEffect(() => {
-    fetch(`${API}/api/admin/account-ranking`)
+    fetch(`${API_BASE_URL}/api/admin/account-ranking`)
       .then(r => r.json())
       .then(r => setRanking(Array.isArray(r) ? r : []))
       .catch(() => {})
@@ -137,7 +129,7 @@ export default function PrioritizationView({ data, bus = [] }) {
 
   // Load priority requests
   const loadPrioRequests = useCallback(() => {
-    fetch(`${API}/api/priority-requests`)
+    fetch(`${API_BASE_URL}/api/priority-requests`)
       .then(r => r.json())
       .then(r => setPrioRequests(Array.isArray(r) ? r : []))
       .catch(() => {})
@@ -149,7 +141,7 @@ export default function PrioritizationView({ data, bus = [] }) {
   const submitPrioRequest = useCallback(() => {
     if (!prioForm || !prioName.trim() || !prioJustification.trim() || !prioBu) return
     setPrioSubmitting(true)
-    fetch(`${API}/api/priority-requests`, {
+    fetch(`${API_BASE_URL}/api/priority-requests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -181,20 +173,20 @@ export default function PrioritizationView({ data, bus = [] }) {
   // Deprioritize — remove a specific priority request by ID
   const removePrioRequest = useCallback((requestId, requesterName) => {
     if (!confirm(`Remover a priorização de ${requesterName}?`)) return
-    fetch(`${API}/api/priority-requests/${requestId}`, { method: 'DELETE' })
+    fetch(`${API_BASE_URL}/api/priority-requests/${requestId}`, { method: 'DELETE' })
       .then(() => loadPrioRequests())
       .catch(() => {})
   }, [loadPrioRequests])
 
   // Compute boost per issue from priority requests
   const boostByKey = useMemo(() => {
-    const map = {}
-    prioRequests.forEach(r => {
-      if (!map[r.issue_key]) map[r.issue_key] = { total: 0, requests: [] }
-      map[r.issue_key].total += r.boost || 0
-      map[r.issue_key].requests.push(r)
+    const boostMap = {}
+    prioRequests.forEach(request => {
+      if (!boostMap[request.issue_key]) boostMap[request.issue_key] = { total: 0, requests: [] }
+      boostMap[request.issue_key].total += request.boost || 0
+      boostMap[request.issue_key].requests.push(request)
     })
-    return map
+    return boostMap
   }, [prioRequests])
 
   // Classify production via AI
@@ -207,7 +199,7 @@ export default function PrioritizationView({ data, bus = [] }) {
       type: i.issue_type?.name || '',
       status: i.status?.name || '',
     }))
-    fetch(`${API}/api/ai/classify-production`, {
+    fetch(`${API_BASE_URL}/api/ai/classify-production`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ issues }),
@@ -225,7 +217,7 @@ export default function PrioritizationView({ data, bus = [] }) {
     setRanking(newRanking)
     setSavingRank(true)
     try {
-      await fetch(`${API}/api/admin/account-ranking`, {
+      await fetch(`${API_BASE_URL}/api/admin/account-ranking`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accounts: newRanking }),
@@ -260,19 +252,19 @@ export default function PrioritizationView({ data, bus = [] }) {
   // Compute prioritized list
   const prioritized = useMemo(() => {
     if (!data?.backlog) return []
-    let issues = data.backlog.map(i => {
-      const boost = boostByKey[i.key]?.total || 0
+    let issues = data.backlog.map(issue => {
+      const boost = boostByKey[issue.key]?.total || 0
       return {
-        ...i,
-        score: calcScore(i, ranking, productionKeys, boost),
-        isProduction: productionKeys.includes(i.key),
-        accountRank: findRankIndex(i.account, ranking),
+        ...issue,
+        score: calcScore(issue, ranking, productionKeys, boost),
+        isProduction: productionKeys.includes(issue.key),
+        accountRank: findRankIndex(issue.account, ranking),
         prioBoost: boost,
-        prioRequests: boostByKey[i.key]?.requests || [],
+        prioRequests: boostByKey[issue.key]?.requests || [],
       }
     })
     if (filterTopOnly) {
-      issues = issues.filter(i => isInTopAccounts(i.account, ranking, 10))
+      issues = issues.filter(issue => isInTopAccounts(issue.account, ranking, 10))
     }
     const sorted = issues.sort((a, b) => b.score - a.score)
     return sorted.map((item, idx) => ({ ...item, originalRank: idx + 1 }))
@@ -292,7 +284,7 @@ export default function PrioritizationView({ data, bus = [] }) {
     if (summaries[issue.key]?.text || summaries[issue.key]?.loading) return
     setSummaries(prev => ({ ...prev, [issue.key]: { loading: true, text: '', error: false } }))
     const question = `Resuma em 2-3 frases curtas o chamado Jira abaixo. Seja direto: o que aconteceu, impacto e status atual.\n\nChave: ${issue.key}\nTítulo: ${issue.summary}\nTipo: ${issue.issue_type?.name || '—'}\nStatus: ${issue.status?.name || '—'}\nAccount: ${issue.account || '—'}\nResponsável: ${issue.assignee?.display_name || 'Não atribuído'}\nCriado: ${issue.created || '—'}`
-    fetch(`${API}/api/ai/chat`, {
+    fetch(`${API_BASE_URL}/api/ai/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question }),

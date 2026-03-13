@@ -1,13 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { API_BASE_URL } from '../apiUrl'
 import './AIInsightsView.css'
-
-const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:8000'
-  const host = window.location.host.replace(':5173', ':8000').replace('-5173.', '-8000.')
-  return `${window.location.protocol}//${host}`
-}
-const API = getApiUrl()
 
 const SUGGESTIONS = [
   'Qual o estado geral do backlog agora?',
@@ -36,25 +29,25 @@ function buildContext(data) {
     `--- BACKLOG COMPLETO (${issues.length} issues) ---`,
   ]
 
-  for (const i of issues) {
-    const parts = [`[${i.key}] ${i.summary}`]
-    parts.push(`Resp:${i.assignee?.display_name || 'Não atribuído'}`)
-    parts.push(`Status:${i.status?.name || '-'}`)
-    parts.push(`Prio:${i.priority?.name || '-'}`)
-    if (i.product)          parts.push(`Produto:${i.product}`)
-    if (i.account)          parts.push(`Account:${i.account}`)
-    if (i.issue_type?.name) parts.push(`Tipo:${i.issue_type.name}`)
-    if (i.is_overdue)       parts.push('⚠ATRASADA')
-    if (i.due_date)         parts.push(`Vence:${new Date(i.due_date).toLocaleDateString('pt-BR')}`)
+  for (const issue of issues) {
+    const parts = [`[${issue.key}] ${issue.summary}`]
+    parts.push(`Resp:${issue.assignee?.display_name || 'Não atribuído'}`)
+    parts.push(`Status:${issue.status?.name || '-'}`)
+    parts.push(`Prio:${issue.priority?.name || '-'}`)
+    if (issue.product)          parts.push(`Produto:${issue.product}`)
+    if (issue.account)          parts.push(`Account:${issue.account}`)
+    if (issue.issue_type?.name) parts.push(`Tipo:${issue.issue_type.name}`)
+    if (issue.is_overdue)       parts.push('⚠ATRASADA')
+    if (issue.due_date)         parts.push(`Vence:${new Date(issue.due_date).toLocaleDateString('pt-BR')}`)
     lines.push(parts.join(' | '))
   }
 
   lines.push('', `--- EQUIPE (${devs.length} devs) ---`)
-  for (const d of devs) {
-    const name = d.assignee?.display_name || 'Dev'
-    const n    = d.active_issues?.length ?? 0
-    const ov   = d.active_issues?.filter(i => i.is_overdue).length ?? 0
-    lines.push(`${name}: ${n} issues${ov ? `, ${ov} atrasadas` : ''}`)
+  for (const dev of devs) {
+    const devName    = dev.assignee?.display_name || 'Dev'
+    const issueCount = dev.active_issues?.length ?? 0
+    const overdueCount = dev.active_issues?.filter(issue => issue.is_overdue).length ?? 0
+    lines.push(`${devName}: ${issueCount} issues${overdueCount ? `, ${overdueCount} atrasadas` : ''}`)
   }
 
   return lines.join('\n')
@@ -86,7 +79,7 @@ export default function AIInsightsView({ data }) {
     const ctx = buildContext(data) + (recentHistory ? `\n\n--- HISTÓRICO RECENTE ---\n${recentHistory}` : '')
 
     try {
-      const res = await fetch(`${API}/api/ai/chat`, {
+      const res = await fetch(`${API_BASE_URL}/api/ai/chat`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ question: text, context: ctx }),
@@ -109,24 +102,25 @@ export default function AIInsightsView({ data }) {
   // Stats locais para os cards informativos
   const stats = useMemo(() => {
     const issues = data?.backlog || []
-    const typeMap = {}
-    const devMap  = {}
-    const prodMap = {}
-    for (const i of issues) {
-      const t = i.issue_type?.name || 'Outro'
-      const a = i.assignee?.display_name || 'Não atribuído'
-      const p = i.product || 'Sem produto'
-      typeMap[t] = (typeMap[t] || 0) + 1
-      devMap[a]  = (devMap[a]  || 0) + 1
-      prodMap[p] = (prodMap[p] || 0) + 1
+    const countByType    = {}
+    const countByDev     = {}
+    const countByProduct = {}
+    for (const issue of issues) {
+      const typeName    = issue.issue_type?.name || 'Outro'
+      const assigneeName = issue.assignee?.display_name || 'Não atribuído'
+      const productName = issue.product || 'Sem produto'
+      countByType[typeName]       = (countByType[typeName] || 0) + 1
+      countByDev[assigneeName]    = (countByDev[assigneeName] || 0) + 1
+      countByProduct[productName] = (countByProduct[productName] || 0) + 1
     }
+    const sortDescByCount = ([, countA], [, countB]) => countB - countA
     return {
       total:      issues.length,
-      overdue:    issues.filter(i => i.is_overdue).length,
-      inProgress: issues.filter(i => i.status?.category === 'indeterminate').length,
-      topTypes:   Object.entries(typeMap).sort(([,a],[,b]) => b-a).slice(0, 5),
-      topDevs:    Object.entries(devMap).sort(([,a],[,b])  => b-a).slice(0, 5),
-      topProds:   Object.entries(prodMap).sort(([,a],[,b]) => b-a).slice(0, 5),
+      overdue:    issues.filter(issue => issue.is_overdue).length,
+      inProgress: issues.filter(issue => issue.status?.category === 'indeterminate').length,
+      topTypes:   Object.entries(countByType).sort(sortDescByCount).slice(0, 5),
+      topDevs:    Object.entries(countByDev).sort(sortDescByCount).slice(0, 5),
+      topProds:   Object.entries(countByProduct).sort(sortDescByCount).slice(0, 5),
     }
   }, [data])
 
@@ -159,10 +153,10 @@ export default function AIInsightsView({ data }) {
                 <div className="ai-bubble ai-bubble--ai">
                   <span className="ai-bubble-who">✦ IA</span>
                   <span className="ai-answer-text">
-                    {item.answer.split('\n').map((line, i) =>
+                    {item.answer.split('\n').map((line, lineIndex) =>
                       line.trim() === ''
-                        ? <br key={i} />
-                        : <span key={i} className="ai-answer-line">{line}</span>
+                        ? <br key={lineIndex} />
+                        : <span key={lineIndex} className="ai-answer-line">{line}</span>
                     )}
                   </span>
                 </div>
@@ -254,30 +248,30 @@ export default function AIInsightsView({ data }) {
 
         <div className="ai-card">
           <div className="ai-card-title">Tipos de Issue</div>
-          {stats.topTypes.map(([t, c]) => (
-            <div key={t} className="ai-list-row">
-              <span className="ai-list-name">{t}</span>
-              <span className="ai-count-badge">{c}</span>
+          {stats.topTypes.map(([typeName, count]) => (
+            <div key={typeName} className="ai-list-row">
+              <span className="ai-list-name">{typeName}</span>
+              <span className="ai-count-badge">{count}</span>
             </div>
           ))}
         </div>
 
         <div className="ai-card">
           <div className="ai-card-title">Issues por Dev</div>
-          {stats.topDevs.map(([d, c]) => (
-            <div key={d} className="ai-list-row">
-              <span className="ai-list-name">{d}</span>
-              <span className="ai-count-badge">{c}</span>
+          {stats.topDevs.map(([devName, count]) => (
+            <div key={devName} className="ai-list-row">
+              <span className="ai-list-name">{devName}</span>
+              <span className="ai-count-badge">{count}</span>
             </div>
           ))}
         </div>
 
         <div className="ai-card">
           <div className="ai-card-title">Issues por Produto</div>
-          {stats.topProds.map(([p, c]) => (
-            <div key={p} className="ai-list-row">
-              <span className="ai-list-name">{p}</span>
-              <span className="ai-count-badge">{c}</span>
+          {stats.topProds.map(([productName, count]) => (
+            <div key={productName} className="ai-list-row">
+              <span className="ai-list-name">{productName}</span>
+              <span className="ai-count-badge">{count}</span>
             </div>
           ))}
         </div>

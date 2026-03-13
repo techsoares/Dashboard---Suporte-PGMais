@@ -1,14 +1,6 @@
 import { useState, useEffect } from 'react'
+import { API_BASE_URL } from '../apiUrl'
 import './AdminView.css'
-
-const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    return 'http://localhost:8000'
-  const host = window.location.host.replace(':5173', ':8000').replace('-5173.', '-8000.')
-  return `${window.location.protocol}//${host}`
-}
-const API = getApiUrl()
 
 export default function AdminView({ assignees: fallbackAssignees = [], onBusChange }) {
   const [bus, setBus]         = useState([])
@@ -24,14 +16,14 @@ export default function AdminView({ assignees: fallbackAssignees = [], onBusChan
   const [loadingUsers, setLoadingUsers] = useState(false)
 
   const load = () =>
-    fetch(`${API}/api/admin/bus`)
+    fetch(`${API_BASE_URL}/api/admin/bus`)
       .then(r => r.json())
       .then(data => { setBus(data); onBusChange?.(data) })
       .catch(() => setError('Não foi possível carregar as BUs.'))
 
   const loadJiraUsers = () => {
     setLoadingUsers(true)
-    fetch(`${API}/api/jira/users`)
+    fetch(`${API_BASE_URL}/api/jira/users`)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
@@ -75,18 +67,19 @@ export default function AdminView({ assignees: fallbackAssignees = [], onBusChan
     setSaving(true)
     setError('')
     try {
-      const res = await fetch(`${API}/api/admin/bus/${updated.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/bus/${updated.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: updated.name, members: updated.members, bu_type: updated.bu_type || 'operacional' }),
       })
       if (!res.ok) throw new Error()
       const saved = await res.json()
-      setBus(prev => prev.map(b => b.id === saved.id ? saved : b))
+      const updatedBus = bus.map(bu => bu.id === saved.id ? saved : bu)
+      setBus(updatedBus)
       setSelected(saved)
       setEditName(saved.name)
       setEditType(saved.bu_type || 'operacional')
-      onBusChange?.(bus.map(b => b.id === saved.id ? saved : b))
+      onBusChange?.(updatedBus)
     } catch {
       setError('Erro ao salvar. Tente novamente.')
     } finally {
@@ -111,7 +104,7 @@ export default function AdminView({ assignees: fallbackAssignees = [], onBusChan
     setCreating(true)
     setError('')
     try {
-      const res = await fetch(`${API}/api/admin/bus`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/bus`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName.trim(), bu_type: newType }),
@@ -136,7 +129,7 @@ export default function AdminView({ assignees: fallbackAssignees = [], onBusChan
   const deleteBu = async (id) => {
     if (!confirm('Remover esta BU?')) return
     try {
-      await fetch(`${API}/api/admin/bus/${id}`, { method: 'DELETE' })
+      await fetch(`${API_BASE_URL}/api/admin/bus/${id}`, { method: 'DELETE' })
       const updated = bus.filter(b => b.id !== id)
       setBus(updated)
       if (selected?.id === id) setSelected(null)
