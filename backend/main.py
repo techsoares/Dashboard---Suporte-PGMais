@@ -329,7 +329,7 @@ def _build_openrouter_headers() -> dict:
     }
 
 
-async def _evaluate_priority_with_ai(body: "PriorityRequest", bu_type: str) -> tuple[int, str]:
+async def _evaluate_priority_with_ai(body: PriorityRequest, bu_type: str) -> tuple[int, str]:
     """Avalia a urgência de um chamado via IA. Retorna (boost, verdict)."""
     boost = AI_DEFAULT_BOOST
     ai_verdict = "Avaliação automática padrão."
@@ -366,14 +366,23 @@ async def _evaluate_priority_with_ai(body: "PriorityRequest", bu_type: str) -> t
             resp = await client.post(OPENROUTER_URL, json=payload, headers=_build_openrouter_headers())
             resp.raise_for_status()
             ai_response = resp.json()
-            answer_text = ai_response["choices"][0]["message"]["content"]
+            if "choices" not in ai_response or not ai_response["choices"]:
+                logger.error("Invalid AI response structure: missing choices")
+                return boost, ai_verdict
+            choice = ai_response["choices"][0]
+            if "message" not in choice or "content" not in choice["message"]:
+                logger.error("Invalid AI response structure: missing message content")
+                return boost, ai_verdict
+            answer_text = choice["message"]["content"]
             json_match = re.search(r'\{[^}]+\}', answer_text)
             if json_match:
                 parsed = json.loads(json_match.group())
                 boost = max(0, min(AI_MAX_BOOST, int(parsed.get("boost", AI_DEFAULT_BOOST))))
                 ai_verdict = parsed.get("verdict", ai_verdict)
-    except Exception as exc:
-        logger.warning("AI priority evaluation failed: %s", exc)
+            else:
+                logger.warning("AI response did not contain valid JSON: %s", answer_text[:200])
+    except (json.JSONDecodeError, KeyError, ValueError) as exc:
+        logger.warning("AI priority evaluation parsing failed: %s", exc)
 
     return boost, ai_verdict
 
@@ -525,16 +534,17 @@ async def classify_production(body: dict):
 
 @app.post("/api/auth/login", response_model=LoginResponse, tags=["auth"], summary="Login com email corporativo")
 async def login(body: LoginRequest, request: Request):
-    client_ip = request.client.host if request.client else "unknown"
-    if not auth_limiter.is_allowed(client_ip):
-        SecurityLogger.log_rate_limit_exceeded(client_ip, "/api/auth/login")
-        raise HTTPException(status_code=429, detail="Muitas tentativas de login. Tente novamente em alguns minutos.")
     """Realiza login com email corporativo (@pgmais ou @ciclo).
     
     Senha não é necessária para domínios permitidos.
     Usuários são auto-cadastrados no primeiro login.
     Admins são configurados em ADMIN_EMAILS no auth.py.
     """
+    client_ip = request.client.host if request.client else "unknown"
+    if not auth_limiter.is_allowed(client_ip):
+        SecurityLogger.log_rate_limit_exceeded(client_ip, "/api/auth/login")
+        raise HTTPException(status_code=429, detail="Muitas tentativas de login. Tente novamente em alguns minutos.")
+    
     try:
         logger.debug("Login attempt: %s", body.email)
         user = authenticate_user(body.email, body.password)
@@ -802,6 +812,8 @@ async def get_dashboard(
         dashboard.devs = [dev for dev in dashboard.devs if dev.active_issues and any(issue.account == account for issue in dev.active_issues)]
         dashboard.backlog = [issue for issue in dashboard.backlog if issue.account == account]
         dashboard.done_issues = [issue for issue in dashboard.done_issues if issue.account == account]
+        # Adicionar logging para monitorar performance
+        logger.info("Aplicados filtros: account=%s, devs restantes: %d, backlog restante: %d", account, len(dashboard.devs), len(dashboard.backlog))
     if product:
         dashboard.devs = [dev for dev in dashboard.devs if dev.active_issues and any(issue.product == product for issue in dev.active_issues)]
         dashboard.backlog = [issue for issue in dashboard.backlog if issue.product == product]
@@ -948,7 +960,12 @@ async def ai_chat(body: AIChatRequest):
                 raise HTTPException(status_code=401, detail="OPENROUTER_API_KEY inválida")
             resp.raise_for_status()
             ai_response = resp.json()
-            answer = _strip_markdown(ai_response["choices"][0]["message"]["content"])
+            if "choices" not in ai_response or not ai_response["choices"]:
+                raise HTTPException(status_code=502, detail="Resposta da IA inválida: sem choices")
+            choice = ai_response["choices"][0]
+            if "message" not in choice or "content" not in choice["message"]:
+                raise HTTPException(status_code=502, detail="Resposta da IA inválida: sem content")
+            answer = _strip_markdown(choice["message"]["content"])
             return {"answer": answer, "model": ai_response.get("model", "")}
         except httpx.HTTPStatusError as http_err:
             logger.error("OpenRouter API HTTP error: %s — %s", http_err.response.status_code, http_err.response.text)

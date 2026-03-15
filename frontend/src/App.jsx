@@ -116,6 +116,7 @@ export default function App() {
       if (prevKeysRef.current !== null) {
         const newIssues = json.backlog.filter(i => !prevKeysRef.current.has(i.key))
         if (newIssues.length > 0) {
+          const MAX_NOTIFICATIONS = 10
           const toasts = newIssues.slice(0, 5).map(i => ({
             id: i.key + '_' + Date.now(),
             key: i.key,
@@ -123,7 +124,11 @@ export default function App() {
             assignee: i.assignee?.display_name,
             priority: i.priority?.name,
           }))
-          setNotifications(prev => [...prev, ...toasts])
+          setNotifications(prev => {
+            const newNotifications = [...prev, ...toasts]
+            // Mantém apenas as últimas MAX_NOTIFICATIONS
+            return newNotifications.slice(-MAX_NOTIFICATIONS)
+          })
           toasts.forEach(t => {
             setTimeout(() => setNotifications(prev => prev.filter(x => x.id !== t.id)), 5000)
           })
@@ -209,23 +214,37 @@ export default function App() {
   // Filtragem client-side
   const filteredData = useMemo(() => {
     if (!data) return null
+
+    // Otimização: pré-computar filtros aplicáveis
+    const hasBuFilter = filters.bu.length > 0
+    const hasAssigneeFilter = filters.assignee.length > 0
+    const hasAccountFilter = filters.account.length > 0
+    const hasProductFilter = filters.product.length > 0
+    const hasIssueTypeFilter = filters.issue_type.length > 0
+    const hasStatusFilter = filters.status.length > 0
+    const hasSearch = searchQuery.trim().length > 0
+
+    if (!hasBuFilter && !hasAssigneeFilter && !hasAccountFilter && !hasProductFilter && !hasIssueTypeFilter && !hasStatusFilter && !hasSearch) {
+      return data // Sem filtros, retorna direto
+    }
+
     let devs = data.devs
     let backlog = data.backlog
     let doneIssues = data.done_issues || []
 
-    const buAssignees = filters.bu.length > 0
+    const buAssignees = hasBuFilter
       ? bus.filter(b => filters.bu.includes(b.name)).flatMap(b => b.members)
       : []
 
     const filterIssue = (issues) => {
       let result = issues
       if (buAssignees.length) result = result.filter(i => buAssignees.includes(i.assignee?.display_name))
-      else if (filters.assignee.length) result = result.filter(i => filters.assignee.includes(i.assignee?.display_name))
-      if (filters.account.length) result = result.filter(i => filters.account.includes(i.account))
-      if (filters.product.length) result = result.filter(i => filters.product.includes(i.product))
-      if (filters.issue_type.length) result = result.filter(i => filters.issue_type.includes(i.issue_type?.name))
-      if (filters.status.length) result = result.filter(i => filters.status.includes(i.status?.name))
-      if (searchQuery.trim()) {
+      else if (hasAssigneeFilter) result = result.filter(i => filters.assignee.includes(i.assignee?.display_name))
+      if (hasAccountFilter) result = result.filter(i => filters.account.includes(i.account))
+      if (hasProductFilter) result = result.filter(i => filters.product.includes(i.product))
+      if (hasIssueTypeFilter) result = result.filter(i => filters.issue_type.includes(i.issue_type?.name))
+      if (hasStatusFilter) result = result.filter(i => filters.status.includes(i.status?.name))
+      if (hasSearch) {
         const q = searchQuery.trim().toLowerCase()
         result = result.filter(i =>
           i.key?.toLowerCase().includes(q) ||
@@ -238,26 +257,26 @@ export default function App() {
 
     if (buAssignees.length) {
       devs = devs.filter(d => buAssignees.includes(d.assignee?.display_name))
-    } else if (filters.assignee.length) {
+    } else if (hasAssigneeFilter) {
       devs = devs.filter(d => filters.assignee.includes(d.assignee?.display_name))
     }
-    if (filters.account.length) {
+    if (hasAccountFilter) {
       devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(i => filters.account.includes(i.account)) }))
         .filter(d => d.active_issues.length > 0)
     }
-    if (filters.product.length) {
+    if (hasProductFilter) {
       devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(i => filters.product.includes(i.product)) }))
         .filter(d => d.active_issues.length > 0)
     }
-    if (filters.issue_type.length) {
+    if (hasIssueTypeFilter) {
       devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(i => filters.issue_type.includes(i.issue_type?.name)) }))
         .filter(d => d.active_issues.length > 0)
     }
-    if (filters.status.length) {
+    if (hasStatusFilter) {
       devs = devs.map(d => ({ ...d, active_issues: d.active_issues.filter(i => filters.status.includes(i.status?.name)) }))
         .filter(d => d.active_issues.length > 0)
     }
-    if (searchQuery.trim()) {
+    if (hasSearch) {
       const q = searchQuery.trim().toLowerCase()
       const match = i =>
         i.key?.toLowerCase().includes(q) ||
