@@ -8,7 +8,6 @@ import AIInsightsView from './components/AIInsightsView'
 import ProductView from './components/ProductView'
 import KanbanView from './components/KanbanView'
 import StaleBanner from './components/StaleBanner'
-import NightSummary from './components/NightSummary'
 import ProductStrip from './components/ProductStrip'
 import FilterDropdown from './components/FilterDropdown'
 import ManagementView from './components/ManagementView'
@@ -47,7 +46,6 @@ export default function App() {
   const [bus, setBus] = useState([])
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
-  const [nightMode, setNightMode] = useState(false)
   const [lightMode, setLightMode] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [backlogOpen, setBacklogOpen] = useState(false)
@@ -335,16 +333,6 @@ export default function App() {
     )
   }
 
-  if (nightMode && data) {
-    return (
-      <NightSummary
-        data={data}
-        lastFetch={lastFetch}
-        onExit={() => setNightMode(false)}
-      />
-    )
-  }
-
   return (
     <div className="app" data-theme={lightMode ? 'light' : 'dark'}>
 
@@ -419,7 +407,6 @@ export default function App() {
           <button className="theme-toggle-btn" onClick={() => setLightMode(p => !p)} aria-label={lightMode ? 'Ativar modo escuro' : 'Ativar modo claro'} title={lightMode ? 'Modo escuro' : 'Modo claro'}>
             {lightMode ? '🌙' : '☀️'}
           </button>
-          <button className="night-btn" onClick={() => setNightMode(true)} aria-label="Ativar modo resumo" title="Modo resumo">🌙</button>
           <button className={`refresh-btn ${refreshing ? 'loading' : ''}`} onClick={handleRefresh} disabled={refreshing} aria-label={refreshing ? 'Atualizando dados' : 'Atualizar dados agora'}>
             {refreshing ? 'atualizando...' : '↻ atualizar'}
           </button>
