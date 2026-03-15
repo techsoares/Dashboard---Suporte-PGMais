@@ -1,0 +1,339 @@
+/* ===== Dashboard Home ===== */
+
+.dh-root {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0;
+}
+
+.dh-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.dh-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.dh-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 4px 0 0 0;
+  font-weight: 300;
+}
+
+.dh-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* ===== Card Base ===== */
+
+.dh-card {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.dh-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--azul-claro), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.dh-card:hover {
+  border-color: var(--azul-primario);
+  box-shadow: 0 4px 16px rgba(53, 89, 235, 0.12);
+}
+
+.dh-card:hover::before {
+  opacity: 1;
+}
+
+.dh-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dh-card-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.dh-card-title {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.dh-card-value {
+  font-family: 'Poppins', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--azul-claro);
+  line-height: 1;
+  margin: 4px 0 0 0;
+}
+
+.dh-card-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+.dh-card-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.dh-card-empty {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+  font-style: italic;
+}
+
+.dh-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dh-card-item {
+  display: inline-block;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: 'Lato', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--azul-claro);
+  text-decoration: none;
+  transition: all 0.15s;
+  width: fit-content;
+}
+
+.dh-card-item:hover {
+  background: var(--azul-primario);
+  color: #fff;
+  border-color: var(--azul-primario);
+}
+
+.dh-card-item--overdue {
+  color: var(--rosa);
+  border-color: var(--rosa);
+}
+
+.dh-card-item--overdue:hover {
+  background: var(--rosa);
+  color: #fff;
+}
+
+/* ===== Card Variants ===== */
+
+.dh-card--workload {
+  border-left: 4px solid var(--azul-primario);
+}
+
+.dh-card--urgent {
+  border-left: 4px solid var(--rosa);
+}
+
+.dh-card--overdue {
+  border-left: 4px solid var(--rosa);
+}
+
+.dh-card--blocked {
+  border-left: 4px solid var(--amarelo);
+}
+
+.dh-card--deadline {
+  border-left: 4px solid var(--azul-claro);
+}
+
+.dh-card--tip {
+  background: linear-gradient(135deg, rgba(61, 183, 244, 0.08) 0%, rgba(254, 112, 189, 0.04) 100%);
+  border-left: 4px solid var(--azul-claro);
+}
+
+.dh-card-tip-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ===== Gestão Cards ===== */
+
+.dh-card--health {
+  border-left: 4px solid var(--verde);
+}
+
+.dh-card--health.dh-card--yellow {
+  border-left-color: var(--amarelo);
+}
+
+.dh-card--health.dh-card--red {
+  border-left-color: var(--rosa);
+}
+
+.dh-card--stale {
+  border-left: 4px solid var(--amarelo);
+}
+
+.dh-card--bu {
+  border-left: 4px solid var(--azul-claro);
+}
+
+.dh-card--progress {
+  border-left: 4px solid var(--azul-primario);
+}
+
+.dh-card--waiting {
+  border-left: 4px solid var(--amarelo);
+}
+
+.dh-card--action {
+  background: linear-gradient(135deg, rgba(64, 235, 79, 0.08) 0%, rgba(61, 183, 244, 0.04) 100%);
+  border-left: 4px solid var(--verde);
+}
+
+.dh-card-action-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ===== Executive Cards ===== */
+
+.dh-card--total {
+  border-left: 4px solid var(--azul-primario);
+}
+
+.dh-card--capacity {
+  border-left: 4px solid var(--verde);
+}
+
+.dh-card--risk {
+  border-left: 4px solid var(--rosa);
+}
+
+.dh-card--recommendation {
+  background: linear-gradient(135deg, rgba(254, 112, 189, 0.08) 0%, rgba(61, 183, 244, 0.04) 100%);
+  border-left: 4px solid var(--rosa);
+  grid-column: 1 / -1;
+}
+
+.dh-card-rec-text {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.dh-risk-account {
+  display: inline-block;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: var(--rosa);
+  font-weight: 600;
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+
+.dh-deadline-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.dh-deadline-item:last-child {
+  border-bottom: none;
+}
+
+.dh-deadline-key {
+  font-family: 'Lato', monospace;
+  font-weight: 600;
+  color: var(--azul-claro);
+}
+
+.dh-deadline-date {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* ===== Responsive ===== */
+
+@media (max-width: 1024px) {
+  .dh-grid-3 {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  .dh-card-value {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .dh-header {
+    flex-direction: column;
+  }
+
+  .dh-title {
+    font-size: 1.4rem;
+  }
+
+  .dh-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .dh-card {
+    padding: 16px;
+  }
+
+  .dh-card-value {
+    font-size: 1.6rem;
+  }
+
+  .dh-card--recommendation {
+    grid-column: 1;
+  }
+}

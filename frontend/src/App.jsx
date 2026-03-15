@@ -14,6 +14,9 @@ import FilterDropdown from './components/FilterDropdown'
 import ManagementView from './components/ManagementView'
 import AdminView from './components/AdminView'
 import PrioritizationView from './components/PrioritizationView'
+import DashboardHome from './components/DashboardHome'
+import PrioritizationWizard from './components/PrioritizationWizard'
+import TimelineView from './components/TimelineView'
 import { API_BASE_URL } from './apiUrl'
 import './App.css'
 
@@ -47,6 +50,8 @@ export default function App() {
   const [lightMode, setLightMode] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [backlogOpen, setBacklogOpen] = useState(false)
+  const [showPrioritizationWizard, setShowPrioritizationWizard] = useState(false)
+  const [dashboardSubView, setDashboardSubView] = useState('grid') // grid | home
   const prevKeysRef = useRef(null)
 
   // Verificar se está na página de callback
@@ -358,14 +363,14 @@ export default function App() {
       <header className="app-header">
         <p className="tagline">tech, but <em>people first.</em></p>
         <nav className="header-nav">
-          <button className={`nav-pill ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentView('dashboard')} aria-label="Ir para Dashboard">Dashboard</button>
+          <button className={`nav-pill ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => { setCurrentView('dashboard'); setDashboardSubView('grid') }} aria-label="Ir para Dashboard">Dashboard</button>
           
           <div className="nav-pill-group">
             <button className={`nav-pill ${['management', 'ai', 'product'].includes(currentView) ? 'active' : ''}`} aria-label="Abrir menu de análise" aria-expanded={['management', 'ai', 'product'].includes(currentView)}>Análise</button>
             <div className="nav-pill-submenu">
-              <button className={`nav-pill-item ${currentView === 'management' ? 'active' : ''}`} onClick={() => setCurrentView('management')}>Gestão</button>
-              <button className={`nav-pill-item ${currentView === 'ai' ? 'active' : ''}`} onClick={() => setCurrentView('ai')}>IA Insights</button>
+              <button className={`nav-pill-item ${currentView === 'management' ? 'active' : ''}`} onClick={() => setCurrentView('management')}>Gestão + IA</button>
               <button className={`nav-pill-item ${currentView === 'product' ? 'active' : ''}`} onClick={() => setCurrentView('product')}>Produto</button>
+              <button className={`nav-pill-item ${currentView === 'timeline' ? 'active' : ''}`} onClick={() => setCurrentView('timeline')}>Timeline</button>
             </div>
           </div>
           
@@ -392,6 +397,22 @@ export default function App() {
               atualizado às {lastFetch.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
+          {currentView === 'dashboard' && (
+            <button
+              className="nav-pill"
+              onClick={() => setDashboardSubView(dashboardSubView === 'home' ? 'grid' : 'home')}
+              title={dashboardSubView === 'home' ? 'Voltar para grid' : 'Ver dashboard contextual'}
+            >
+              {dashboardSubView === 'home' ? 'Grid' : 'Home'}
+            </button>
+          )}
+          <button
+            className="nav-pill"
+            onClick={() => setShowPrioritizationWizard(true)}
+            title="Solicitar priorização de jira"
+          >
+            ⚡ Priorizar
+          </button>
           <button className="theme-toggle-btn" onClick={() => setLightMode(p => !p)} aria-label={lightMode ? 'Ativar modo escuro' : 'Ativar modo claro'} title={lightMode ? 'Modo escuro' : 'Modo claro'}>
             {lightMode ? '🌙' : '☀️'}
           </button>
@@ -415,13 +436,17 @@ export default function App() {
 
       {currentView === 'dashboard' && filteredData && (
         <>
-          <div className="kpi-product-row" role="region" aria-label="Indicadores de desempenho">
-            <KpiBar kpis={filteredKpis} delta={hasAnyFilter ? null : data.kpi_delta} />
-            <div className="kpi-product-divider" aria-hidden="true" />
-            <ProductStrip issues={filteredData.backlog} />
-          </div>
+          {dashboardSubView === 'home' ? (
+            <DashboardHome data={data} user={user} bus={bus} />
+          ) : (
+            <>
+              <div className="kpi-product-row" role="region" aria-label="Indicadores de desempenho">
+                <KpiBar kpis={filteredKpis} delta={hasAnyFilter ? null : data.kpi_delta} />
+                <div className="kpi-product-divider" aria-hidden="true" />
+                <ProductStrip issues={filteredData.backlog} />
+              </div>
 
-          <div className="filter-bar" role="region" aria-label="Filtros e busca">
+              <div className="filter-bar" role="region" aria-label="Filtros e busca">
             <div className="search-wrapper">
               <span className="search-icon" aria-hidden="true">🔍</span>
               <input
@@ -489,31 +514,42 @@ export default function App() {
               </div>
             )}
 
-            {data.stale_issues?.length > 0 && (
-              <StaleBanner issues={data.stale_issues} jiraBaseUrl={data.jira_base_url} />
-            )}
-          </div>
+                {data.stale_issues?.length > 0 && (
+                  <StaleBanner issues={data.stale_issues} jiraBaseUrl={data.jira_base_url} />
+                )}
+              </div>
 
-          <main className="app-body app-body--full" role="main" aria-label="Grid de desenvolvedores">
-            <DevGrid devs={filteredData.devs} jiraBaseUrl={filteredData.jira_base_url} bus={bus} />
-          </main>
+              <main className="app-body app-body--full" role="main" aria-label="Grid de desenvolvedores">
+                <DevGrid devs={filteredData.devs} jiraBaseUrl={filteredData.jira_base_url} bus={bus} />
+              </main>
 
-          <button className="backlog-toggle-btn" onClick={() => setBacklogOpen(v => !v)} aria-label={backlogOpen ? 'Fechar backlog' : `Abrir backlog com ${filteredData.backlog.length} items`} aria-expanded={backlogOpen}>
-            {backlogOpen ? '✕' : `Backlog (${filteredData.backlog.length})`}
-          </button>
-          <div className={`backlog-drawer ${backlogOpen ? 'backlog-drawer--open' : ''}`}>
-            <BacklogPanel issues={filteredData.backlog} jiraBaseUrl={filteredData.jira_base_url} />
-          </div>
-          {backlogOpen && <div className="backlog-overlay" onClick={() => setBacklogOpen(false)} />}
+              <button className="backlog-toggle-btn" onClick={() => setBacklogOpen(v => !v)} aria-label={backlogOpen ? 'Fechar backlog' : `Abrir backlog com ${filteredData.backlog.length} items`} aria-expanded={backlogOpen}>
+                {backlogOpen ? '✕' : `Backlog (${filteredData.backlog.length})`}
+              </button>
+              <div className={`backlog-drawer ${backlogOpen ? 'backlog-drawer--open' : ''}`}>
+                <BacklogPanel issues={filteredData.backlog} jiraBaseUrl={filteredData.jira_base_url} />
+              </div>
+              {backlogOpen && <div className="backlog-overlay" onClick={() => setBacklogOpen(false)} />}
+            </>
+          )}
         </>
       )}
 
       {currentView === 'management' && data && <ManagementView data={filteredData} filters={filters} />}
-      {currentView === 'ai' && data && <AIInsightsView data={data} />}
       {currentView === 'product' && filteredData && <ProductView data={filteredData} />}
+      {currentView === 'timeline' && data && <TimelineView data={data} />}
       {currentView === 'kanban' && data && <KanbanView data={data} />}
       {currentView === 'admin' && user?.permissions?.includes('admin') && <AdminView assignees={filterOptions.assignees} onBusChange={setBus} user={user} />}
       {currentView === 'prioritization' && data && <PrioritizationView data={data} bus={bus} user={user} />}
+
+      {showPrioritizationWizard && (
+        <PrioritizationWizard
+          data={data}
+          user={user}
+          bus={bus}
+          onClose={() => setShowPrioritizationWizard(false)}
+        />
+      )}
 
       <footer className="app-footer">
         Desenvolvido por <span className="app-footer-name">Andressa Soares</span>
