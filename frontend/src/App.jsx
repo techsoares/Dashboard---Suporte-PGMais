@@ -18,6 +18,7 @@ import DashboardHome from './components/DashboardHome'
 import PrioritizationWizard from './components/PrioritizationWizard'
 import TimelineView from './components/TimelineView'
 import { API_BASE_URL } from './apiUrl'
+import { identify, track } from './analytics'
 import './App.css'
 
 const REFRESH_SECRET = import.meta.env.VITE_REFRESH_SECRET ?? ''
@@ -167,6 +168,8 @@ export default function App() {
 
   const handleLoginSuccess = (loggedInUser) => {
     setUser(loggedInUser)
+    identify(loggedInUser.email)
+    track('login', { email: loggedInUser.email, bu: loggedInUser.bu_name })
     setCurrentView('dashboard')
     setLoading(true)
     fetchDashboard()
@@ -369,7 +372,7 @@ export default function App() {
             <button className={`nav-pill ${['management', 'ai', 'product'].includes(currentView) ? 'active' : ''}`} aria-label="Abrir menu de análise" aria-expanded={['management', 'ai', 'product'].includes(currentView)}>Análise</button>
             <div className="nav-pill-submenu">
               <button className={`nav-pill-item ${currentView === 'management' ? 'active' : ''}`} onClick={() => setCurrentView('management')}>Gestão + IA</button>
-              <button className={`nav-pill-item ${currentView === 'product' ? 'active' : ''}`} onClick={() => setCurrentView('product')}>Produto</button>
+              <button className={`nav-pill-item ${currentView === 'product' ? 'active' : ''}`} onClick={() => { setCurrentView('product'); track('view_product') }}>Produto</button>
               <button className={`nav-pill-item ${currentView === 'timeline' ? 'active' : ''}`} onClick={() => setCurrentView('timeline')}>Timeline</button>
             </div>
           </div>

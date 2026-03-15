@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import { track } from '../analytics'
 import './ProductView.css'
 
 const COLORS = [
@@ -323,6 +324,9 @@ export default function ProductView({ data }) {
   const [period, setPeriod] = useState(null)
   const [drillProduct, setDrillProduct] = useState(null)
 
+  // Rastreia abertura da tela
+  useEffect(() => { track('product_view_opened') }, [])
+
   const allIssues = useMemo(
     () => dedup([...data.backlog, ...data.devs.flatMap(d => d.active_issues)]),
     [data]
@@ -375,7 +379,7 @@ export default function ProductView({ data }) {
             {PERIOD_OPTIONS.map(opt => (
               <button key={opt.label}
                 className={`pv-period-btn ${period === opt.days ? 'active' : ''}`}
-                onClick={() => setPeriod(opt.days)}>
+                onClick={() => { setPeriod(opt.days); track('product_period_filter', { period: opt.label }) }}>
                 {opt.label}
               </button>
             ))}
@@ -480,7 +484,7 @@ export default function ProductView({ data }) {
               {ranked.map((p, i) => (
                 <tr key={p.name}
                     className={`pv-table-row-click${activeDrill === p.name ? ' pv-table-row-active' : ''}`}
-                    onClick={() => setDrillProduct(p.name)}>
+                    onClick={() => { setDrillProduct(p.name); track('product_drill_click', { product: p.name, total: p.total, overdue: p.overdue }) }}>
                   <td><span className="pv-rank" style={{ background: COLORS[i % COLORS.length] }}>#{i+1}</span></td>
                   <td className="pv-td-name">{p.name}</td>
                   <td className="pv-td-num">{p.total}</td>
