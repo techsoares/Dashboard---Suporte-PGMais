@@ -276,6 +276,32 @@ body {
   transform: scale(0.95);
 }
 
+.admin-settings-btn {
+  background: transparent;
+  border: 1.5px solid var(--border-strong);
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-settings-btn:hover {
+  background: #fff3cd;
+  border-color: #ffc107;
+  color: #ff9800;
+  transform: scale(1.05);
+}
+
+.admin-settings-btn:active {
+  transform: scale(0.95);
+}
+
 .theme-toggle-btn {
   background: transparent;
   border: 1.5px solid var(--border-strong);

@@ -30,13 +30,26 @@ JIRA_EMAIL: str = os.getenv("JIRA_EMAIL", "")
 JIRA_TOKEN: str = os.getenv("JIRA_TOKEN", "")
 JIRA_PROJECT: str = os.getenv("JIRA_PROJECT", "ON")
 
+
+def _get_jira_config() -> tuple[str, str, str, str]:
+    """Lê configuração do Jira em runtime para suportar reload sem reiniciar."""
+    return (
+        os.getenv("JIRA_BASE_URL", JIRA_BASE_URL),
+        os.getenv("JIRA_EMAIL", JIRA_EMAIL),
+        os.getenv("JIRA_TOKEN", JIRA_TOKEN),
+        os.getenv("JIRA_PROJECT", JIRA_PROJECT),
+    )
+
+
 API_BASE = f"{JIRA_BASE_URL}/rest/api/3"
 SEARCH_URL = f"{API_BASE}/search/jql"
 
 # --- Auth header ----------------------------------------------------------
 
 def _auth_header() -> dict[str, str]:
-    raw = f"{JIRA_EMAIL}:{JIRA_TOKEN}"
+    email = os.getenv("JIRA_EMAIL", JIRA_EMAIL)
+    token = os.getenv("JIRA_TOKEN", JIRA_TOKEN)
+    raw = f"{email}:{token}"
     encoded = base64.b64encode(raw.encode()).decode()
     return {
         "Authorization": f"Basic {encoded}",
@@ -229,6 +242,7 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
     resolved_date_raw = fields.get("statuscategorychangedate") or fields.get("resolutiondate")
     resolved_date: Optional[str] = resolved_date_raw if isinstance(resolved_date_raw, str) else None
 
+    base_url, _, _, _ = _get_jira_config()
     return Issue(
         key=key,
         summary=fields.get("summary", ""),
@@ -244,7 +258,7 @@ def _build_issue(fields: dict, key: str, changelog_histories: list[dict]) -> Iss
         resolved_date=resolved_date,
         time_in_status=time_in_status,
         is_overdue=_is_overdue(due_date),
-        jira_url=f"{JIRA_BASE_URL}/browse/{key}",
+        jira_url=f"{base_url}/browse/{key}",
         account=account,
         product=product,
     )
@@ -260,12 +274,14 @@ async def _get(client: httpx.AsyncClient, url: str, params: dict | None = None) 
 
 async def _fetch_changelog(client: httpx.AsyncClient, key: str) -> list[dict]:
     """Busca o changelog de uma issue. Pagina até esgotar."""
+    base_url, _, _, _ = _get_jira_config()
+    api_base = f"{base_url}/rest/api/3"
     histories: list[dict] = []
     start_at = 0
     while True:
         data = await _get(
             client,
-            f"{API_BASE}/issue/{key}/changelog",
+            f"{api_base}/issue/{key}/changelog",
             params={"startAt": start_at, "maxResults": 100},
         )
         values: list[dict] = data.get("values", [])
@@ -293,10 +309,13 @@ async def fetch_active_issues() -> list[Issue]:
     """
     import asyncio
 
+    base_url, _, _, project = _get_jira_config()
+    search_url = f"{base_url}/rest/api/3/search/jql"
+
     jql = (
         f'statusCategory IN ("In Progress", "New") '
         f'AND issuetype NOT IN subTaskIssueTypes() '
-        f'AND project = "{JIRA_PROJECT}" '
+        f'AND project = "{project}" '
         f'ORDER BY assignee, status DESC'
     )
     raw_all: list[dict] = []
@@ -310,7 +329,7 @@ async def fetch_active_issues() -> list[Issue]:
             if next_page_token:
                 params["nextPageToken"] = next_page_token
 
-            data = await _get(client, SEARCH_URL, params=params)
+            data = await _get(client, search_url, params=params)
             raw_issues: list[dict] = data.get("issues", [])
             raw_all.extend(raw_issues)
 
@@ -341,10 +360,13 @@ async def fetch_active_issues() -> list[Issue]:
 
 async def fetch_done_this_week() -> list[Issue]:
     """Issues concluídas desde o início da semana atual."""
+    base_url, _, _, project = _get_jira_config()
+    search_url = f"{base_url}/rest/api/3/search/jql"
+
     jql = (
         f'statusCategory = Done '
         f'AND statusCategoryChangedDate >= startOfWeek() '
-        f'AND project = "{JIRA_PROJECT}"'
+        f'AND project = "{project}"'
     )
     issues: list[Issue] = []
 
@@ -356,7 +378,7 @@ async def fetch_done_this_week() -> list[Issue]:
             if next_page_token:
                 params["nextPageToken"] = next_page_token
 
-            data = await _get(client, SEARCH_URL, params=params)
+            data = await _get(client, search_url, params=params)
             raw_issues: list[dict] = data.get("issues", [])
             for raw in raw_issues:
                 key: str = raw.get("key", "")
@@ -372,11 +394,14 @@ async def fetch_done_this_week() -> list[Issue]:
 
 async def fetch_done_last_week() -> list[Issue]:
     """Issues concluídas na semana anterior (para comparação de delta)."""
+    base_url, _, _, project = _get_jira_config()
+    search_url = f"{base_url}/rest/api/3/search/jql"
+
     jql = (
         f'statusCategory = Done '
         f'AND statusCategoryChangedDate >= startOfWeek("-1w") '
         f'AND statusCategoryChangedDate < startOfWeek() '
-        f'AND project = "{JIRA_PROJECT}"'
+        f'AND project = "{project}"'
     )
     issues: list[Issue] = []
 
@@ -388,7 +413,7 @@ async def fetch_done_last_week() -> list[Issue]:
             if next_page_token:
                 params["nextPageToken"] = next_page_token
 
-            data = await _get(client, SEARCH_URL, params=params)
+            data = await _get(client, search_url, params=params)
             raw_issues: list[dict] = data.get("issues", [])
             for raw in raw_issues:
                 key: str = raw.get("key", "")
@@ -517,6 +542,9 @@ async def fetch_done_last_n_weeks(from_date: date, to_date: date | None = None) 
     """
     import asyncio
 
+    base_url, _, _, project = _get_jira_config()
+    search_url = f"{base_url}/rest/api/3/search/jql"
+
     jql_date = f'statusCategoryChangedDate >= "{from_date.isoformat()}"'
     if to_date:
         jql_date += f' AND statusCategoryChangedDate < "{to_date.isoformat()}"'
@@ -524,7 +552,7 @@ async def fetch_done_last_n_weeks(from_date: date, to_date: date | None = None) 
     jql = (
         f'statusCategory = Done '
         f'AND {jql_date} '
-        f'AND project = "{JIRA_PROJECT}" '
+        f'AND project = "{project}" '
         f'ORDER BY statusCategoryChangedDate DESC'
     )
     raw_all: list[dict] = []
@@ -542,7 +570,7 @@ async def fetch_done_last_n_weeks(from_date: date, to_date: date | None = None) 
             params: dict = {"jql": jql, "maxResults": 100, "fields": FIELDS}
             if next_page_token:
                 params["nextPageToken"] = next_page_token
-            data = await _get(client, SEARCH_URL, params=params)
+            data = await _get(client, search_url, params=params)
             raw_issues: list[dict] = data.get("issues", [])
             raw_all.extend(raw_issues)
             next_page_token = data.get("nextPageToken")
@@ -774,6 +802,8 @@ async def fetch_all_jira_users() -> list[dict]:
     Busca todos os usuários ativos do Jira Cloud usando o endpoint /users/search.
     Retorna lista de {account_id, display_name, avatar_url, email}.
     """
+    base_url, _, _, _ = _get_jira_config()
+    api_base = f"{base_url}/rest/api/3"
     users: list[dict] = []
     start_at = 0
     max_results = 200
@@ -782,7 +812,7 @@ async def fetch_all_jira_users() -> list[dict]:
         while True:
             params = {"startAt": start_at, "maxResults": max_results}
             resp = await client.get(
-                f"{API_BASE}/users/search",
+                f"{api_base}/users/search",
                 params=params,
                 headers=_auth_header(),
             )

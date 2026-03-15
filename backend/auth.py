@@ -115,8 +115,18 @@ USERS_FILE = os.path.join(os.path.dirname(__file__), "users.json")
 def _load_users() -> dict:
     """Carrega mapeamento de usuários → BUs."""
     if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if not content:
+                    return {}
+                return json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error("Erro ao parsear users.json: %s", e)
+            return {}
+        except Exception as e:
+            logger.error("Erro ao carregar users.json: %s", e)
+            return {}
     return {}
 
 
@@ -169,86 +179,97 @@ def authenticate_user(email: str, password: str = "") -> UserProfile:
     - Admins: Requerem senha obrigatória
     - Usuários normais: Login sem senha para domínios permitidos
     """
-    email_lower = email.strip().lower()
-    
-    # Verificar se é domínio permitido (@pgmais ou @ciclo)
-    is_allowed_domain = any(domain in email_lower for domain in ALLOWED_DOMAINS)
-    
-    if not is_allowed_domain:
-        logger.warning("Domínio não permitido: %s", email_lower)
-        raise HTTPException(status_code=401, detail="Apenas emails @pgmais ou @ciclo são permitidos")
-    
-    # Verificar se é admin
-    is_admin = email_lower in [admin.lower() for admin in ADMIN_CREDENTIALS.keys()]
-    
-    # ADMIN: Requer senha obrigatória
-    if is_admin:
-        if not password:
-            logger.warning("Admin tentou login sem senha: %s", email_lower)
-            raise HTTPException(status_code=401, detail="Senha obrigatória para administradores")
+    try:
+        email_lower = email.strip().lower()
         
-        correct_password = ADMIN_CREDENTIALS.get(email_lower)
-        if password != correct_password:
-            logger.warning("Senha incorreta para admin: %s", email_lower)
-            raise HTTPException(status_code=401, detail="Email ou senha incorretos")
+        # Verificar se é domínio permitido (@pgmais ou @ciclo)
+        is_allowed_domain = any(domain in email_lower for domain in ALLOWED_DOMAINS)
         
-        logger.info("Admin autenticado com sucesso: %s", email_lower)
+        if not is_allowed_domain:
+            logger.warning("Domínio não permitido: %s", email_lower)
+            raise HTTPException(status_code=401, detail="Apenas emails @pgmais ou @ciclo são permitidos")
+        
+        # Verificar se é admin
+        is_admin = email_lower in [admin.lower() for admin in ADMIN_CREDENTIALS.keys()]
+        
+        # ADMIN: Requer senha obrigatória
+        if is_admin:
+            if not password:
+                logger.warning("Admin tentou login sem senha: %s", email_lower)
+                raise HTTPException(status_code=401, detail="Senha obrigatória para administradores")
+            
+            correct_password = ADMIN_CREDENTIALS.get(email_lower)
+            if password != correct_password:
+                logger.warning("Senha incorreta para admin: %s", email_lower)
+                raise HTTPException(status_code=401, detail="Email ou senha incorretos")
+            
+            logger.info("Admin autenticado com sucesso: %s", email_lower)
+        
+        # Buscar ou criar usuário
+        user_bu = get_user_bu(email_lower)
+        
+        if not user_bu:
+            # Auto-cadastro para domínios permitidos
+            name = email_lower.split('@')[0].replace('.', ' ').title()
+            user_bu = {
+                "email": email_lower,
+                "name": name,
+                "bu_id": "default",
+                "bu_name": "PGMais",
+                "bu_type": "operacional",
+                "roles": ["admin", "dev"] if is_admin else ["dev"],
+                "permissions": ["read", "write", "admin", "manage_users"] if is_admin else ["read"],
+            }
+            # Salvar novo usuário
+            users = _load_users()
+            users[email_lower] = user_bu
+            _save_users(users)
+            logger.info("Novo usuário auto-cadastrado: %s (admin=%s)", email_lower, is_admin)
+        
+        # Atualizar permissões se mudou para admin
+        if is_admin and "admin" not in user_bu.get("roles", []):
+            user_bu["roles"] = ["admin", "dev"]
+            user_bu["permissions"] = ["read", "write", "admin", "manage_users"]
+            users = _load_users()
+            users[email_lower] = user_bu
+            _save_users(users)
+            logger.info("Usuário promovido a admin: %s", email_lower)
+        
+        # SEMPRE sincronizar BU do bus.json (com tratamento de erro)
+        try:
+            bu_info = _get_user_bu_from_bus_file(user_bu.get("name", ""))
+            if bu_info:
+                user_bu["bu_id"] = bu_info["bu_id"]
+                user_bu["bu_name"] = bu_info["bu_name"]
+                user_bu["bu_type"] = bu_info["bu_type"]
+                # Atualizar no arquivo users.json
+                users = _load_users()
+                users[email_lower] = user_bu
+                _save_users(users)
+                logger.info("BU sincronizada para %s: %s (%s)", email_lower, bu_info["bu_name"], bu_info["bu_type"])
+        except Exception as e:
+            logger.warning("Erro ao sincronizar BU para %s: %s", email_lower, str(e))
+            # Continua mesmo se BU não for encontrada
+        
+        user = UserProfile(
+            user_id=email_lower,
+            email=email_lower,
+            name=user_bu.get("name", email_lower),
+            bu_id=user_bu.get("bu_id"),
+            bu_name=user_bu.get("bu_name"),
+            bu_type=user_bu.get("bu_type", "operacional"),
+            roles=user_bu.get("roles", ["dev"]),
+            permissions=user_bu.get("permissions", ["read"]),
+        )
+        
+        logger.info("Login bem-sucedido: %s (admin=%s, bu_type=%s)", email_lower, is_admin, user.bu_type)
+        return user
     
-    # Buscar ou criar usuário
-    user_bu = get_user_bu(email_lower)
-    
-    if not user_bu:
-        # Auto-cadastro para domínios permitidos
-        name = email_lower.split('@')[0].replace('.', ' ').title()
-        user_bu = {
-            "email": email_lower,
-            "name": name,
-            "bu_id": "default",
-            "bu_name": "PGMais",
-            "bu_type": "operacional",
-            "roles": ["admin", "dev"] if is_admin else ["dev"],
-            "permissions": ["read", "write", "admin", "manage_users"] if is_admin else ["read"],
-        }
-        # Salvar novo usuário
-        users = _load_users()
-        users[email_lower] = user_bu
-        _save_users(users)
-        logger.info("Novo usuário auto-cadastrado: %s (admin=%s)", email_lower, is_admin)
-    
-    # Atualizar permissões se mudou para admin
-    if is_admin and "admin" not in user_bu.get("roles", []):
-        user_bu["roles"] = ["admin", "dev"]
-        user_bu["permissions"] = ["read", "write", "admin", "manage_users"]
-        users = _load_users()
-        users[email_lower] = user_bu
-        _save_users(users)
-        logger.info("Usuário promovido a admin: %s", email_lower)
-    
-    # SEMPRE sincronizar BU do bus.json (tanto para novos quanto existentes)
-    bu_info = _get_user_bu_from_bus_file(user_bu.get("name", ""))
-    if bu_info:
-        user_bu["bu_id"] = bu_info["bu_id"]
-        user_bu["bu_name"] = bu_info["bu_name"]
-        user_bu["bu_type"] = bu_info["bu_type"]
-        # Atualizar no arquivo users.json
-        users = _load_users()
-        users[email_lower] = user_bu
-        _save_users(users)
-        logger.info("BU sincronizada para %s: %s (%s)", email_lower, bu_info["bu_name"], bu_info["bu_type"])
-    
-    user = UserProfile(
-        user_id=email_lower,
-        email=email_lower,
-        name=user_bu.get("name", email_lower),
-        bu_id=user_bu.get("bu_id"),
-        bu_name=user_bu.get("bu_name"),
-        bu_type=user_bu.get("bu_type", "operacional"),
-        roles=user_bu.get("roles", ["dev"]),
-        permissions=user_bu.get("permissions", ["read"]),
-    )
-    
-    logger.info("Login bem-sucedido: %s (admin=%s, bu_type=%s)", email_lower, is_admin, user.bu_type)
-    return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erro inesperado na autenticação: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao autenticar: {str(e)}")
 
 
 def _get_user_bu_from_bus_file(user_name: str) -> Optional[dict]:
@@ -264,7 +285,11 @@ def _get_user_bu_from_bus_file(user_name: str) -> Optional[dict]:
     
     try:
         with open(bus_file, "r", encoding="utf-8") as f:
-            bus_list = json.load(f)
+            content = f.read().strip()
+            if not content:
+                logger.warning("bus.json está vazio")
+                return None
+            bus_list = json.loads(content)
         
         logger.info("Buscando BU para usuário: '%s'", user_name)
         

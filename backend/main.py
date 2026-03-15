@@ -24,8 +24,14 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from cache import cache
 from database import init_db, get_bus, save_bus, get_priority_requests, save_priority_request
+
+load_dotenv()
+
+# Inicializar banco de dados antes de importar cache
+init_db()
+
+from cache import cache
 from security import (
     InputValidator, DataSanitizer, SecurityLogger, SECURITY_HEADERS,
     api_limiter, auth_limiter
@@ -42,8 +48,6 @@ from auth import (
     get_user_bu, set_user_bu, authenticate_user,
     get_admin_credentials, add_admin, remove_admin
 )
-
-load_dotenv()
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -511,12 +515,17 @@ async def login(body: LoginRequest):
     Admins são configurados em ADMIN_EMAILS no auth.py.
     """
     try:
+        logger.debug("Login attempt: %s", body.email)
         user = authenticate_user(body.email, body.password)
         access_token = create_jwt_token(user)
         logger.info("Login bem-sucedido: %s (BU: %s, Admin: %s)", user.email, user.bu_name or "sem BU", "admin" in user.roles)
         return LoginResponse(access_token=access_token, user=user)
-    except HTTPException:
+    except HTTPException as e:
+        logger.warning("Login falhou para %s: %s", body.email, e.detail)
         raise
+    except Exception as e:
+        logger.error("Erro interno no login para %s: %s", body.email, str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro interno no servidor: {str(e)}")
 
 
 
@@ -880,43 +889,24 @@ async def ai_chat(body: AIChatRequest):
     # Prompt framework: CO-STAR + Dual-Persona (CEO estratégico / Dev operacional)
     system_prompt = (
         # --- REGRA DE FORMATO ---
-        "REGRA DE SAÍDA: use uma mistura natural de texto corrido e listas com bullet points (- item). "
-        "Bullet points são permitidos e recomendados para listar jiras, responsáveis, números e ações. "
-        "Parágrafos de texto corrido servem para análise, contexto e conclusões. "
-        "NÃO use asteriscos para negrito (**), hashtags (#) para títulos, underline (_), "
-        "blocos de código ou tags XML. Sem limite de tamanho — responda de forma completa e detalhada. "
-        "Seja tão extenso quanto o necessário para cobrir todos os pontos relevantes.\n\n"
+        "REGRA DE SAÍDA: respostas curtas e diretas. Máximo 5-8 linhas por resposta. "
+        "Use bullet points (- item) para listas. Texto corrido apenas para conclusão. "
+        "PROIBIDO: asteriscos para negrito (**), hashtags (#), underline (_), blocos de código. "
+        "Seja objetivo — corte qualquer informação que não seja acionável.\n\n"
 
         # --- CONTEXTO ---
-        "CONTEXTO: Você é o analista de inteligência operacional do dashboard PGMais. "
-        "Tem acesso em tempo real a todos os dados do Jira: jiras, responsáveis, prioridades, "
-        "status, produtos, accounts, datas de vencimento e flags de atraso. "
-        "Os dados completos do backlog estão no contexto desta conversa — use-os.\n\n"
-
-        # --- VISÃO DE NEGÓCIO ---
-        "SAÚDE DO BACKLOG: Backlog grande é sinal de risco operacional e falta de capacity. "
-        "Sempre que avaliar o estado do time ou do projeto, considere o volume total de jiras como "
-        "indicador de saúde — quanto maior o backlog, pior a situação para o negócio. "
-        "Avalie distribuição por dev, sobrecarga individual e capacidade real de entrega do time.\n\n"
+        "CONTEXTO: Analista do dashboard PGMais com acesso em tempo real ao Jira. "
+        "Dados completos do backlog estão no contexto. Use-os.\n\n"
 
         # --- OBJETIVO: DETECÇÃO DE PERSONA ---
-        "OBJETIVO: Identificar automaticamente o tipo de pergunta e responder de forma adequada.\n\n"
+        "PERSONA CEO — ative para perguntas sobre estado geral, saúde, riscos, SLA, performance: "
+        "1 frase de situação atual com números. 1 frase do maior risco. 1 frase de ação imediata.\n\n"
 
-        "PERSONA CEO / GESTÃO — ative quando a pergunta for sobre: estado geral, saúde do backlog, "
-        "performance do time, riscos, SLA, tendências, comparativos ou impacto para o negócio. "
-        "Resposta CEO: Parágrafo 1 — o que está acontecendo agora com dados concretos "
-        "(nomes, chaves, números). Parágrafo 2 — o maior risco identificado e por que é risco para "
-        "o negócio. Parágrafo 3 — recomendação de ação imediata e quem deve executar.\n\n"
+        "PERSONA DEV — ative para perguntas sobre próximo jira, fila, o que priorizar: "
+        "Liste no máximo 3 jiras com [ON-xxx] e 1 motivo cada. Critério: atrasados > Highest/High > vencimento próximo.\n\n"
 
-        "PERSONA DEV / OPERACIONAL — ative quando a pergunta for sobre: próximo jira, o que priorizar, "
-        "fila de atendimento, o que trabalhar, minha fila, chamados pendentes. "
-        "Resposta DEV: aplique o critério de triage — 1º jiras ATRASADOS com prioridade Highest ou High. "
-        "2º jiras Highest ou High com vencimento próximo. "
-        "3º jiras que bloqueiam outros. 4º jiras High em andamento. "
-        "Cite [ON-xxx] e o motivo exato. Seja direto e crítico.\n\n"
-
-        "IDIOMA: português brasileiro. Nunca use a palavra 'issue' — use sempre 'jira' ou 'chamado'. "
-        "OBRIGATÓRIO citar nomes reais, chaves [ON-xxx] e números — nunca generalizar."
+        "IDIOMA: português brasileiro. Use 'jira' ou 'chamado', nunca 'issue'. "
+        "OBRIGATÓRIO citar chaves [ON-xxx] e nomes reais — nunca generalizar."
     )
     if extra_context:
         system_prompt += f"\n\nDADOS DO DASHBOARD:\n{extra_context}"

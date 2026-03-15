@@ -400,7 +400,9 @@ export default function App() {
             {refreshing ? 'atualizando...' : '↻ atualizar'}
           </button>
           {user?.permissions?.includes('admin') && (
-            <button className="admin-toggle-btn" onClick={() => setCurrentView(currentView === 'admin' ? 'dashboard' : 'admin')} aria-label="Abrir painel admin" title="Admin">⚙️</button>
+            <>
+              <button className="admin-toggle-btn" onClick={() => setCurrentView(currentView === 'admin' ? 'dashboard' : 'admin')} aria-label="Abrir painel admin" title="Admin">⚙️</button>
+            </>
           )}
           <button className="logout-btn" onClick={handleLogout} aria-label="Fazer logout" title="Sair">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="18" height="18" fill="currentColor">

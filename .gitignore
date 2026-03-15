@@ -19,6 +19,13 @@ node_modules/
 dist/
 .cache/
 
+# Banco de dados local
+*.db
+*.sqlite
+
+# Logs
+*.log
+
 # OS
 .DS_Store
 Thumbs.db
