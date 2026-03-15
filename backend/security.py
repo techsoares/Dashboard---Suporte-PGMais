@@ -41,7 +41,7 @@ class RateLimiter:
         Returns:
             True se permitido, False se excedeu limite
         """
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         cutoff = now - timedelta(seconds=self.window_seconds)
         
         # Remove requisições antigas
@@ -60,9 +60,9 @@ class RateLimiter:
         return True
 
 
-# Instâncias globais
+# Instâncias globais com limites mais restritivos
 api_limiter = RateLimiter(max_requests=100, window_seconds=60)
-auth_limiter = RateLimiter(max_requests=5, window_seconds=300)  # 5 tentativas em 5 min
+auth_limiter = RateLimiter(max_requests=3, window_seconds=900)  # 3 tentativas em 15 min
 
 
 # ============================================================================
@@ -77,7 +77,11 @@ class InputValidator:
     
     # Padrões de validação
     JIRA_KEY_PATTERN = re.compile(r'^[A-Z][A-Z0-9]{0,9}-\d{1,6}$')
-    EMAIL_PATTERN = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    # Email pattern melhorado para evitar casos edge
+    EMAIL_PATTERN = re.compile(
+        r'^[a-zA-Z0-9][a-zA-Z0-9._%+-]*[a-zA-Z0-9]@'
+        r'[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]\.[a-zA-Z]{2,}$'
+    )
     SAFE_STRING_PATTERN = re.compile(r'^[a-zA-Z0-9\s\-_.@()]+$')
     
     @staticmethod
@@ -237,7 +241,7 @@ class SecurityLogger:
         """
         logger.warning(
             f"Invalid input on {endpoint}: {reason}",
-            extra={"details": details, "timestamp": datetime.now().isoformat()}
+            extra={"details": details, "timestamp": datetime.now(timezone.utc).isoformat()}
         )
     
     @staticmethod
@@ -251,7 +255,7 @@ class SecurityLogger:
         """
         logger.warning(
             f"Rate limit exceeded for {identifier} on {endpoint}",
-            extra={"timestamp": datetime.now().isoformat()}
+            extra={"timestamp": datetime.now(timezone.utc).isoformat()}
         )
     
     @staticmethod
@@ -265,7 +269,7 @@ class SecurityLogger:
         """
         logger.warning(
             f"Unauthorized access attempt on {endpoint}: {reason}",
-            extra={"timestamp": datetime.now().isoformat()}
+            extra={"timestamp": datetime.now(timezone.utc).isoformat()}
         )
 
 

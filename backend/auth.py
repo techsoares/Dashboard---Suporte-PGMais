@@ -6,17 +6,21 @@ Usuário admin pré-configurado: admin / pg@dash123
 import os
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
+import bcrypt
 import jwt
 from fastapi import HTTPException, Header
 from pydantic import BaseModel
 
 logger = logging.getLogger("pgmais.auth")
 
-JWT_SECRET = os.getenv("JWT_SECRET", "pgmais-secret-key-change-in-prod")
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET não configurado. Adicione JWT_SECRET no arquivo .env")
 JWT_ALGORITHM = "HS256"
+JWT_EXPIRY_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "8"))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Models
@@ -51,9 +55,13 @@ class LoginResponse(BaseModel):
 # Configuração de Admins
 # ─────────────────────────────────────────────────────────────────────────────
 
-ADMIN_CREDENTIALS = {
-    "andressa.soares@pgmais.com.br": "Admin@2025",
-}
+# Credenciais de admin carregadas do .env — nunca hardcode aqui
+_ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").strip().lower()
+_ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH", "").strip()
+
+ADMIN_CREDENTIALS: dict[str, str] = {}
+if _ADMIN_EMAIL and _ADMIN_PASSWORD_HASH:
+    ADMIN_CREDENTIALS[_ADMIN_EMAIL] = _ADMIN_PASSWORD_HASH
 
 ALLOWED_DOMAINS = ["@pgmais", "@ciclo"]
 
@@ -64,8 +72,9 @@ def get_admin_credentials() -> dict:
 
 
 def add_admin(email: str, password: str):
-    """Adiciona um novo admin."""
-    ADMIN_CREDENTIALS[email.lower()] = password
+    """Adiciona um novo admin com senha hasheada."""
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    ADMIN_CREDENTIALS[email.lower()] = hashed
     logger.info("Novo admin adicionado: %s", email.lower())
 
 
@@ -91,6 +100,7 @@ def create_jwt_token(user: UserProfile) -> str:
         "roles": user.roles,
         "permissions": user.permissions,
         "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -142,19 +152,20 @@ def get_user_bu(email: str) -> Optional[dict]:
     return users.get(email.lower())
 
 
-def set_user_bu(email: str, bu_id: str, bu_name: str, bu_type: str, roles: list[str], password: str = "pgmais123"):
+def set_user_bu(email: str, bu_id: str, bu_name: str, bu_type: str, roles: list[str]):
     """Associa um usuário a uma BU."""
     users = _load_users()
+    existing = users.get(email.lower(), {})
     users[email.lower()] = {
+        **existing,
         "email": email,
-        "password": password,  # Senha padrão ou fornecida
-        "name": email.split('@')[0].title() if '@' in email else email,
+        "name": existing.get("name", email.split('@')[0].title() if '@' in email else email),
         "bu_id": bu_id,
         "bu_name": bu_name,
         "bu_type": bu_type,
         "roles": roles,
         "permissions": _roles_to_permissions(roles),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     _save_users(users)
 
@@ -198,8 +209,8 @@ def authenticate_user(email: str, password: str = "") -> UserProfile:
                 logger.warning("Admin tentou login sem senha: %s", email_lower)
                 raise HTTPException(status_code=401, detail="Senha obrigatória para administradores")
             
-            correct_password = ADMIN_CREDENTIALS.get(email_lower)
-            if password != correct_password:
+            correct_password_hash = ADMIN_CREDENTIALS.get(email_lower)
+            if not correct_password_hash or not bcrypt.checkpw(password.encode(), correct_password_hash.encode()):
                 logger.warning("Senha incorreta para admin: %s", email_lower)
                 raise HTTPException(status_code=401, detail="Email ou senha incorretos")
             

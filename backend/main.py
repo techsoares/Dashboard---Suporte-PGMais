@@ -17,8 +17,10 @@ import re
 import uuid
 from datetime import datetime, timezone, date, timedelta
 
+_file_lock = asyncio.Lock()
+
 import httpx
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -204,13 +206,16 @@ def _load_bus() -> list[dict]:
             return json.load(f)
     return []
 
-def _save_bus(bus_list: list[dict]):
-    with open(BUS_FILE, "w", encoding="utf-8") as f:
-        json.dump(bus_list, f, ensure_ascii=False, indent=2)
+async def _save_bus(bus_list: list[dict]):
+    async with _file_lock:
+        with open(BUS_FILE, "w", encoding="utf-8") as f:
+            json.dump(bus_list, f, ensure_ascii=False, indent=2)
 
 
 @app.get("/api/jira/users", tags=["jira"], summary="Lista todos os usuários ativos do Jira")
-async def list_jira_users():
+async def list_jira_users(
+    _user: UserProfile = Depends(require_permission("admin"))
+):
     try:
         users = await fetch_all_jira_users()
         return users
@@ -220,39 +225,39 @@ async def list_jira_users():
 
 
 @app.get("/api/admin/bus", tags=["admin"], summary="Lista todas as BUs")
-async def list_bus():
+async def list_bus(_user: UserProfile = Depends(get_current_user)):
     return _load_bus()
 
 
 @app.post("/api/admin/bus", tags=["admin"], status_code=201, summary="Cria nova BU")
-async def create_bu(body: BUCreate):
+async def create_bu(body: BUCreate, _user: UserProfile = Depends(require_permission("admin"))):
     if not body.name.strip():
         raise HTTPException(status_code=400, detail="Nome da BU é obrigatório")
     bus = _load_bus()
     new_bu = {"id": str(uuid.uuid4()), "name": body.name.strip(), "members": [], "bu_type": body.bu_type}
     bus.append(new_bu)
-    _save_bus(bus)
+    await _save_bus(bus)
     return new_bu
 
 
 @app.put("/api/admin/bus/{bu_id}", tags=["admin"], summary="Atualiza nome e membros de uma BU")
-async def update_bu(bu_id: str, body: BUUpdate):
+async def update_bu(bu_id: str, body: BUUpdate, _user: UserProfile = Depends(require_permission("admin"))):
     bus_list = _load_bus()
     for index, existing_bu in enumerate(bus_list):
         if existing_bu["id"] == bu_id:
             bus_list[index] = {"id": bu_id, "name": body.name.strip(), "members": body.members, "bu_type": body.bu_type}
-            _save_bus(bus_list)
+            await _save_bus(bus_list)
             return bus_list[index]
     raise HTTPException(status_code=404, detail="BU não encontrada")
 
 
 @app.delete("/api/admin/bus/{bu_id}", tags=["admin"], summary="Remove uma BU")
-async def delete_bu(bu_id: str):
+async def delete_bu(bu_id: str, _user: UserProfile = Depends(require_permission("admin"))):
     bus_list = _load_bus()
     filtered_bus = [bu for bu in bus_list if bu["id"] != bu_id]
     if len(filtered_bus) == len(bus_list):
         raise HTTPException(status_code=404, detail="BU não encontrada")
-    _save_bus(filtered_bus)
+    await _save_bus(filtered_bus)
     return {"status": "deleted"}
 
 
@@ -274,13 +279,14 @@ def _save_ranking(ranking: list[str]):
 
 
 @app.get("/api/admin/account-ranking", tags=["admin"], summary="Retorna ranking de accounts por faturamento")
-async def get_account_ranking():
+async def get_account_ranking(_user: UserProfile = Depends(get_current_user)):
     return _load_ranking()
 
 
 @app.put("/api/admin/account-ranking", tags=["admin"], summary="Atualiza ranking de accounts")
-async def update_account_ranking(body: AccountRankingUpdate):
-    _save_ranking(body.accounts)
+async def update_account_ranking(body: AccountRankingUpdate, _user: UserProfile = Depends(require_permission("admin"))):
+    async with _file_lock:
+        _save_ranking(body.accounts)
     return {"status": "updated", "count": len(body.accounts)}
 
 
@@ -296,9 +302,10 @@ def _load_priority_requests() -> list[dict]:
             return json.load(f)
     return []
 
-def _save_priority_requests(requests: list[dict]):
-    with open(PRIORITY_FILE, "w", encoding="utf-8") as f:
-        json.dump(requests, f, ensure_ascii=False, indent=2)
+async def _save_priority_requests(requests: list[dict]):
+    async with _file_lock:
+        with open(PRIORITY_FILE, "w", encoding="utf-8") as f:
+            json.dump(requests, f, ensure_ascii=False, indent=2)
 
 
 def _resolve_bu_type(bu_name: str) -> str:
@@ -413,16 +420,23 @@ async def create_priority_request(body: PriorityRequest):
     }
 
     existing_requests.append(request_entry)
-    _save_priority_requests(existing_requests)
+    await _save_priority_requests(existing_requests)
 
     return request_entry
 
 
 @app.delete("/api/priority-requests/{request_id}", tags=["priority"], summary="Remove uma solicitação de prioridade")
-async def delete_priority_request(request_id: str):
+async def delete_priority_request(request_id: str, current_user: UserProfile = Depends(get_current_user)):
     all_requests = _load_priority_requests()
+    target = next((r for r in all_requests if r["id"] == request_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Solicitação não encontrada")
+    is_owner = target["requester_name"].strip().lower() == current_user.name.strip().lower()
+    is_admin = "admin" in current_user.permissions
+    if not is_owner and not is_admin:
+        raise HTTPException(status_code=403, detail="Sem permissão para remover esta solicitação")
     filtered_requests = [req for req in all_requests if req["id"] != request_id]
-    _save_priority_requests(filtered_requests)
+    await _save_priority_requests(filtered_requests)
     return {"status": "deleted"}
 
 
@@ -462,8 +476,11 @@ async def classify_production(body: dict):
     if not api_key:
         return {"production_affected": []}
 
+    def _safe(text: str, max_len: int = 120) -> str:
+        return re.sub(r'[\x00-\x1f]', ' ', str(text or ''))[:max_len]
+
     issue_descriptions = [
-        f"[{issue['key']}] {issue['summary']} (Tipo: {issue.get('type', '-')}, Status: {issue.get('status', '-')})"
+        f"[{_safe(issue['key'], 20)}] {_safe(issue['summary'])} (Tipo: {_safe(issue.get('type', '-'), 30)}, Status: {_safe(issue.get('status', '-'), 30)})"
         for issue in issues
     ]
 
@@ -507,7 +524,11 @@ async def classify_production(body: dict):
 # ---------------------------------------------------------------------------
 
 @app.post("/api/auth/login", response_model=LoginResponse, tags=["auth"], summary="Login com email corporativo")
-async def login(body: LoginRequest):
+async def login(body: LoginRequest, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    if not auth_limiter.is_allowed(client_ip):
+        SecurityLogger.log_rate_limit_exceeded(client_ip, "/api/auth/login")
+        raise HTTPException(status_code=429, detail="Muitas tentativas de login. Tente novamente em alguns minutos.")
     """Realiza login com email corporativo (@pgmais ou @ciclo).
     
     Senha não é necessária para domínios permitidos.
@@ -561,11 +582,10 @@ async def assign_user_to_bu(
     bu_name: str,
     bu_type: str,
     roles: list[str],
-    password: str = "pgmais123",
     admin_user: UserProfile = Depends(require_permission("admin"))
 ):
     """Associa um usuário a uma BU. Requer permissão 'admin'."""
-    set_user_bu(email.lower(), bu_id, bu_name, bu_type, roles, password)
+    set_user_bu(email.lower(), bu_id, bu_name, bu_type, roles)
     return {"status": "updated", "email": email, "bu_name": bu_name}
 
 
@@ -731,6 +751,7 @@ async def get_dashboard(
     product: str | None = None,
     assignee: str | None = None,
     issue_type: str | None = None,
+    _user: UserProfile = Depends(get_current_user),
 ):
     """
     Retorna dados consolidados do dashboard com cache inteligente.
