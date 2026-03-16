@@ -15,5 +15,18 @@
       "admin",
       "manage_users"
     ]
+  },
+  "usuario@pgmais.com.br": {
+    "email": "usuario@pgmais.com.br",
+    "name": "Usuario",
+    "bu_id": "default",
+    "bu_name": "PGMais",
+    "bu_type": "operacional",
+    "roles": [
+      "dev"
+    ],
+    "permissions": [
+      "read"
+    ]
   }
 }
