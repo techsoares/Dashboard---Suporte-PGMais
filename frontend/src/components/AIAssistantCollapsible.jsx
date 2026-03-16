@@ -91,40 +91,47 @@ export default function AIAssistantCollapsible({ data, user }) {
     const burnRate = avgResolutionHours > 0 ? (1 / avgResolutionHours).toFixed(2) : 0
     const estimatedDaysToEmpty = totalActive > 0 ? (totalActive / doneThisWeek * 7).toFixed(1) : 0
 
+    // Construir lista de top issues sem template literals aninhados
+    const topIssuesList = topIssues.map((issue, idx) => {
+      const overdue = issue.is_overdue ? ' [OVERDUE]' : ''
+      const line1 = `  ${idx + 1}. [${issue.key}] ${issue.summary}`
+      const line2 = `     Prioridade: ${issue.priority?.name || 'Normal'} | Responsavel: ${issue.assignee?.display_name || 'Sem atribuicao'}${overdue}`
+      return line1 + '\n' + line2
+    }).join('\n')
+
+    // Construir distribuição de prioridade como string
+    const prioDistStr = Object.entries(priorityDistribution).map(([p, c]) => `${p}: ${c}`).join(', ')
+
     const summary = `
-╔═══════════════════════════════════════════════════════════════╗
-║                  ASSISTENTE IA - CONTEXTO COMPLETO            ║
-╚═══════════════════════════════════════════════════════════════╝
+======================================================================
+                   ASSISTENTE IA - CONTEXTO COMPLETO
+======================================================================
 
-📊 FILA ATUAL (TEMPO REAL):
-  • Total de demandas pendentes: ${totalActive}
-  • Demandas ATRASADAS (URGENTE): ${overdueIssues.length}
-  • Desenvolvedores ativos: ${totalDevs}
-  • Distribuição por prioridade: ${Object.entries(priorityDistribution).map(([p, c]) => \`\${p}: \${c}\`).join(', ')}
+FILA ATUAL (TEMPO REAL):
+  + Total de demandas pendentes: ${totalActive}
+  + Demandas ATRASADAS (URGENTE): ${overdueIssues.length}
+  + Desenvolvedores ativos: ${totalDevs}
+  + Distribuicao por prioridade: ${prioDistStr}
 
-🔝 TOP 5 DEMANDAS PRIORITÁRIAS:
-${topIssues.map((issue, idx) => {
-  const overdue = issue.is_overdue ? ' ⚠️ OVERDUE' : ''
-  return \`  \${idx + 1}. [\${issue.key}] \${issue.summary}
-     └─ Prioridade: \${issue.priority?.name || 'Normal'} | Responsável: \${issue.assignee?.display_name || 'Sem atribuição'}\${overdue}\`
-}).join('\n')}
+TOP 5 DEMANDAS PRIORITARIAS:
+${topIssuesList}
 
-📈 HISTÓRICO & PERFORMANCE (ÚLTIMAS SEMANAS):
-  • Demandas concluídas esta semana: ${doneThisWeek}
-  • Total no histórico analisado: ${doneIssues.length}
-  • Tempo médio de resolução: ${Math.round(avgResolutionHours)}h
-  • Burn rate (demandas/hora): ${burnRate}
-  • Distribuição histórica por prioridade:
+HISTORICO & PERFORMANCE (ULTIMAS SEMANAS):
+  + Demandas concluidas esta semana: ${doneThisWeek}
+  + Total no historico analisado: ${doneIssues.length}
+  + Tempo medio de resolucao: ${Math.round(avgResolutionHours)}h
+  + Burn rate (demandas/hora): ${burnRate}
+  + Distribuicao historica por prioridade:
     - Highest: ${doneByPriority.Highest}
     - High: ${doneByPriority.High}
     - Medium: ${doneByPriority.Medium}
     - Low: ${doneByPriority.Low}
 
-🎯 PROJEÇÕES:
-  • Estimativa para fila atual: ${estimatedDaysToEmpty} dias (se mantiver volume)
-  • Capacidade atual: ~${doneThisWeek} demandas/semana
+PROJECOES:
+  + Estimativa para fila atual: ${estimatedDaysToEmpty} dias (se mantiver volume)
+  + Capacidade atual: ~${doneThisWeek} demandas/semana
 
-💬 Pergunta do usuário: ${question}
+Pergunta do usuario: ${question}
     `.trim()
 
     return summary
