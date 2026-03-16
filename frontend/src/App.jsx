@@ -16,6 +16,7 @@ import PrioritizationView from './components/PrioritizationView'
 import DashboardHome from './components/DashboardHome'
 import PrioritizationWizard from './components/PrioritizationWizard'
 import TimelineView from './components/TimelineView'
+import AIAssistantCollapsible from './components/AIAssistantCollapsible'
 import { API_BASE_URL } from './apiUrl'
 import { identify, track } from './analytics'
 import './App.css'
@@ -559,6 +560,8 @@ export default function App() {
           onClose={() => setShowPrioritizationWizard(false)}
         />
       )}
+
+      {user && data && <AIAssistantCollapsible data={data} user={user} />}
 
       <footer className="app-footer">
         Desenvolvido por <span className="app-footer-name">Andressa Soares</span>
