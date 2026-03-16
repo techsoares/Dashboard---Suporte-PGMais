@@ -11,7 +11,7 @@ import re
 import logging
 from typing import Any
 from functools import wraps
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 
 logger = logging.getLogger("pgmais.security")
