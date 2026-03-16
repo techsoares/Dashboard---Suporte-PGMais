@@ -57,40 +57,86 @@ export default function AIAssistantCollapsible({ data, user }) {
     }
   }
 
-  // Preparar contexto com informações da fila
+  // Preparar contexto com informações da fila ATUAL + HISTÓRICO
   const prepareContext = () => {
     if (!data) return 'Sem dados disponíveis'
 
-    const totalIssues = (data.backlog || []).length
+    // FILA ATUAL
+    const activeIssues = data.backlog || []
+    const totalActive = activeIssues.length
     const totalDevs = (data.devs || []).length
-    const topIssues = (data.backlog || []).slice(0, 5)
+    const overdueIssues = activeIssues.filter(i => i.is_overdue)
+    const topIssues = activeIssues.slice(0, 5)
+
+    // HISTÓRICO & PERFORMANCE
+    const doneIssues = data.done_issues || []
+    const avgResolutionHours = data.kpis?.avg_resolution_time_hours || 0
+    const doneThisWeek = data.kpis?.done_this_week || 0
+    
+    // Calcular estatísticas históricas
+    const doneByPriority = {
+      Highest: doneIssues.filter(i => i.priority?.name === 'Highest').length,
+      High: doneIssues.filter(i => i.priority?.name === 'High').length,
+      Medium: doneIssues.filter(i => i.priority?.name === 'Medium').length,
+      Low: doneIssues.filter(i => i.priority?.name === 'Low').length,
+    }
+
+    const priorityDistribution = activeIssues.reduce((acc, issue) => {
+      const prio = issue.priority?.name || 'Normal'
+      acc[prio] = (acc[prio] || 0) + 1
+      return acc
+    }, {})
+
+    // Calcular velocidade: demandas/hora
+    const burnRate = avgResolutionHours > 0 ? (1 / avgResolutionHours).toFixed(2) : 0
+    const estimatedDaysToEmpty = totalActive > 0 ? (totalActive / doneThisWeek * 7).toFixed(1) : 0
 
     const summary = `
-FILA DE ATENDIMENTO ATUAL:
-- Total de demandas pendentes: ${totalIssues}
-- Desenvolvedores atuais: ${totalDevs}
-- Demandas atrasadas (overdue): ${(data.backlog || []).filter(i => i.is_overdue).length}
+╔═══════════════════════════════════════════════════════════════╗
+║                  ASSISTENTE IA - CONTEXTO COMPLETO            ║
+╚═══════════════════════════════════════════════════════════════╝
 
-TOP 5 DEMANDAS PRIORITÁRIAS:
-${topIssues.map((issue, idx) => `${idx + 1}. [${issue.key}] ${issue.summary} (${issue.priority?.name || 'Normal'}) - Responsável: ${issue.assignee?.display_name || 'Não atribuído'}`).join('\n')}
+📊 FILA ATUAL (TEMPO REAL):
+  • Total de demandas pendentes: ${totalActive}
+  • Demandas ATRASADAS (URGENTE): ${overdueIssues.length}
+  • Desenvolvedores ativos: ${totalDevs}
+  • Distribuição por prioridade: ${Object.entries(priorityDistribution).map(([p, c]) => \`\${p}: \${c}\`).join(', ')}
 
-KPIs:
-- Concluídas esta semana: ${data.kpis?.done_this_week || 0}
-- Tempo médio de resolução: ${data.kpis?.avg_resolution_time_hours ? Math.round(data.kpis.avg_resolution_time_hours) + 'h' : 'N/A'}
+🔝 TOP 5 DEMANDAS PRIORITÁRIAS:
+${topIssues.map((issue, idx) => {
+  const overdue = issue.is_overdue ? ' ⚠️ OVERDUE' : ''
+  return \`  \${idx + 1}. [\${issue.key}] \${issue.summary}
+     └─ Prioridade: \${issue.priority?.name || 'Normal'} | Responsável: \${issue.assignee?.display_name || 'Sem atribuição'}\${overdue}\`
+}).join('\n')}
 
-Pergunta do usuário: ${question}
+📈 HISTÓRICO & PERFORMANCE (ÚLTIMAS SEMANAS):
+  • Demandas concluídas esta semana: ${doneThisWeek}
+  • Total no histórico analisado: ${doneIssues.length}
+  • Tempo médio de resolução: ${Math.round(avgResolutionHours)}h
+  • Burn rate (demandas/hora): ${burnRate}
+  • Distribuição histórica por prioridade:
+    - Highest: ${doneByPriority.Highest}
+    - High: ${doneByPriority.High}
+    - Medium: ${doneByPriority.Medium}
+    - Low: ${doneByPriority.Low}
+
+🎯 PROJEÇÕES:
+  • Estimativa para fila atual: ${estimatedDaysToEmpty} dias (se mantiver volume)
+  • Capacidade atual: ~${doneThisWeek} demandas/semana
+
+💬 Pergunta do usuário: ${question}
     `.trim()
 
     return summary
   }
 
-  // Templates de perguntas rápidas
+  // Templates de perguntas rápidas (agora com foco em análise + histórico)
   const quickQuestions = [
-    'Qual é a próxima demanda prioritária?',
-    'Quais demandas estão atrasadas?',
-    'Qual é o status geral da fila?',
-    'Quantas demandas foram concluídas esta semana?',
-    'Há algum risco de SLA?'
+    '📊 Qual é a próxima prioridade e por quê?',
+    '⚠️ Há risco de quebra de SLA?',
+    '📈 Qual é a velocidade de resolução?',
+    '🔴 O que está atrasado e qual o impacto?',
+    '💡 Recomendações para melhorar a fila?'
   ]
 
   return (
@@ -109,7 +155,7 @@ Pergunta do usuário: ${question}
         <div className="ai-assistant-panel">
           <div className="ai-assistant-header">
             <h3>Assistente IA</h3>
-            <p className="ai-assistant-subtitle">Tire dúvidas sobre a fila de atendimento</p>
+            <p className="ai-assistant-subtitle">Análise completa: fila atual + histórico de performance</p>
           </div>
 
           {/* Chat Area */}
