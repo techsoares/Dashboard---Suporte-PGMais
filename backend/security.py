@@ -62,7 +62,7 @@ class RateLimiter:
 
 # Instâncias globais com limites mais restritivos
 api_limiter = RateLimiter(max_requests=100, window_seconds=60)
-auth_limiter = RateLimiter(max_requests=3, window_seconds=900)  # 3 tentativas em 15 min
+auth_limiter = RateLimiter(max_requests=15, window_seconds=900)  # 15 tentativas em 15 min
 
 
 # ============================================================================
