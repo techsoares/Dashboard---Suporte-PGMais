@@ -57,7 +57,7 @@ export default function AIAssistantCollapsible({ data, user }) {
     }
   }
 
-  // Preparar contexto com informações da fila ATUAL + HISTÓRICO
+  // Preparar contexto com informações da fila ATUAL + HISTÓRICO COMPLETO
   const prepareContext = () => {
     if (!data) return 'Sem dados disponíveis'
 
@@ -68,17 +68,21 @@ export default function AIAssistantCollapsible({ data, user }) {
     const overdueIssues = activeIssues.filter(i => i.is_overdue)
     const topIssues = activeIssues.slice(0, 5)
 
-    // HISTÓRICO & PERFORMANCE
-    const doneIssues = data.done_issues || []
-    const avgResolutionHours = data.kpis?.avg_resolution_time_hours || 0
-    const doneThisWeek = data.kpis?.done_this_week || 0
+    // HISTÓRICO COMPLETO: esta semana + mês anterior
+    const doneThisWeek = data.done_issues || []
+    const doneHistorical = data.done_issues_historical || []
+    const allDoneIssues = [...doneThisWeek, ...doneHistorical]
     
-    // Calcular estatísticas históricas
+    const totalDone = allDoneIssues.length
+    const avgResolutionHours = data.kpis?.avg_resolution_time_hours || 0
+    const doneThisWeekCount = data.kpis?.done_this_week || 0
+    
+    // Calcular estatísticas do histórico COMPLETO
     const doneByPriority = {
-      Highest: doneIssues.filter(i => i.priority?.name === 'Highest').length,
-      High: doneIssues.filter(i => i.priority?.name === 'High').length,
-      Medium: doneIssues.filter(i => i.priority?.name === 'Medium').length,
-      Low: doneIssues.filter(i => i.priority?.name === 'Low').length,
+      Highest: allDoneIssues.filter(i => i.priority?.name === 'Highest').length,
+      High: allDoneIssues.filter(i => i.priority?.name === 'High').length,
+      Medium: allDoneIssues.filter(i => i.priority?.name === 'Medium').length,
+      Low: allDoneIssues.filter(i => i.priority?.name === 'Low').length,
     }
 
     const priorityDistribution = activeIssues.reduce((acc, issue) => {
@@ -87,11 +91,16 @@ export default function AIAssistantCollapsible({ data, user }) {
       return acc
     }, {})
 
-    // Calcular velocidade: demandas/hora
+    // Calcular velocidade e projeções
     const burnRate = avgResolutionHours > 0 ? (1 / avgResolutionHours).toFixed(2) : 0
-    const estimatedDaysToEmpty = totalActive > 0 ? (totalActive / doneThisWeek * 7).toFixed(1) : 0
+    const estimatedDaysToEmpty = totalActive > 0 && doneThisWeekCount > 0 ? (totalActive / doneThisWeekCount * 7).toFixed(1) : 'N/A'
+    
+    // Estatísticas de qualidade
+    const onTimeCount = allDoneIssues.filter(i => !i.is_overdue).length
+    const lateCount = allDoneIssues.filter(i => i.is_overdue).length
+    const qualityRate = totalDone > 0 ? ((onTimeCount / totalDone) * 100).toFixed(1) : 'N/A'
 
-    // Construir lista de top issues sem template literals aninhados
+    // Construir lista de top issues
     const topIssuesList = topIssues.map((issue, idx) => {
       const overdue = issue.is_overdue ? ' [OVERDUE]' : ''
       const line1 = `  ${idx + 1}. [${issue.key}] ${issue.summary}`
@@ -99,7 +108,7 @@ export default function AIAssistantCollapsible({ data, user }) {
       return line1 + '\n' + line2
     }).join('\n')
 
-    // Construir distribuição de prioridade como string
+    // Construir distribuição
     const prioDistStr = Object.entries(priorityDistribution).map(([p, c]) => `${p}: ${c}`).join(', ')
 
     const summary = `
@@ -116,20 +125,24 @@ FILA ATUAL (TEMPO REAL):
 TOP 5 DEMANDAS PRIORITARIAS:
 ${topIssuesList}
 
-HISTORICO & PERFORMANCE (ULTIMAS SEMANAS):
-  + Demandas concluidas esta semana: ${doneThisWeek}
-  + Total no historico analisado: ${doneIssues.length}
+HISTORICO CONSOLIDADO (ULTIMAS 4 SEMANAS + SEMANA ATUAL):
+  + Total de demandas concluidas: ${totalDone}
+    - Esta semana: ${doneThisWeekCount}
+    - Mês anterior: ${doneHistorical.length}
+  + Taxa de qualidade (no prazo): ${qualityRate}%
+  + Demandas em atraso (historico): ${lateCount}
   + Tempo medio de resolucao: ${Math.round(avgResolutionHours)}h
   + Burn rate (demandas/hora): ${burnRate}
-  + Distribuicao historica por prioridade:
+  + Distribuicao pelos ultimos ~30 dias:
     - Highest: ${doneByPriority.Highest}
     - High: ${doneByPriority.High}
     - Medium: ${doneByPriority.Medium}
     - Low: ${doneByPriority.Low}
 
 PROJECOES:
-  + Estimativa para fila atual: ${estimatedDaysToEmpty} dias (se mantiver volume)
-  + Capacidade atual: ~${doneThisWeek} demandas/semana
+  + Estimativa para fila atual: ${estimatedDaysToEmpty} dias (se mantiver velocidade)
+  + Capacidade media: ~${doneThisWeekCount} demandas/semana
+  + Velocidade de resolucao: ${burnRate} dem/hora
 
 Pergunta do usuario: ${question}
     `.trim()

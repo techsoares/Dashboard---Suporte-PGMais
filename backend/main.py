@@ -169,12 +169,13 @@ def _validate_env() -> list[str]:
     return [var for var in REQUIRED_JIRA_VARS if not os.getenv(var)]
 
 
-def _build_and_cache(active_issues, done_issues, done_last_week) -> DashboardResponse:
+def _build_and_cache(active_issues, done_issues, done_last_week, done_historical=None) -> DashboardResponse:
     """Constrói o dashboard, calcula delta e atualiza caches."""
     prev_kpis: KpiSummary | None = cache.get(SNAPSHOT_KEY, ttl=SNAPSHOT_TTL)
     dashboard = build_dashboard(
         active_issues,
         done_issues,
+        done_issues_historical=done_historical,
         done_last_week_count=len(done_last_week),
         prev_kpis=prev_kpis,
     )
@@ -185,11 +186,11 @@ def _build_and_cache(active_issues, done_issues, done_last_week) -> DashboardRes
         cache.set(SNAPSHOT_KEY, dashboard.kpis)
 
     logger.info(
-        "Dashboard atualizado: %d devs, %d issues ativas, %d concluídas, %d paralisadas",
+        "Dashboard atualizado: %d devs, %d issues ativas, %d concluídas esta semana, %d no histórico",
         len(dashboard.devs),
         len(dashboard.backlog),
         dashboard.kpis.done_this_week,
-        len(dashboard.stale_issues),
+        len(dashboard.done_issues_historical),
     )
     return dashboard
 
@@ -801,11 +802,11 @@ async def get_dashboard(
         else:
             logger.info("Cache MISS — buscando dados no Jira...")
             try:
-                active_issues, done_issues, done_last_week = await _fetch_all()
+                active_issues, done_issues, done_last_week, done_historical = await _fetch_all()
             except Exception as exc:
                 logger.error("Erro ao buscar dados no Jira: %s", exc, exc_info=True)
                 raise HTTPException(status_code=502, detail="Erro ao comunicar com o Jira")
-            dashboard = _build_and_cache(active_issues, done_issues, done_last_week)
+            dashboard = _build_and_cache(active_issues, done_issues, done_last_week, done_historical)
 
     # Aplicar filtros em memória (backlog + done_issues)
     if account:
@@ -995,12 +996,12 @@ async def force_refresh(x_refresh_secret: str | None = Header(default=None)):
     logger.info("Cache invalidado manualmente — buscando dados no Jira...")
 
     try:
-        active_issues, done_issues, done_last_week = await _fetch_all()
+        active_issues, done_issues, done_last_week, done_historical = await _fetch_all()
     except Exception as exc:
         logger.error("Erro ao buscar dados no Jira: %s", exc, exc_info=True)
         raise HTTPException(status_code=502, detail="Erro ao comunicar com o Jira")
 
-    dashboard = _build_and_cache(active_issues, done_issues, done_last_week)
+    dashboard = _build_and_cache(active_issues, done_issues, done_last_week, done_historical)
     return {"status": "refreshed", "last_updated": dashboard.last_updated}
 
 
@@ -1009,13 +1010,20 @@ async def force_refresh(x_refresh_secret: str | None = Header(default=None)):
 # ---------------------------------------------------------------------------
 
 async def _fetch_all():
-    """Dispara as três consultas ao Jira em paralelo."""
-    active_issues, done_issues, done_last_week = await asyncio.gather(
+    """Dispara as consultas ao Jira em paralelo: ativas, conclusões desta semana, última semana e histórico (1 mês)."""
+    from datetime import date, timedelta
+    
+    today = date.today()
+    start_of_week = today - timedelta(days=today.weekday())  # Segunda-feira
+    one_month_ago = today - timedelta(days=30)
+    
+    active_issues, done_issues, done_last_week, done_historical = await asyncio.gather(
         fetch_active_issues(),
         fetch_done_this_week(),
         fetch_done_last_week(),
+        fetch_done_last_n_weeks(from_date=one_month_ago, to_date=start_of_week),  # Últimas 4 semanas completas (exceto semana atual)
     )
-    return active_issues, done_issues, done_last_week
+    return active_issues, done_issues, done_last_week, done_historical
 
 
 # ---------------------------------------------------------------------------

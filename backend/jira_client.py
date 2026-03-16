@@ -460,6 +460,7 @@ _STALE_MS = 30 * 24 * 3600 * 1000  # 30 dias em ms
 def build_dashboard(
     active_issues: list[Issue],
     done_issues: list[Issue],
+    done_issues_historical: list[Issue] = None,
     done_last_week_count: int = 0,
     prev_kpis: KpiSummary | None = None,
 ) -> DashboardResponse:
@@ -521,6 +522,7 @@ def build_dashboard(
         devs=list(dev_map.values()),
         backlog=backlog,
         done_issues=done_issues,
+        done_issues_historical=done_issues_historical or [],
         stale_issues=stale_issues,
         kpis=kpis,
         kpi_delta=delta,

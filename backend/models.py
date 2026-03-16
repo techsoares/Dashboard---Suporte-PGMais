@@ -112,6 +112,7 @@ class DashboardResponse(BaseModel):
     devs: List[DevSummary] = []
     backlog: List[Issue] = []             # Todas as issues ativas (para coluna direita)
     done_issues: List[Issue] = []         # Issues concluídas esta semana
+    done_issues_historical: List[Issue] = []  # Issues concluídas no mês anterior (para IA)
     stale_issues: List[Issue] = []        # Issues > 30 dias em progresso
     kpis: KpiSummary = KpiSummary()
     kpi_delta: KpiDelta = KpiDelta()
