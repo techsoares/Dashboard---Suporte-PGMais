@@ -210,6 +210,34 @@ form {
   opacity: 0.5;
 }
 
+/* Admin Access Button */
+.admin-access-btn {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Lato', sans-serif;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+.admin-access-btn:hover:not(:disabled) {
+  color: var(--azul-claro);
+  border-color: var(--azul-claro);
+  background: rgba(61, 183, 244, 0.08);
+}
+
+.admin-access-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Login Button */
 .login-button {
   width: 100%;

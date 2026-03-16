@@ -9,6 +9,7 @@ export default function LoginView({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false)
   const [backendStatus, setBackendStatus] = useState('checking')
   const [showPassword, setShowPassword] = useState(false)
+  const [isAdminMode, setIsAdminMode] = useState(false)
 
   // Verificar conectividade com backend
   useEffect(() => {
@@ -129,32 +130,38 @@ export default function LoginView({ onLoginSuccess }) {
             <small>Use email terminado em @pgmais.com.br ou @ciclo</small>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">
-              Senha {' '}
-              <span className="text-optional">
-                (opcional para usuários normais)
-              </span>
-            </label>
-            <div className="password-input-group">
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Deixe em branco para login sem senha"
-                disabled={loading}
-              />
-              <button
-                type="button"
-                className="toggle-password"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={loading}
-              >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
-              </button>
+          {isAdminMode && (
+            <div className="form-group">
+              <label htmlFor="password">Senha do Administrador</label>
+              <div className="password-input-group">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Digite sua senha"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className="toggle-password"
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={loading}
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          <button 
+            type="button" 
+            className="admin-access-btn"
+            onClick={() => setIsAdminMode(!isAdminMode)}
+            disabled={loading}
+          >
+            {isAdminMode ? '← Voltar' : '🔐 Acesso Admin'}
+          </button>
 
           <button type="submit" disabled={loading || backendStatus === 'offline'} className="login-button">
             {loading ? (
@@ -202,10 +209,6 @@ export default function LoginView({ onLoginSuccess }) {
               <span className="email-small">teste@ciclo</span>
             </button>
           </div>
-        </div>
-
-        <div className="login-info">
-          <p>💡 <strong>Dica:</strong> Qualquer email @pgmais.com.br ou @ciclo funciona!</p>
         </div>
       </div>
     </div>
