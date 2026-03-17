@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PGMais Dashboard — Documentação Técnica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' },
+                        surface: { light:'#ffffff', dark:'#0f172a' },
+                        panel: { light:'#f8fafc', dark:'#1e293b' },
+                        code: { light:'#1e293b', dark:'#0f172a' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak]{display:none!important}
+        .prose-api h3{scroll-margin-top:5rem}
+        .copy-btn:active{transform:scale(.95)}
+        pre code{font-size:.82rem;line-height:1.55}
+        ::-webkit-scrollbar{width:6px;height:6px}
+        ::-webkit-scrollbar-thumb{background:#475569;border-radius:3px}
+        .api-row{display:grid;grid-template-columns:1fr 1fr;gap:2rem}
+        @media(max-width:1024px){.api-row{grid-template-columns:1fr}}
+        .method-badge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em}
+        .get{background:#059669;color:#fff}
+        .post{background:#2563eb;color:#fff}
+        .put{background:#d97706;color:#fff}
+        .delete{background:#dc2626;color:#fff}
+        .sidebar-link.active{background:rgba(99,102,241,.15);color:#6366f1;font-weight:600}
+        .dark .sidebar-link.active{background:rgba(99,102,241,.25);color:#a5b4fc}
+        .fade-in{animation:fadeIn .3s ease}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+        #search-results mark{background:#fbbf24;color:#1e293b;border-radius:2px;padding:0 2px}
+        .dark #search-results mark{background:#d97706}
+    </style>
+</head>
+
+<body class="bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-300">
+
+<!-- ═══════════════════════════ TOP NAVBAR ═══════════════════════════ -->
+<header id="top-nav" class="fixed top-0 inset-x-0 z-50 h-14 flex items-center justify-between px-4 lg:px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+    <div class="flex items-center gap-3">
+        <button id="sidebar-toggle" class="lg:hidden p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Menu">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <span class="text-lg font-bold tracking-tight text-brand-600 dark:text-brand-200">PGMais</span>
+        <span class="hidden sm:inline text-xs font-medium px-2 py-0.5 rounded bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300">Docs v1.0</span>
+    </div>
+
+    <!-- Search -->
+    <div class="relative w-full max-w-xs mx-4">
+        <svg class="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/></svg>
+        <input id="search-input" type="text" placeholder="Buscar na documentação… (Ctrl+K)" class="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500" autocomplete="off">
+        <div id="search-results" class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 max-h-80 overflow-y-auto hidden"></div>
+    </div>
+
+    <!-- Theme toggle -->
+    <button id="theme-toggle" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition" aria-label="Alternar tema">
+        <svg id="icon-sun" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m8.66-13.66l-.71.71M4.05 19.95l-.71.71M21 12h-1M4 12H3m16.66 7.66l-.71-.71M4.05 4.05l-.71-.71M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <svg id="icon-moon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>
+    </button>
+</header>
+
+<!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
+<aside id="sidebar" class="fixed top-14 left-0 bottom-0 w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 overflow-y-auto transform -translate-x-full lg:translate-x-0 transition-transform duration-200 z-40">
+    <nav class="p-4 space-y-1 text-sm">
+        <p class="text-[.65rem] font-semibold uppercase tracking-wider text-slate-400 mb-2">Geral</p>
+        <a href="#visao-geral" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Visão Geral</a>
+        <a href="#beneficios" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Benefícios</a>
+        <a href="#manual-uso" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Manual de Uso</a>
+        <a href="#stack" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Stack Tecnológica</a>
+
+        <p class="text-[.65rem] font-semibold uppercase tracking-wider text-slate-400 mt-4 mb-2">Técnico</p>
+        <a href="#manutencao" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Guia de Manutenção</a>
+        <a href="#arquitetura" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Arquitetura</a>
+        <a href="#seguranca" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Segurança</a>
+
+        <p class="text-[.65rem] font-semibold uppercase tracking-wider text-slate-400 mt-4 mb-2">Referência de API</p>
+        <a href="#api-health" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Health &amp; Diagnóstico</a>
+        <a href="#api-auth" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Autenticação</a>
+        <a href="#api-dashboard" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Dashboard</a>
+        <a href="#api-management" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Management</a>
+        <a href="#api-admin" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Admin</a>
+        <a href="#api-bu" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Business Units</a>
+        <a href="#api-ranking" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Account Ranking</a>
+        <a href="#api-priority" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">Priorização</a>
+        <a href="#api-ai" class="sidebar-link block px-3 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition">IA &amp; Insights</a>
+    </nav>
+</aside>
+
+<!-- Overlay for mobile sidebar -->
+<div id="sidebar-overlay" class="fixed inset-0 bg-black/40 z-30 hidden lg:hidden" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════ MAIN CONTENT ═══════════════════════════ -->
+<main class="pt-14 lg:pl-64 min-h-screen">
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+
+<!-- ────────── VISÃO GERAL ────────── -->
+<section id="visao-geral" class="fade-in searchable" data-title="Visão Geral">
+    <h1 class="text-3xl font-extrabold tracking-tight mb-2">PGMais Team Dashboard</h1>
+    <p class="text-lg text-slate-500 dark:text-slate-400 mb-6">Proxy inteligente e cache da API do Jira Cloud para monitoramento em tempo real</p>
+
+    <div class="prose dark:prose-invert max-w-none space-y-4 text-[.92rem] leading-relaxed">
+        <p>O <strong>PGMais Dashboard</strong> é uma aplicação full-stack que conecta diretamente ao <strong>Jira Cloud</strong> da PGMais para exibir, em um painel unificado, o estado atual de todas as demandas da equipe de tecnologia. Ele resolve o problema de fragmentação de informações: ao invés de cada membro navegar pelo Jira procurando dados dispersos, o dashboard centraliza KPIs, backlogs, entregas e métricas de performance numa interface otimizada para TV e desktop.</p>
+
+        <div class="grid sm:grid-cols-3 gap-4 mt-6">
+            <div class="p-4 rounded-xl bg-brand-50 dark:bg-brand-900/30 border border-brand-200 dark:border-brand-800">
+                <p class="font-semibold text-brand-700 dark:text-brand-300 mb-1">Dashboard em Tempo Real</p>
+                <p class="text-sm text-slate-600 dark:text-slate-400">KPIs, cards de desenvolvedores, backlog e issues em andamento com atualização automática a cada 5 minutos.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800">
+                <p class="font-semibold text-emerald-700 dark:text-emerald-300 mb-1">IA Integrada</p>
+                <p class="text-sm text-slate-600 dark:text-slate-400">Assistente com Claude Sonnet 4.6 que analisa dados do Jira, prioriza demandas e responde perguntas em contexto.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800">
+                <p class="font-semibold text-amber-700 dark:text-amber-300 mb-1">Gestão Avançada</p>
+                <p class="text-sm text-slate-600 dark:text-slate-400">Métricas históricas de entrega, SLA, cycle time e rastreamento de performance por dev, produto e tipo.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ────────── BENEFÍCIOS ────────── -->
+<section id="beneficios" class="fade-in searchable" data-title="Benefícios">
+    <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-sm">✓</span>
+        Benefícios
+    </h2>
+    <div class="grid sm:grid-cols-2 gap-4">
+        <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="font-semibold mb-1">Cache Inteligente em 2 Camadas</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Memória + SQLite com TTLs diferenciados (5 min dashboard, 1h gestão, 24h snapshots). Reduz chamadas ao Jira em até 95%.</p>
+        </div>
+        <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="font-semibold mb-1">Priorização com IA</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Cada pedido de prioridade é avaliado pelo Claude Sonnet 4.6 com score de 0-500. BUs de gestão recebem multiplicador 1.5x.</p>
+        </div>
+        <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="font-semibold mb-1">Auto-Registro por Domínio</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Usuários @pgmais e @ciclo são registrados automaticamente no primeiro login, com sync automático de BU.</p>
+        </div>
+        <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="font-semibold mb-1">Múltiplas Visualizações</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Grid de devs, Kanban, Timeline, Produto, Gestão e Priorização — cada visão otimizada para um caso de uso.</p>
+        </div>
+        <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="font-semibold mb-1">Deltas e Snapshots de KPI</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Snapshots de 24h permitem mostrar variação (↑↓) em cada KPI comparando com o estado anterior.</p>
+        </div>
+        <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="font-semibold mb-1">Segurança em Camadas</h3>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Rate limiting (100 req/min), JWT com expiração de 8h, sanitização de input, headers de segurança (CSP, X-Frame-Options).</p>
+        </div>
+    </div>
+</section>
+
+<!-- ────────── MANUAL DE USO ────────── -->
+<section id="manual-uso" class="fade-in searchable" data-title="Manual de Uso">
+    <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 text-sm">📖</span>
+        Manual de Uso
+    </h2>
+
+    <div class="space-y-6 text-[.92rem]">
+        <!-- Quick Start -->
+        <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="font-bold text-lg mb-3">1. Instalação Rápida (Windows)</h3>
+            <div class="bg-slate-900 text-slate-100 rounded-lg p-4 text-sm font-mono space-y-1">
+                <p class="text-slate-400"># Clone o repositório</p>
+                <p>git clone &lt;repo-url&gt; &amp;&amp; cd Dashboards-pgmais</p>
+                <p class="text-slate-400 mt-3"># Backend</p>
+                <p>cd backend</p>
+                <p>python -m venv .venv</p>
+                <p>.venv\Scripts\activate</p>
+                <p>pip install -r requirements.txt</p>
+                <p>cp .env.example .env  <span class="text-slate-400"># edite com suas credenciais</span></p>
+                <p>uvicorn main:app --reload --port 8000</p>
+                <p class="text-slate-400 mt-3"># Frontend (outro terminal)</p>
+                <p>cd frontend</p>
+                <p>npm install</p>
+                <p>npm run dev</p>
+            </div>
+        </div>
+
+        <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="font-bold text-lg mb-3">2. Docker (Produção)</h3>
+            <div class="bg-slate-900 text-slate-100 rounded-lg p-4 text-sm font-mono">
+                <p>docker-compose up --build -d</p>
+            </div>
+            <p class="text-sm text-slate-500 mt-2">O docker-compose sobe backend (porta 8000) e frontend automaticamente.</p>
+        </div>
+
+        <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="font-bold text-lg mb-3">3. Login</h3>
+            <ol class="list-decimal list-inside space-y-2 text-slate-600 dark:text-slate-400">
+                <li>Acesse <code class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-xs">http://localhost:5173</code> no navegador.</li>
+                <li>Digite seu e-mail corporativo (<code class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-xs">@pgmais.com.br</code> ou <code class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-xs">@ciclo.com.br</code>).</li>
+                <li>Usuários regulares não precisam de senha. Admins devem informar a senha configurada.</li>
+                <li>O sistema auto-registra novos usuários e sincroniza a BU automaticamente.</li>
+            </ol>
+        </div>
+
+        <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="font-bold text-lg mb-3">4. Navegação</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead><tr class="text-left border-b border-slate-200 dark:border-slate-700">
+                        <th class="pb-2 pr-4 font-semibold">Visão</th><th class="pb-2 font-semibold">Descrição</th>
+                    </tr></thead>
+                    <tbody class="text-slate-600 dark:text-slate-400 divide-y divide-slate-100 dark:divide-slate-800">
+                        <tr><td class="py-2 pr-4 font-medium text-slate-800 dark:text-slate-200">Dashboard</td><td class="py-2">Grid de desenvolvedores com issues ativas, KPIs e backlog lateral</td></tr>
+                        <tr><td class="py-2 pr-4 font-medium text-slate-800 dark:text-slate-200">Home</td><td class="py-2">Dashboard contextual com ProductStrip e visão consolidada</td></tr>
+                        <tr><td class="py-2 pr-4 font-medium text-slate-800 dark:text-slate-200">Gestão</td><td class="py-2">Métricas históricas: entregas por semana, SLA, cycle time, desempenho por dev</td></tr>
+                        <tr><td class="py-2 pr-4 font-medium text-slate-800 dark:text-slate-200">Produto</td><td class="py-2">Central de Operações — KPIs (Lead Time, Throughput, Health Score), alertas de gargalo, radar Ideal vs Real, matrizes e drill-down por produto</td></tr>
+                        <tr><td class="py-2 pr-4 font-medium text-slate-800 dark:text-slate-200">Timeline</td><td class="py-2">Linha do tempo de issues com datas de início e fim</td></tr>
+                        <tr><td class="py-2 pr-4 font-medium text-slate-800 dark:text-slate-200">Kanban</td><td class="py-2">Board estilo Kanban por status</td></tr>
+                        <tr><td class="py-2 pr-4 font-medium text-slate-800 dark:text-slate-200">Priorização</td><td class="py-2">Gerenciamento de pedidos de prioridade com avaliação de IA</td></tr>
+                        <tr><td class="py-2 pr-4 font-medium text-slate-800 dark:text-slate-200">Admin</td><td class="py-2">Gerenciar BUs, usuários, admins e ranking de contas (somente admins)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="font-bold text-lg mb-3">5. Atalhos de Teclado</h3>
+            <div class="flex flex-wrap gap-3 text-sm">
+                <span class="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700"><kbd class="font-semibold">Ctrl+K</kbd> — Busca rápida</span>
+                <span class="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700"><kbd class="font-semibold">Esc</kbd> — Fechar painel/modal</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ────────── STACK TECNOLÓGICA ────────── -->
+<section id="stack" class="fade-in searchable" data-title="Stack Tecnológica">
+    <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900 flex items-center justify-center text-violet-600 dark:text-violet-400 text-sm">⚙</span>
+        Stack Tecnológica
+    </h2>
+
+    <div class="grid md:grid-cols-2 gap-6">
+        <!-- Backend -->
+        <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h3 class="font-bold text-lg mb-4 text-emerald-600 dark:text-emerald-400">Backend (Python)</h3>
+            <table class="w-full text-sm">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tr><td class="py-2 pr-3 font-medium">FastAPI 0.111+</td><td class="py-2 text-slate-500">Framework async de alta performance com docs OpenAPI automáticas</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">Uvicorn 0.29+</td><td class="py-2 text-slate-500">Servidor ASGI para produção e desenvolvimento com hot reload</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">SQLite</td><td class="py-2 text-slate-500">Banco leve e embutido para cache persistente e dados locais</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">SQLAlchemy 2.0+</td><td class="py-2 text-slate-500">ORM para abstração de acesso ao banco</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">Pydantic 2.7+</td><td class="py-2 text-slate-500">Validação de modelos com tipagem estrita</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">PyJWT 2.8+</td><td class="py-2 text-slate-500">Geração e validação de tokens JWT (HS256)</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">bcrypt 4.0+</td><td class="py-2 text-slate-500">Hash de senhas de administradores</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">httpx 0.27+</td><td class="py-2 text-slate-500">Client HTTP async para chamadas ao Jira e OpenRouter</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">OpenRouter API</td><td class="py-2 text-slate-500">Gateway para Claude Sonnet 4.6 (IA de priorização e insights)</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <!-- Frontend -->
+        <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h3 class="font-bold text-lg mb-4 text-blue-600 dark:text-blue-400">Frontend (JavaScript)</h3>
+            <table class="w-full text-sm">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tr><td class="py-2 pr-3 font-medium">React 19.2</td><td class="py-2 text-slate-500">Biblioteca de UI com hooks para state management</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">Vite 7.3</td><td class="py-2 text-slate-500">Build tool ultra-rápido com HMR nativo</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">CSS Modules</td><td class="py-2 text-slate-500">Estilização com variáveis CSS para temas light/dark</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">Fetch API</td><td class="py-2 text-slate-500">Chamadas HTTP nativas, sem dependência extra</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">PostHog 1.360+</td><td class="py-2 text-slate-500">Analytics de produto (opcional)</td></tr>
+                </tbody>
+            </table>
+
+            <h3 class="font-bold text-lg mt-6 mb-4 text-orange-600 dark:text-orange-400">Infraestrutura</h3>
+            <table class="w-full text-sm">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tr><td class="py-2 pr-3 font-medium">Docker</td><td class="py-2 text-slate-500">Containerização do backend e frontend</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">docker-compose</td><td class="py-2 text-slate-500">Orquestração multi-container em um comando</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">Python 3.11+</td><td class="py-2 text-slate-500">Runtime do backend</td></tr>
+                    <tr><td class="py-2 pr-3 font-medium">Node 18+</td><td class="py-2 text-slate-500">Runtime do frontend (testado com 20.18)</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- ────────── GUIA DE MANUTENÇÃO ────────── -->
+<section id="manutencao" class="fade-in searchable" data-title="Guia de Manutenção">
+    <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+        <span class="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-400 text-sm">★</span>
+        <span class="bg-gradient-to-r from-rose-600 to-orange-500 bg-clip-text text-transparent">Guia de Manutenção</span>
+    </h2>
+
+    <!-- Estrutura de Pastas -->
+    <div class="p-5 rounded-xl border-2 border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-900/10 mb-6">
+        <h3 class="font-bold text-lg mb-4">Estrutura de Pastas</h3>
+        <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 text-sm font-mono overflow-x-auto leading-relaxed"><code>Dashboards-pgmais/
+├── backend/
+│   ├── main.py              <span class="text-emerald-400"># App FastAPI + todos os endpoints (1055 linhas)</span>
+│   ├── auth.py              <span class="text-emerald-400"># JWT, login, permissões</span>
+│   ├── jira_client.py       <span class="text-emerald-400"># Integração Jira Cloud (JQL, changelog, paginação)</span>
+│   ├── models.py            <span class="text-emerald-400"># Modelos Pydantic (Issue, KPI, Dashboard, etc.)</span>
+│   ├── database.py          <span class="text-emerald-400"># SQLite – schema e queries</span>
+│   ├── cache.py             <span class="text-emerald-400"># Cache em memória + persistência SQLite</span>
+│   ├── security.py          <span class="text-emerald-400"># Rate limiting, sanitização, validação</span>
+│   ├── performance.py       <span class="text-emerald-400"># Utilitários de monitoramento</span>
+│   ├── mock_data.py         <span class="text-emerald-400"># Dados fake para desenvolvimento</span>
+│   ├── requirements.txt     <span class="text-emerald-400"># Dependências Python</span>
+│   ├── .env / .env.example  <span class="text-emerald-400"># Configuração (Jira, JWT, OpenRouter)</span>
+│   ├── pgmais.db            <span class="text-emerald-400"># Banco SQLite</span>
+│   ├── bus.json             <span class="text-emerald-400"># Business Units</span>
+│   ├── users.json           <span class="text-emerald-400"># Mapeamento usuário → BU</span>
+│   ├── account_ranking.json <span class="text-emerald-400"># Ranking de contas por receita</span>
+│   └── priority_requests.json <span class="text-emerald-400"># Pedidos de priorização + scores IA</span>
+│
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx          <span class="text-blue-400"># Componente raiz (routing, auth, state)</span>
+│   │   ├── apiUrl.js        <span class="text-blue-400"># Resolução de URL da API</span>
+│   │   ├── analytics.js     <span class="text-blue-400"># PostHog (opcional)</span>
+│   │   └── components/
+│   │       ├── LoginView.jsx          <span class="text-blue-400"># Tela de login</span>
+│   │       ├── DashboardHome.jsx      <span class="text-blue-400"># Home contextual</span>
+│   │       ├── KpiBar.jsx             <span class="text-blue-400"># Barra de KPIs</span>
+│   │       ├── DevGrid.jsx / DevCard.jsx  <span class="text-blue-400"># Grid de devs</span>
+│   │       ├── BacklogPanel.jsx       <span class="text-blue-400"># Painel de backlog</span>
+│   │       ├── KanbanView.jsx         <span class="text-blue-400"># Visualização Kanban</span>
+│   │       ├── PrioritizationView.jsx <span class="text-blue-400"># Gerenciamento de prioridades</span>
+│   │       ├── ManagementView.jsx     <span class="text-blue-400"># Métricas de gestão</span>
+│   │       ├── ProductView.jsx        <span class="text-blue-400"># Central de Operações — Produto (BI engine)</span>
+│   │       ├── TimelineView.jsx       <span class="text-blue-400"># Timeline de issues</span>
+│   │       ├── AIInsightsView.jsx     <span class="text-blue-400"># Insights de IA</span>
+│   │       ├── AIAssistantCollapsible.jsx <span class="text-blue-400"># Chat IA colapsável</span>
+│   │       ├── AdminView.jsx          <span class="text-blue-400"># Painel admin</span>
+│   │       └── FilterDropdown.jsx     <span class="text-blue-400"># Filtros avançados</span>
+│   ├── package.json
+│   └── vite.config.js
+│
+├── docs/                    <span class="text-amber-400"># Esta documentação</span>
+├── docker-compose.yml
+└── README.md</code></pre>
+    </div>
+
+    <!-- Como rodar -->
+    <div class="grid md:grid-cols-2 gap-6 mb-6">
+        <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h3 class="font-bold mb-3">Rodando em Desenvolvimento</h3>
+            <div class="bg-slate-900 text-slate-100 rounded-lg p-4 text-sm font-mono space-y-1">
+                <p class="text-slate-400"># Terminal 1 – Backend</p>
+                <p>cd backend &amp;&amp; .venv\Scripts\activate</p>
+                <p>uvicorn main:app --reload --port 8000</p>
+                <p class="text-slate-400 mt-2"># Terminal 2 – Frontend</p>
+                <p>cd frontend &amp;&amp; npm run dev</p>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">O frontend conecta automaticamente em <code>localhost:8000</code>.</p>
+        </div>
+        <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <h3 class="font-bold mb-3">Variáveis de Ambiente Obrigatórias</h3>
+            <table class="w-full text-xs">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tr><td class="py-1.5 font-mono text-rose-600 dark:text-rose-400">JIRA_EMAIL</td><td class="py-1.5">E-mail da conta Jira</td></tr>
+                    <tr><td class="py-1.5 font-mono text-rose-600 dark:text-rose-400">JIRA_TOKEN</td><td class="py-1.5">API Token do Jira Cloud</td></tr>
+                    <tr><td class="py-1.5 font-mono text-rose-600 dark:text-rose-400">JIRA_BASE_URL</td><td class="py-1.5">URL base (ex: https://pgmais.atlassian.net/)</td></tr>
+                    <tr><td class="py-1.5 font-mono text-rose-600 dark:text-rose-400">JIRA_PROJECT</td><td class="py-1.5">Código do projeto (ex: ON)</td></tr>
+                    <tr><td class="py-1.5 font-mono text-rose-600 dark:text-rose-400">REFRESH_SECRET</td><td class="py-1.5">Secret para validar refresh manual</td></tr>
+                    <tr><td class="py-1.5 font-mono text-amber-600 dark:text-amber-400">OPENROUTER_API_KEY</td><td class="py-1.5">Chave OpenRouter (para IA)</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Como adicionar funcionalidade -->
+    <div class="p-5 rounded-xl border-2 border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-900/10">
+        <h3 class="font-bold text-lg mb-3">Como Adicionar Novas Funcionalidades</h3>
+        <div class="space-y-4 text-sm text-slate-600 dark:text-slate-400">
+            <div>
+                <p class="font-semibold text-slate-800 dark:text-slate-200 mb-1">Novo Endpoint na API</p>
+                <ol class="list-decimal list-inside space-y-1">
+                    <li>Defina o modelo Pydantic em <code class="text-xs px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700">models.py</code>.</li>
+                    <li>Adicione a rota em <code class="text-xs px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700">main.py</code> com decorador <code class="text-xs">@app.get/post/put/delete</code>.</li>
+                    <li>Use <code class="text-xs px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700">security.py</code> para validação de input e rate limiting.</li>
+                    <li>Se precisar de cache, use as funções de <code class="text-xs px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700">cache.py</code> com TTL apropriado.</li>
+                </ol>
+            </div>
+            <div>
+                <p class="font-semibold text-slate-800 dark:text-slate-200 mb-1">Nova View no Frontend</p>
+                <ol class="list-decimal list-inside space-y-1">
+                    <li>Crie o componente em <code class="text-xs px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700">frontend/src/components/</code>.</li>
+                    <li>Registre a view no estado de navegação em <code class="text-xs px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700">App.jsx</code>.</li>
+                    <li>Adicione o link de navegação no header (dentro da nav do App.jsx).</li>
+                    <li>As chamadas HTTP usam <code class="text-xs">fetch()</code> nativo com token Bearer.</li>
+                </ol>
+            </div>
+            <div>
+                <p class="font-semibold text-slate-800 dark:text-slate-200 mb-1">Nova Consulta ao Jira</p>
+                <ol class="list-decimal list-inside space-y-1">
+                    <li>Adicione o JQL em <code class="text-xs px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700">jira_client.py</code>.</li>
+                    <li>Use <code class="text-xs">Semaphore(6)</code> para respeitar o rate limit do Jira.</li>
+                    <li>A paginação via <code class="text-xs">nextPageToken</code> já está abstraída — use o padrão existente.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ────────── ARQUITETURA ────────── -->
+<section id="arquitetura" class="fade-in searchable" data-title="Arquitetura e Fluxo de Dados">
+    <h2 class="text-2xl font-bold mb-6">Arquitetura &amp; Fluxo de Dados</h2>
+
+    <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+        <pre class="text-sm font-mono leading-relaxed overflow-x-auto text-slate-700 dark:text-slate-300"><code>
+┌──────────────┐     fetch + JWT      ┌──────────────────────────────────────────┐
+│              │ ───────────────────▶  │            FastAPI Backend               │
+│   React SPA  │                       │                                          │
+│  (Vite 7.3)  │  ◀─── JSON ────────  │  ┌────────────────────────────────────┐  │
+│              │                       │  │           Middleware                 │  │
+│  Components: │                       │  │  • CORS • Security Headers         │  │
+│  • Dashboard │                       │  │  • Rate Limiting • Logging         │  │
+│  • Kanban    │                       │  └──────────┬─────────────────────────┘  │
+│  • Gestão    │                       │             │                            │
+│  • Produto   │                       │  ┌──────────▼─────────────────────────┐  │
+│  • Timeline  │                       │  │        Route Handlers              │  │
+│  • Priorizar │                       │  │  /api/dashboard  /api/management   │  │
+│  • Admin     │                       │  │  /api/auth/*     /api/admin/*      │  │
+│  • IA Chat   │                       │  │  /api/priority-* /api/ai/*         │  │
+└──────────────┘                       │  └──┬────────────┬────────────────────┘  │
+                                       │     │            │                       │
+                                       │  ┌──▼──┐    ┌───▼──────────────────┐    │
+                                       │  │Cache │    │   Jira Client        │    │
+                                       │  │2-tier│    │   (httpx async)      │    │
+                                       │  │      │    │                      │    │
+                                       │  │ RAM  │    │ • JQL queries        │    │
+                                       │  │  +   │    │ • Changelog parsing  │    │
+                                       │  │SQLite│    │ • Pagination         │    │
+                                       │  └──┬───┘    │ • Semaphore(6)       │    │
+                                       │     │        └───────┬──────────────┘    │
+                                       │     │                │                   │
+                                       │  ┌──▼───┐    ┌──────▼──────┐            │
+                                       │  │SQLite│    │ Jira Cloud   │            │
+                                       │  │pgmais│    │ REST API v3  │            │
+                                       │  │.db   │    └─────────────┘            │
+                                       │  └──────┘                               │
+                                       │                                          │
+                                       │  ┌──────────────────────────────────┐    │
+                                       │  │ JSON Files (persistent state)     │    │
+                                       │  │ • bus.json • users.json          │    │
+                                       │  │ • account_ranking.json           │    │
+                                       │  │ • priority_requests.json         │    │
+                                       │  └──────────────────────────────────┘    │
+                                       │                                          │
+                                       │  ┌──────────────────────────────────┐    │
+                                       │  │ OpenRouter API                    │    │
+                                       │  │ → Claude Sonnet 4.6               │    │
+                                       │  │ (priorização + chat insights)     │    │
+                                       │  └──────────────────────────────────┘    │
+                                       └──────────────────────────────────────────┘
+</code></pre>
+    </div>
+
+    <div class="mt-6 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
+        <h3 class="font-bold mb-3">Fluxo de Cache</h3>
+        <div class="text-sm space-y-2 text-slate-600 dark:text-slate-400">
+            <p><strong class="text-slate-800 dark:text-slate-200">1. Request chega:</strong> Middleware valida JWT → Rate limiter verifica IP</p>
+            <p><strong class="text-slate-800 dark:text-slate-200">2. Cache hit (RAM):</strong> Retorna dados do cache em memória (sub-ms)</p>
+            <p><strong class="text-slate-800 dark:text-slate-200">3. Cache hit (SQLite):</strong> Fallback para cache persistente se RAM expirou</p>
+            <p><strong class="text-slate-800 dark:text-slate-200">4. Cache miss:</strong> Busca no Jira → Parseia → Salva em ambas camadas → Retorna</p>
+            <p><strong class="text-slate-800 dark:text-slate-200">5. Invalidação:</strong> <code class="text-xs">POST /api/refresh</code> limpa todas as chaves <code class="text-xs">dashboard_*</code> e <code class="text-xs">mgmt_*</code></p>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-3 text-xs">
+            <span class="px-2.5 py-1 rounded bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300">Dashboard: TTL 5 min</span>
+            <span class="px-2.5 py-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">Gestão: TTL 1 hora</span>
+            <span class="px-2.5 py-1 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">KPI Snapshot: TTL 24 horas</span>
+        </div>
+    </div>
+</section>
+
+<!-- ────────── SEGURANÇA ────────── -->
+<section id="seguranca" class="fade-in searchable" data-title="Segurança">
+    <h2 class="text-2xl font-bold mb-6">Segurança</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+        <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+            <h3 class="font-semibold mb-2">Rate Limiting</h3>
+            <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                <li>API geral: <strong>100 requisições / 60s</strong> por IP</li>
+                <li>Login: <strong>15 tentativas / 15 min</strong> por IP</li>
+            </ul>
+        </div>
+        <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+            <h3 class="font-semibold mb-2">Autenticação JWT</h3>
+            <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                <li>Algoritmo: <strong>HS256</strong></li>
+                <li>Expiração: <strong>8 horas</strong></li>
+                <li>Domínios permitidos: <strong>@pgmais, @ciclo</strong></li>
+            </ul>
+        </div>
+        <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+            <h3 class="font-semibold mb-2">Validação de Input</h3>
+            <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                <li>Jira key: regex <code class="text-xs">^[A-Z][A-Z0-9]{0,9}-\d{1,6}$</code></li>
+                <li>Strings: max length + remoção de chars de controle</li>
+                <li>Listas: máximo 50 itens por parâmetro</li>
+            </ul>
+        </div>
+        <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+            <h3 class="font-semibold mb-2">Headers de Segurança</h3>
+            <ul class="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                <li><code class="text-xs">Content-Security-Policy</code></li>
+                <li><code class="text-xs">X-Frame-Options: DENY</code></li>
+                <li><code class="text-xs">X-Content-Type-Options: nosniff</code></li>
+                <li>Sanitização recursiva de dados sensíveis</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--                      REFERÊNCIA DE API                            -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+
+<div class="border-t border-slate-200 dark:border-slate-800 pt-10">
+    <h2 class="text-3xl font-extrabold mb-2">Referência de API</h2>
+    <p class="text-slate-500 dark:text-slate-400 mb-8">Base URL: <code class="text-sm px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">http://localhost:8000</code> &nbsp;|&nbsp; Autenticação via header <code class="text-sm px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800">Authorization: Bearer &lt;token&gt;</code></p>
+</div>
+
+<!-- ── HEALTH ── -->
+<section id="api-health" class="searchable" data-title="API Health e Diagnóstico">
+    <h3 class="text-xl font-bold mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Health &amp; Diagnóstico</h3>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge get">GET</span>
+                <code class="font-semibold">/api/health</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Health check — sem autenticação necessária.</p>
+            <p class="text-xs text-slate-500">Retorna status do servidor e idade do cache.</p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "status": "ok",
+  "timestamp": "2026-03-17T10:30:00Z",
+  "cache_age_seconds": 45,
+  "cache_ttl_remaining_seconds": 255
+}</code></pre>
+            <div class="flex items-center justify-between mt-2 mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl http://localhost:8000/api/health</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge get">GET</span>
+                <code class="font-semibold">/api/debug/fields</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Diagnóstico de campos Jira. Requer header <code class="text-xs">X-Refresh-Secret</code>.</p>
+            <table class="w-full text-xs mt-3">
+                <thead><tr class="text-left border-b border-slate-200 dark:border-slate-700"><th class="pb-1">Param</th><th class="pb-1">Tipo</th><th class="pb-1">Descrição</th></tr></thead>
+                <tbody><tr><td class="py-1 font-mono">issue_key</td><td class="py-1">query, opcional</td><td class="py-1">Chave da issue para inspecionar</td></tr></tbody>
+            </table>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl -H "X-Refresh-Secret: SEU_SECRET" \
+  "http://localhost:8000/api/debug/fields?issue_key=ON-123"</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- ── AUTH ── -->
+<section id="api-auth" class="searchable" data-title="API Autenticação">
+    <h3 class="text-xl font-bold mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Autenticação</h3>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge post">POST</span>
+                <code class="font-semibold">/api/auth/login</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Login com e-mail corporativo. Auto-registra novos usuários @pgmais/@ciclo.</p>
+            <table class="w-full text-xs mt-3">
+                <thead><tr class="text-left border-b border-slate-200 dark:border-slate-700"><th class="pb-1">Campo</th><th class="pb-1">Tipo</th><th class="pb-1">Obrigatório</th></tr></thead>
+                <tbody>
+                    <tr><td class="py-1 font-mono">email</td><td class="py-1">string</td><td class="py-1">Sim</td></tr>
+                    <tr><td class="py-1 font-mono">password</td><td class="py-1">string</td><td class="py-1">Apenas admins</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Request Body</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "email": "usuario@pgmais.com.br",
+  "password": ""
+}</code></pre>
+            <div class="flex items-center justify-between mt-3 mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "token_type": "Bearer",
+  "user": {
+    "user_id": "usuario@pgmais.com.br",
+    "email": "usuario@pgmais.com.br",
+    "name": "Nome do Usuário",
+    "bu_id": "uuid",
+    "bu_name": "Engenharia",
+    "bu_type": "operacional",
+    "roles": ["dev"],
+    "permissions": ["read", "write"]
+  }
+}</code></pre>
+            <div class="flex items-center justify-between mt-3 mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"usuario@pgmais.com.br","password":""}'</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge get">GET</span>
+                <code class="font-semibold">/api/auth/me</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Retorna perfil do usuário autenticado.</p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl -H "Authorization: Bearer SEU_TOKEN" \
+  http://localhost:8000/api/auth/me</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge post">POST</span>
+                <code class="font-semibold">/api/auth/sync-bu</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Sincroniza BU do usuário com bus.json.</p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "status": "synced",
+  "bu_name": "Engenharia",
+  "bu_type": "operacional"
+}</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge put">PUT</span>
+                <code class="font-semibold">/api/auth/users/{email}/bu</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Associa usuário a uma BU. <span class="text-rose-500 font-semibold">Admin only.</span></p>
+            <table class="w-full text-xs mt-3">
+                <thead><tr class="text-left border-b border-slate-200 dark:border-slate-700"><th class="pb-1">Param</th><th class="pb-1">Tipo</th><th class="pb-1">Descrição</th></tr></thead>
+                <tbody>
+                    <tr><td class="py-1 font-mono">bu_id</td><td class="py-1">query</td><td class="py-1">ID da BU</td></tr>
+                    <tr><td class="py-1 font-mono">bu_name</td><td class="py-1">query</td><td class="py-1">Nome da BU</td></tr>
+                    <tr><td class="py-1 font-mono">bu_type</td><td class="py-1">query</td><td class="py-1">operacional | gestao</td></tr>
+                    <tr><td class="py-1 font-mono">roles</td><td class="py-1">query[]</td><td class="py-1">Lista de roles</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "status": "updated",
+  "email": "usuario@pgmais.com.br",
+  "bu_name": "Engenharia"
+}</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- ── DASHBOARD ── -->
+<section id="api-dashboard" class="searchable" data-title="API Dashboard">
+    <h3 class="text-xl font-bold mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Dashboard</h3>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge get">GET</span>
+                <code class="font-semibold">/api/dashboard</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Dados principais do dashboard. Cache de 5 minutos.</p>
+            <table class="w-full text-xs mt-3">
+                <thead><tr class="text-left border-b border-slate-200 dark:border-slate-700"><th class="pb-1">Param</th><th class="pb-1">Tipo</th><th class="pb-1">Descrição</th></tr></thead>
+                <tbody>
+                    <tr><td class="py-1 font-mono">account</td><td class="py-1">query, opcional</td><td class="py-1">Filtrar por conta/cliente</td></tr>
+                    <tr><td class="py-1 font-mono">product</td><td class="py-1">query, opcional</td><td class="py-1">Filtrar por produto</td></tr>
+                    <tr><td class="py-1 font-mono">assignee</td><td class="py-1">query, opcional</td><td class="py-1">Filtrar por responsável</td></tr>
+                    <tr><td class="py-1 font-mono">issue_type</td><td class="py-1">query, opcional</td><td class="py-1">Filtrar por tipo (Bug, Task…)</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto text-xs"><code>{
+  "devs": [{
+    "assignee": {
+      "account_id": "557058:abc123",
+      "display_name": "John Doe",
+      "avatar_url": "https://..."
+    },
+    "active_issues": [/* Issue[] */],
+    "issue_count": 5
+  }],
+  "backlog": [/* Issue[] */],
+  "done_issues": [/* Issue[] */],
+  "done_issues_historical": [/* Issue[] */],
+  "stale_issues": [/* Issue[] */],
+  "kpis": {
+    "total_sprint": 42,
+    "in_progress": 15,
+    "waiting": 8,
+    "done_this_week": 12,
+    "overdue": 2
+  },
+  "kpi_delta": {
+    "total_sprint": 1,
+    "in_progress": -1,
+    "waiting": 0,
+    "done_vs_last_week": 5,
+    "overdue": 0
+  },
+  "last_updated": "2026-03-17T10:30:00Z",
+  "jira_base_url": "https://pgmais.atlassian.net"
+}</code></pre>
+            <div class="flex items-center justify-between mt-3 mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl -H "Authorization: Bearer SEU_TOKEN" \
+  "http://localhost:8000/api/dashboard?account=ClienteX"</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge post">POST</span>
+                <code class="font-semibold">/api/refresh</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Força invalidação do cache e atualização imediata. Requer header <code class="text-xs">X-Refresh-Secret</code>.</p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "status": "refreshed",
+  "last_updated": "2026-03-17T10:30:00Z"
+}</code></pre>
+            <div class="flex items-center justify-between mt-3 mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl -X POST \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "X-Refresh-Secret: SEU_SECRET" \
+  http://localhost:8000/api/refresh</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- ── MANAGEMENT ── -->
+<section id="api-management" class="searchable" data-title="API Management Gestão">
+    <h3 class="text-xl font-bold mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Management (Gestão)</h3>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge get">GET</span>
+                <code class="font-semibold">/api/management</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Métricas históricas de entrega. Cache de 1 hora.</p>
+            <table class="w-full text-xs mt-3">
+                <thead><tr class="text-left border-b border-slate-200 dark:border-slate-700"><th class="pb-1">Param</th><th class="pb-1">Tipo</th><th class="pb-1">Descrição</th></tr></thead>
+                <tbody>
+                    <tr><td class="py-1 font-mono">period</td><td class="py-1">query</td><td class="py-1">today | week | month | quarter | semester (default: month)</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200 (resumido)</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto text-xs"><code>{
+  "weeks": [{
+    "week_label": "17/Mar",
+    "done_count": 8,
+    "on_time": 7,
+    "late": 1,
+    "avg_cycle_days": 2.3
+  }],
+  "by_dev": [{
+    "name": "John Doe",
+    "done_count": 15,
+    "on_time": 14,
+    "avg_cycle_days": 1.8,
+    "avg_backlog_days": 0.5,
+    "avg_waiting_days": 0.3,
+    "avg_in_progress_days": 1.0
+  }],
+  "total_done": 45,
+  "sla_rate": 93.3,
+  "avg_cycle_days": 2.1,
+  "period_weeks": 4,
+  "last_updated": "2026-03-17T10:30:00Z"
+}</code></pre>
+            <div class="flex items-center justify-between mt-3 mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl -H "Authorization: Bearer SEU_TOKEN" \
+  "http://localhost:8000/api/management?period=quarter"</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- ── ADMIN ── -->
+<section id="api-admin" class="searchable" data-title="API Admin Administradores">
+    <h3 class="text-xl font-bold mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Admin — Administradores</h3>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge get">GET</span>
+                <code class="font-semibold">/api/admin/admins</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Lista todos os administradores. <span class="text-rose-500 font-semibold">Admin only.</span></p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>[
+  { "email": "admin1@pgmais.com.br" },
+  { "email": "admin2@pgmais.com.br" }
+]</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge post">POST</span>
+                <code class="font-semibold">/api/admin/admins</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Cria novo administrador. <span class="text-rose-500 font-semibold">Admin only.</span></p>
+            <p class="text-xs text-slate-500"><strong>Requisitos de senha:</strong> min 8 chars, 1 maiúscula, 1 número.</p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Request Body</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "email": "novoadmin@pgmais.com.br",
+  "password": "SenhaSegura123"
+}</code></pre>
+            <div class="flex items-center justify-between mt-3 mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl -X POST \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"novoadmin@pgmais.com.br","password":"SenhaSegura123"}' \
+  http://localhost:8000/api/admin/admins</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge put">PUT</span>
+                <code class="font-semibold">/api/admin/admins/{email}</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Atualiza senha de admin. <span class="text-rose-500 font-semibold">Admin only.</span></p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl -X PUT \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"NovaSenha456"}' \
+  http://localhost:8000/api/admin/admins/admin@pgmais.com.br</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge delete">DELETE</span>
+                <code class="font-semibold">/api/admin/admins/{email}</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Remove administrador. <span class="text-rose-500 font-semibold">Admin only.</span> Não pode deletar a si mesmo.</p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl -X DELETE \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  http://localhost:8000/api/admin/admins/admin@pgmais.com.br</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- ── BUSINESS UNITS ── -->
+<section id="api-bu" class="searchable" data-title="API Business Units BU">
+    <h3 class="text-xl font-bold mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Business Units (BU)</h3>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge get">GET</span>
+                <code class="font-semibold">/api/admin/bus</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Lista todas as BUs.</p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>[{
+  "id": "uuid",
+  "name": "Engenharia",
+  "members": ["John Doe", "Jane Smith"],
+  "bu_type": "operacional"
+}]</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge post">POST</span>
+                <code class="font-semibold">/api/admin/bus</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Cria nova BU. <span class="text-rose-500 font-semibold">Admin only.</span></p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Request Body</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "name": "Engenharia",
+  "bu_type": "operacional"
+}</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge put">PUT</span>
+                <code class="font-semibold">/api/admin/bus/{bu_id}</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Atualiza BU (nome, membros, tipo). <span class="text-rose-500 font-semibold">Admin only.</span></p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Request Body</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "name": "Engenharia Team",
+  "members": ["John Doe", "Jane Smith"],
+  "bu_type": "operacional"
+}</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge delete">DELETE</span>
+                <code class="font-semibold">/api/admin/bus/{bu_id}</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Remove uma BU. <span class="text-rose-500 font-semibold">Admin only.</span></p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl -X DELETE \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  http://localhost:8000/api/admin/bus/uuid-da-bu</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge get">GET</span>
+                <code class="font-semibold">/api/jira/users</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Lista usuários ativos do Jira (para atribuição de BU). <span class="text-rose-500 font-semibold">Admin only.</span></p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>[{
+  "account_id": "557058:abc123",
+  "display_name": "John Doe",
+  "avatar_url": "https://...",
+  "email": "john@pgmais.com.br"
+}]</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- ── ACCOUNT RANKING ── -->
+<section id="api-ranking" class="searchable" data-title="API Account Ranking Contas">
+    <h3 class="text-xl font-bold mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Account Ranking</h3>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge get">GET</span>
+                <code class="font-semibold">/api/admin/account-ranking</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Retorna ranking de contas por receita.</p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>["Cliente Premium", "Cliente Gold", "Cliente Silver"]</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge put">PUT</span>
+                <code class="font-semibold">/api/admin/account-ranking</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Atualiza o ranking de contas. <span class="text-rose-500 font-semibold">Admin only.</span></p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Request Body</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "accounts": ["Cliente Premium", "Cliente Gold", "Cliente Silver"]
+}</code></pre>
+            <div class="flex items-center justify-between mt-3 mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{ "status": "updated", "count": 3 }</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- ── PRIORITIZATION ── -->
+<section id="api-priority" class="searchable" data-title="API Priorização Priority Requests">
+    <h3 class="text-xl font-bold mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">Priorização</h3>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge get">GET</span>
+                <code class="font-semibold">/api/priority-requests</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Lista todos os pedidos de prioridade ativos.</p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto text-xs"><code>[{
+  "id": "uuid",
+  "issue_key": "ON-123",
+  "requester_name": "John Doe",
+  "justification": "Produção parada",
+  "requester_bu": "Engenharia",
+  "bu_type": "operacional",
+  "boost": 150,
+  "ai_verdict": "Impacto crítico em produção",
+  "created_at": "2026-03-17T10:30:00Z"
+}]</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge post">POST</span>
+                <code class="font-semibold">/api/priority-requests</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Solicita boost de prioridade (avaliado por IA).</p>
+            <table class="w-full text-xs mt-3">
+                <thead><tr class="text-left border-b border-slate-200 dark:border-slate-700"><th class="pb-1">Campo</th><th class="pb-1">Tipo</th></tr></thead>
+                <tbody>
+                    <tr><td class="py-1 font-mono">issue_key</td><td class="py-1">string (ex: ON-123)</td></tr>
+                    <tr><td class="py-1 font-mono">requester_name</td><td class="py-1">string</td></tr>
+                    <tr><td class="py-1 font-mono">justification</td><td class="py-1">string</td></tr>
+                    <tr><td class="py-1 font-mono">requester_bu</td><td class="py-1">string</td></tr>
+                    <tr><td class="py-1 font-mono">issue_summary</td><td class="py-1">string</td></tr>
+                    <tr><td class="py-1 font-mono">issue_type</td><td class="py-1">string</td></tr>
+                    <tr><td class="py-1 font-mono">account</td><td class="py-1">string</td></tr>
+                </tbody>
+            </table>
+            <div class="mt-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs">
+                <p class="font-semibold text-amber-700 dark:text-amber-300 mb-1">Escala de Boost (IA)</p>
+                <p class="text-slate-600 dark:text-slate-400">400-500: Produção parada, perda financeira imediata</p>
+                <p class="text-slate-600 dark:text-slate-400">250-399: Impacto significativo em cliente major</p>
+                <p class="text-slate-600 dark:text-slate-400">100-249: Impacto moderado, cliente insatisfeito</p>
+                <p class="text-slate-600 dark:text-slate-400">0-99: Baixa urgência, sem impacto real</p>
+                <p class="text-slate-600 dark:text-slate-400 mt-1"><strong>BUs gestão:</strong> multiplicador 1.5x (max 750)</p>
+            </div>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto text-xs"><code>curl -X POST \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "issue_key": "ON-123",
+    "requester_name": "John Doe",
+    "justification": "Produção parada, clientes sem acesso",
+    "requester_bu": "Engenharia",
+    "issue_summary": "API Gateway timeout",
+    "issue_type": "Bug",
+    "account": "Cliente Premium"
+  }' \
+  http://localhost:8000/api/priority-requests</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge delete">DELETE</span>
+                <code class="font-semibold">/api/priority-requests/{request_id}</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Remove pedido de prioridade. Apenas owner ou admin.</p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>curl -X DELETE \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  http://localhost:8000/api/priority-requests/uuid-do-request</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge post">POST</span>
+                <code class="font-semibold">/api/priority-requests/deprioritize</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Remove todos os boosts de uma issue. <span class="text-rose-500 font-semibold">Admin/Gestão only.</span></p>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Request Body</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "issue_key": "ON-123",
+  "requester_name": "Gestor",
+  "requester_bu": "Gestão"
+}</code></pre>
+            <div class="flex items-center justify-between mt-3 mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "status": "deprioritized",
+  "issue_key": "ON-123",
+  "removed": 3
+}</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- ── AI ── -->
+<section id="api-ai" class="searchable" data-title="API IA Inteligência Artificial Chat Insights">
+    <h3 class="text-xl font-bold mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">IA &amp; Insights</h3>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge post">POST</span>
+                <code class="font-semibold">/api/ai/chat</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Chat com IA usando contexto do dashboard. Usa Claude Sonnet 4.6 via OpenRouter.</p>
+            <table class="w-full text-xs mt-3">
+                <thead><tr class="text-left border-b border-slate-200 dark:border-slate-700"><th class="pb-1">Campo</th><th class="pb-1">Tipo</th></tr></thead>
+                <tbody>
+                    <tr><td class="py-1 font-mono">question</td><td class="py-1">string — pergunta do usuário</td></tr>
+                    <tr><td class="py-1 font-mono">context</td><td class="py-1">string, opcional — dados do dashboard em JSON</td></tr>
+                </tbody>
+            </table>
+            <div class="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-xs text-slate-600 dark:text-slate-400">
+                <p class="font-semibold text-blue-700 dark:text-blue-300 mb-1">Comportamento da IA</p>
+                <p>Dual-persona: CEO (estratégico) + Dev (operacional)</p>
+                <p>Idioma: Português brasileiro</p>
+                <p>Max 5-8 linhas por resposta</p>
+                <p>Cita issues como [ON-xxx]</p>
+            </div>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">curl</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto text-xs"><code>curl -X POST \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"Quais são os bloqueios no backlog?"}' \
+  http://localhost:8000/api/ai/chat</code></pre>
+            <div class="flex items-center justify-between mt-3 mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "answer": "3 bloqueios encontrados: [ON-456] design da API, [ON-789] migração de BD...",
+  "model": "anthropic/claude-sonnet-4.6"
+}</code></pre>
+        </div>
+    </div>
+
+    <div class="api-row mb-8">
+        <div>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="method-badge post">POST</span>
+                <code class="font-semibold">/api/ai/classify-production</code>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-2">Classifica issues que afetam produção do cliente.</p>
+            <table class="w-full text-xs mt-3">
+                <thead><tr class="text-left border-b border-slate-200 dark:border-slate-700"><th class="pb-1">Campo</th><th class="pb-1">Tipo</th></tr></thead>
+                <tbody>
+                    <tr><td class="py-1 font-mono">issues</td><td class="py-1">array — lista de {key, summary, type, status}</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Request Body</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto text-xs"><code>{
+  "issues": [
+    { "key": "ON-123", "summary": "Payment gateway timeout", "type": "Bug", "status": "In Progress" },
+    { "key": "ON-456", "summary": "Atualizar docs internas", "type": "Task", "status": "To Do" }
+  ]
+}</code></pre>
+            <div class="flex items-center justify-between mt-3 mb-1">
+                <span class="text-xs font-semibold text-slate-400 uppercase">Resposta 200</span>
+                <button onclick="copyCode(this)" class="copy-btn text-xs text-brand-500 hover:text-brand-400 transition">Copiar</button>
+            </div>
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-4 overflow-x-auto"><code>{
+  "production_affected": ["ON-123"]
+}</code></pre>
+        </div>
+    </div>
+</section>
+
+<!-- ────────── FOOTER ────────── -->
+<footer class="mt-16 pt-8 pb-12 border-t border-slate-200 dark:border-slate-800 text-center text-sm text-slate-400">
+    <p>PGMais Team Dashboard — Documentação Técnica</p>
+    <p class="mt-1">Gerado automaticamente a partir do código-fonte em 17/Mar/2026</p>
+</footer>
+
+</div><!-- max-w -->
+</main>
+
+<!-- ═══════════════════════════ JAVASCRIPT ═══════════════════════════ -->
+<script>
+// ── Theme ──
+const html = document.documentElement;
+const themeBtn = document.getElementById('theme-toggle');
+const stored = localStorage.getItem('pgdocs-theme');
+if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    html.classList.add('dark');
+}
+themeBtn.addEventListener('click', () => {
+    html.classList.toggle('dark');
+    localStorage.setItem('pgdocs-theme', html.classList.contains('dark') ? 'dark' : 'light');
+});
+
+// ── Mobile sidebar ──
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebar-overlay');
+const toggle = document.getElementById('sidebar-toggle');
+function openSidebar() { sidebar.classList.remove('-translate-x-full'); overlay.classList.remove('hidden'); }
+function closeSidebar() { sidebar.classList.add('-translate-x-full'); overlay.classList.add('hidden'); }
+toggle.addEventListener('click', () => sidebar.classList.contains('-translate-x-full') ? openSidebar() : closeSidebar());
+overlay.addEventListener('click', closeSidebar);
+
+// Close sidebar on link click (mobile)
+sidebar.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { if (window.innerWidth < 1024) closeSidebar(); }));
+
+// ── Active sidebar link on scroll ──
+const sections = document.querySelectorAll('section[id]');
+const sidebarLinks = document.querySelectorAll('.sidebar-link');
+const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            sidebarLinks.forEach(l => l.classList.remove('active'));
+            const link = document.querySelector(`.sidebar-link[href="#${entry.target.id}"]`);
+            if (link) link.classList.add('active');
+        }
+    });
+}, { rootMargin: '-20% 0px -60% 0px' });
+sections.forEach(s => observer.observe(s));
+
+// ── Search ──
+const searchInput = document.getElementById('search-input');
+const searchResults = document.getElementById('search-results');
+const searchableSections = document.querySelectorAll('.searchable');
+
+// Build index
+const searchIndex = [];
+searchableSections.forEach(section => {
+    const title = section.dataset.title || section.querySelector('h1,h2,h3')?.textContent || '';
+    const text = section.textContent;
+    searchIndex.push({ id: section.id, title, text, el: section });
+});
+
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+searchInput.addEventListener('input', () => {
+    const q = searchInput.value.trim().toLowerCase();
+    if (q.length < 2) { searchResults.classList.add('hidden'); return; }
+
+    const regex = new RegExp(`(${escapeRegex(q)})`, 'gi');
+    const matches = searchIndex.filter(item => item.text.toLowerCase().includes(q));
+
+    if (matches.length === 0) {
+        searchResults.innerHTML = '<p class="p-3 text-sm text-slate-500">Nenhum resultado encontrado.</p>';
+    } else {
+        searchResults.innerHTML = matches.slice(0, 12).map(m => {
+            // Find context around match
+            const idx = m.text.toLowerCase().indexOf(q);
+            const start = Math.max(0, idx - 40);
+            const end = Math.min(m.text.length, idx + q.length + 60);
+            const snippet = (start > 0 ? '...' : '') + m.text.slice(start, end).replace(regex, '<mark>$1</mark>') + (end < m.text.length ? '...' : '');
+            return `<a href="#${m.id}" class="block px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition border-b border-slate-100 dark:border-slate-700 last:border-0">
+                <p class="font-semibold text-sm">${m.title}</p>
+                <p class="text-xs text-slate-500 leading-relaxed mt-0.5">${snippet}</p>
+            </a>`;
+        }).join('');
+    }
+    searchResults.classList.remove('hidden');
+});
+
+// Close search on outside click
+document.addEventListener('click', e => {
+    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.classList.add('hidden');
+    }
+});
+
+// Close search on result click
+searchResults.addEventListener('click', () => {
+    searchResults.classList.add('hidden');
+    searchInput.value = '';
+});
+
+// Ctrl+K shortcut
+document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); searchInput.focus(); }
+    if (e.key === 'Escape') { searchResults.classList.add('hidden'); searchInput.blur(); }
+});
+
+// ── Copy to clipboard ──
+function copyCode(btn) {
+    const pre = btn.closest('div').nextElementSibling || btn.parentElement.nextElementSibling;
+    const code = pre?.querySelector('code')?.textContent || pre?.textContent || '';
+    navigator.clipboard.writeText(code.trim()).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = 'Copiado!';
+        btn.classList.add('text-emerald-500');
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('text-emerald-500'); }, 1500);
+    });
+}
+</script>
+
+</body>
+</html>

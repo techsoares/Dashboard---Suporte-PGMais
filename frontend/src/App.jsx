@@ -379,7 +379,7 @@ export default function App() {
           <div className="nav-pill-group">
             <button className={`nav-pill ${['management', 'ai', 'product'].includes(currentView) ? 'active' : ''}`} aria-label="Abrir menu de análise" aria-expanded={['management', 'ai', 'product'].includes(currentView)}>Análise</button>
             <div className="nav-pill-submenu">
-              <button className={`nav-pill-item ${currentView === 'management' ? 'active' : ''}`} onClick={() => setCurrentView('management')}>Gestão + IA</button>
+              <button className={`nav-pill-item ${currentView === 'management' ? 'active' : ''}`} onClick={() => setCurrentView('management')}>Gestão</button>
               <button className={`nav-pill-item ${currentView === 'product' ? 'active' : ''}`} onClick={() => { setCurrentView('product'); track('view_product') }}>Produto</button>
               <button className={`nav-pill-item ${currentView === 'timeline' ? 'active' : ''}`} onClick={() => setCurrentView('timeline')}>Timeline</button>
             </div>
