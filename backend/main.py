@@ -389,12 +389,12 @@ async def _evaluate_priority_with_ai(body: PriorityRequest, bu_type: str) -> tup
 
 
 @app.get("/api/priority-requests", tags=["priority"], summary="Lista todas as solicitações de prioridade ativas")
-async def get_priority_requests():
+async def get_priority_requests(_user: UserProfile = Depends(get_current_user)):
     return _load_priority_requests()
 
 
 @app.post("/api/priority-requests", tags=["priority"], summary="Solicita prioridade para um chamado com avaliação por IA")
-async def create_priority_request(body: PriorityRequest):
+async def create_priority_request(body: PriorityRequest, _user: UserProfile = Depends(get_current_user)):
     """
     Recebe solicitação de prioridade, avalia com IA e atribui um boost ao score.
     Limita a 1 pedido por pessoa por issue.
@@ -456,13 +456,14 @@ class DeprioritizeRequest(BaseModel):
     requester_bu: str
 
 
-@app.post("/api/priority-requests/deprioritize", tags=["priority"], summary="Desprioriza um chamado (apenas BU gestão)")
-async def deprioritize_issue(body: DeprioritizeRequest):
-    """Remove todas as solicitações de prioridade de um chamado. Apenas BUs de tipo gestão podem fazer isso."""
+@app.post("/api/priority-requests/deprioritize", tags=["priority"], summary="Desprioriza um chamado (admins ou BU gestão)")
+async def deprioritize_issue(body: DeprioritizeRequest, current_user: UserProfile = Depends(get_current_user)):
+    """Remove todas as solicitações de prioridade de um chamado. Admins e BUs de tipo gestão podem fazer isso."""
+    is_admin = "admin" in current_user.permissions
     requester_bu_type = _resolve_bu_type(body.requester_bu)
 
-    if requester_bu_type != "gestao":
-        raise HTTPException(status_code=403, detail="Apenas BUs de gestão (Diretoria / C-Level) podem despriorizar chamados.")
+    if not is_admin and requester_bu_type != "gestao":
+        raise HTTPException(status_code=403, detail="Apenas admins ou BUs de gestão (Diretoria / C-Level) podem despriorizar chamados.")
 
     all_requests = _load_priority_requests()
     remaining_requests = [req for req in all_requests if req["issue_key"] != body.issue_key]
@@ -476,7 +477,7 @@ async def deprioritize_issue(body: DeprioritizeRequest):
     tags=["ai"],
     summary="Classifica quais issues afetam produção do cliente via IA",
 )
-async def classify_production(body: dict):
+async def classify_production(body: dict, _user: UserProfile = Depends(get_current_user)):
     """Recebe lista de issues e retorna quais afetam produção."""
     issues = body.get("issues", [])
     if not issues:
@@ -557,7 +558,7 @@ async def login(body: LoginRequest, request: Request):
         raise
     except Exception as e:
         logger.error("Erro interno no login para %s: %s", body.email, str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Erro interno no servidor: {str(e)}")
+        raise HTTPException(status_code=500, detail="Erro interno no servidor. Contate o administrador.")
 
 
 
@@ -621,13 +622,22 @@ async def create_admin(body: AdminCreate, admin_user: UserProfile = Depends(requ
     """Adiciona um novo administrador. Requer permissão 'admin'."""
     if not body.email.strip() or not body.password.strip():
         raise HTTPException(status_code=400, detail="Email e senha são obrigatórios")
-    
+
+    # Validação de complexidade de senha
+    pwd = body.password.strip()
+    if len(pwd) < 8:
+        raise HTTPException(status_code=400, detail="Senha deve ter no mínimo 8 caracteres")
+    if not any(c.isupper() for c in pwd):
+        raise HTTPException(status_code=400, detail="Senha deve conter pelo menos uma letra maiúscula")
+    if not any(c.isdigit() for c in pwd):
+        raise HTTPException(status_code=400, detail="Senha deve conter pelo menos um número")
+
     # Verificar se já existe
     admins = get_admin_credentials()
     if body.email.lower() in admins:
         raise HTTPException(status_code=400, detail="Admin já existe")
-    
-    add_admin(body.email.strip(), body.password.strip())
+
+    add_admin(body.email.strip(), pwd)
     return {"status": "created", "email": body.email.strip()}
 
 
@@ -652,7 +662,13 @@ async def update_admin(email: str, body: dict, admin_user: UserProfile = Depends
     password = body.get('password', '').strip()
     if not password:
         raise HTTPException(status_code=400, detail="Senha é obrigatória")
-    
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Senha deve ter no mínimo 8 caracteres")
+    if not any(c.isupper() for c in password):
+        raise HTTPException(status_code=400, detail="Senha deve conter pelo menos uma letra maiúscula")
+    if not any(c.isdigit() for c in password):
+        raise HTTPException(status_code=400, detail="Senha deve conter pelo menos um número")
+
     admins = get_admin_credentials()
     if email.lower() not in admins:
         raise HTTPException(status_code=404, detail="Admin não encontrado")
@@ -866,7 +882,7 @@ def _period_date_range(period: str) -> tuple[date, date | None, int]:
     tags=["dashboard"],
     summary="Dados históricos de entrega para visão gerencial (cache 1h)",
 )
-async def get_management(period: str = "month"):
+async def get_management(period: str = "month", _user: UserProfile = Depends(get_current_user)):
     if period not in ("today", "week", "month", "quarter", "semester"):
         period = "month"
 
@@ -901,12 +917,10 @@ async def get_management(period: str = "month"):
     tags=["ai"],
     summary="Consulta a IA com contexto do Jira (powered by OpenRouter / Claude Sonnet 4.6)",
 )
-async def ai_chat(body: AIChatRequest):
+async def ai_chat(body: AIChatRequest, _user: UserProfile = Depends(get_current_user)):
     """
     Envia uma pergunta à IA com contexto dos dados do dashboard.
-    Requer OPENROUTER_API_KEY no .env.
-
-    Body: { "question": "sua pergunta aqui", "context": "dados extras opcionais" }
+    Requer autenticação e OPENROUTER_API_KEY no .env.
     """
     question = body.question.strip()
     if not question:

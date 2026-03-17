@@ -81,7 +81,7 @@ export default function AIInsightsView({ data }) {
     try {
       const res = await fetch(`${API_BASE_URL}/api/ai/chat`, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
         body:    JSON.stringify({ question: text, context: ctx }),
       })
       const json = await res.json()

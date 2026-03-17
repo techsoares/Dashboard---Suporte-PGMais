@@ -92,7 +92,8 @@ function TypeBadge({ type }) {
   )
 }
 
-export default function PrioritizationView({ data, bus = [] }) {
+export default function PrioritizationView({ data, bus = [], user }) {
+  const isAdmin = user?.permissions?.includes('admin')
   const [ranking, setRanking]               = useState([])
   const [productionKeys, setProductionKeys] = useState([])
   const [classifying, setClassifying]       = useState(false)
@@ -121,7 +122,7 @@ export default function PrioritizationView({ data, bus = [] }) {
 
   // Load ranking
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/admin/account-ranking`)
+    fetch(`${API_BASE_URL}/api/admin/account-ranking`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } })
       .then(r => r.json())
       .then(r => setRanking(Array.isArray(r) ? r : []))
       .catch(() => {})
@@ -129,7 +130,7 @@ export default function PrioritizationView({ data, bus = [] }) {
 
   // Load priority requests
   const loadPrioRequests = useCallback(() => {
-    fetch(`${API_BASE_URL}/api/priority-requests`)
+    fetch(`${API_BASE_URL}/api/priority-requests`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } })
       .then(r => r.json())
       .then(r => setPrioRequests(Array.isArray(r) ? r : []))
       .catch(() => {})
@@ -143,7 +144,7 @@ export default function PrioritizationView({ data, bus = [] }) {
     setPrioSubmitting(true)
     fetch(`${API_BASE_URL}/api/priority-requests`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
       body: JSON.stringify({
         issue_key: prioForm.issueKey,
         requester_name: prioName.trim(),
@@ -173,10 +174,22 @@ export default function PrioritizationView({ data, bus = [] }) {
   // Deprioritize — remove a specific priority request by ID
   const removePrioRequest = useCallback((requestId, requesterName) => {
     if (!confirm(`Remover a priorização de ${requesterName}?`)) return
-    fetch(`${API_BASE_URL}/api/priority-requests/${requestId}`, { method: 'DELETE' })
+    fetch(`${API_BASE_URL}/api/priority-requests/${requestId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } })
       .then(() => loadPrioRequests())
       .catch(() => {})
   }, [loadPrioRequests])
+
+  // Deprioritize all — admin removes all priority requests for an issue
+  const deprioritizeAll = useCallback((issueKey) => {
+    if (!confirm(`Remover TODAS as solicitações de prioridade deste chamado?`)) return
+    fetch(`${API_BASE_URL}/api/priority-requests/deprioritize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+      body: JSON.stringify({ issue_key: issueKey, requester_name: user?.name || '', requester_bu: user?.bu_name || '' }),
+    })
+      .then(() => loadPrioRequests())
+      .catch(() => {})
+  }, [loadPrioRequests, user])
 
   // Compute boost per issue from priority requests
   const boostByKey = useMemo(() => {
@@ -201,7 +214,7 @@ export default function PrioritizationView({ data, bus = [] }) {
     }))
     fetch(`${API_BASE_URL}/api/ai/classify-production`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
       body: JSON.stringify({ issues }),
     })
       .then(r => r.json())
@@ -219,7 +232,7 @@ export default function PrioritizationView({ data, bus = [] }) {
     try {
       await fetch(`${API_BASE_URL}/api/admin/account-ranking`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
         body: JSON.stringify({ accounts: newRanking }),
       })
     } catch {}
@@ -286,7 +299,7 @@ export default function PrioritizationView({ data, bus = [] }) {
     const question = `Resuma em 2-3 frases curtas o chamado Jira abaixo. Seja direto: o que aconteceu, impacto e status atual.\n\nChave: ${issue.key}\nTítulo: ${issue.summary}\nTipo: ${issue.issue_type?.name || '—'}\nStatus: ${issue.status?.name || '—'}\nAccount: ${issue.account || '—'}\nResponsável: ${issue.assignee?.display_name || 'Não atribuído'}\nCriado: ${issue.created || '—'}`
     fetch(`${API_BASE_URL}/api/ai/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
       body: JSON.stringify({ question }),
     })
       .then(r => r.json())
@@ -470,15 +483,24 @@ export default function PrioritizationView({ data, bus = [] }) {
                                 {r.requester_bu && <span className="prio-boost-bu">{r.requester_bu}</span>}
                                 <span className="prio-boost-reason">{r.ai_verdict}</span>
                                 <span className="prio-boost-value">+{r.boost}</span>
-                                {prioName.trim().toLowerCase() === r.requester_name.toLowerCase() && (
+                                {(prioName.trim().toLowerCase() === r.requester_name.toLowerCase() || isAdmin) && (
                                   <button
                                     className="prio-deprio-btn"
                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); removePrioRequest(r.id, r.requester_name) }}
-                                    title="Remover sua priorização"
+                                    title={isAdmin ? 'Remover priorização (admin)' : 'Remover sua priorização'}
                                   >✕</button>
                                 )}
                               </div>
                             ))}
+                            {isAdmin && issue.prioRequests.length > 1 && (
+                              <button
+                                className="prio-deprio-all-btn"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); deprioritizeAll(issue.key) }}
+                                title="Remover todas as priorizações (admin)"
+                              >
+                                Despriorizar tudo
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -530,32 +552,34 @@ export default function PrioritizationView({ data, bus = [] }) {
                 <div key={account} className={`prio-ranking-item ${idx < 10 ? 'prio-ranking-item--top' : ''}`}>
                   <span className="prio-ranking-pos">{idx + 1}</span>
                   <span className="prio-ranking-name">{account}</span>
-                  <div className="prio-ranking-actions">
-                    <button
-                      className="prio-rank-btn"
-                      onClick={() => moveAccount(account, -1)}
-                      disabled={idx === 0}
-                      title="Subir"
-                    >▲</button>
-                    <button
-                      className="prio-rank-btn"
-                      onClick={() => moveAccount(account, 1)}
-                      disabled={idx === ranking.length - 1}
-                      title="Descer"
-                    >▼</button>
-                    <button
-                      className="prio-rank-btn prio-rank-btn--remove"
-                      onClick={() => removeFromRanking(account)}
-                      title="Remover"
-                    >✕</button>
-                  </div>
+                  {isAdmin && (
+                    <div className="prio-ranking-actions">
+                      <button
+                        className="prio-rank-btn"
+                        onClick={() => moveAccount(account, -1)}
+                        disabled={idx === 0}
+                        title="Subir"
+                      >▲</button>
+                      <button
+                        className="prio-rank-btn"
+                        onClick={() => moveAccount(account, 1)}
+                        disabled={idx === ranking.length - 1}
+                        title="Descer"
+                      >▼</button>
+                      <button
+                        className="prio-rank-btn prio-rank-btn--remove"
+                        onClick={() => removeFromRanking(account)}
+                        title="Remover"
+                      >✕</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          {/* Unranked accounts */}
-          {unrankedAccounts.length > 0 && (
+          {/* Unranked accounts — somente admin pode adicionar */}
+          {isAdmin && unrankedAccounts.length > 0 && (
             <>
               <div className="prio-unranked-header">Accounts sem ranking</div>
               <div className="prio-unranked-list">

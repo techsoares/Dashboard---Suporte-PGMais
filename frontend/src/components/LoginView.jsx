@@ -38,11 +38,7 @@ export default function LoginView({ onLoginSuccess }) {
     setLoading(true)
 
     try {
-      console.log('Tentando login com:', email)
-      console.log('API Base URL:', API_BASE_URL)
-
       const loginUrl = `${API_BASE_URL}/api/auth/login`
-      console.log('Login URL:', loginUrl)
 
       const response = await fetch(loginUrl, {
         method: 'POST',
@@ -56,9 +52,6 @@ export default function LoginView({ onLoginSuccess }) {
         }),
       })
 
-      console.log('Response status:', response.status)
-      console.log('Response headers:', response.headers)
-
       if (!response.ok) {
         let errorMsg = 'Erro ao fazer login'
         try {
@@ -71,14 +64,12 @@ export default function LoginView({ onLoginSuccess }) {
       }
 
       const data = await response.json()
-      console.log('Login bem-sucedido:', data.user)
 
       localStorage.setItem('access_token', data.access_token)
       localStorage.setItem('user', JSON.stringify(data.user))
 
       onLoginSuccess(data.user)
     } catch (err) {
-      console.error('Login error:', err)
       if (err.message.includes('Failed to fetch')) {
         setError('Não conseguimos conectar ao servidor. Verifique se o backend está rodando em ' + API_BASE_URL)
       } else {
@@ -174,41 +165,8 @@ export default function LoginView({ onLoginSuccess }) {
           </button>
         </form>
 
-        {/* Demo Users */}
         <div className="login-demos">
-          <p><strong>🔑 Credenciais de Demo:</strong></p>
-
-          <div className="demo-buttons">
-            <button
-              type="button"
-              className="demo-btn admin"
-              onClick={() => handleDemoLogin('andressa.soares@pgmais.com.br', 'Admin@2025')}
-              disabled={loading}
-            >
-              <span>👤 Admin</span>
-              <span className="email-small">andressa.soares@pgmais.com.br</span>
-            </button>
-
-            <button
-              type="button"
-              className="demo-btn user"
-              onClick={() => handleDemoLogin('usuario@pgmais.com.br', '')}
-              disabled={loading}
-            >
-              <span>👥 Usuário Normal</span>
-              <span className="email-small">usuario@pgmais.com.br</span>
-            </button>
-
-            <button
-              type="button"
-              className="demo-btn ciclo"
-              onClick={() => handleDemoLogin('teste@ciclo', '')}
-              disabled={loading}
-            >
-              <span>🏢 Ciclo User</span>
-              <span className="email-small">teste@ciclo</span>
-            </button>
-          </div>
+          <p className="login-hint">Use seu email corporativo @pgmais.com.br ou @ciclo para entrar.</p>
         </div>
       </div>
     </div>

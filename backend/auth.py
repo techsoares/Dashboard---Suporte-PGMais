@@ -1,6 +1,6 @@
 """
-Autenticação simplificada com email/senha.
-Usuário admin pré-configurado: admin / pg@dash123
+Autenticação com email/senha.
+Credenciais de admin gerenciadas via .env (ADMIN_EMAIL / ADMIN_PASSWORD_HASH).
 """
 
 import os
@@ -280,7 +280,7 @@ def authenticate_user(email: str, password: str = "") -> UserProfile:
         raise
     except Exception as e:
         logger.error("Erro inesperado na autenticação: %s", str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Erro ao autenticar: {str(e)}")
+        raise HTTPException(status_code=500, detail="Erro interno ao autenticar. Contate o administrador.")
 
 
 def _get_user_bu_from_bus_file(user_name: str) -> Optional[dict]:

@@ -1,41 +1,5 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import './ManagementView.css'
-
-// Renderiza resposta da IA: mistura parágrafos e bullet points
-function renderAIAnswer(text) {
-  const blocks = text.split(/\n{2,}/)
-  return blocks.map((block, blockIndex) => {
-    const lines = block.split('\n').filter(line => line.trim() !== '')
-    const isBulletList = lines.every(line => /^[-•]\s/.test(line.trim()))
-    if (isBulletList) {
-      return (
-        <ul key={blockIndex} className="ai-answer-list">
-          {lines.map((line, lineIndex) => (
-            <li key={lineIndex}>{line.replace(/^[-•]\s+/, '')}</li>
-          ))}
-        </ul>
-      )
-    }
-    // Bloco misto: separa linhas bullet das de texto
-    const elements = []
-    let pendingBullets = []
-    for (const [lineIndex, line] of lines.entries()) {
-      if (/^[-•]\s/.test(line.trim())) {
-        pendingBullets.push(line)
-      } else {
-        if (pendingBullets.length) {
-          elements.push(<ul key={`${blockIndex}-ul-${lineIndex}`} className="ai-answer-list">{pendingBullets.map((bullet, bulletIdx) => <li key={bulletIdx}>{bullet.replace(/^[-•]\s+/, '')}</li>)}</ul>)
-          pendingBullets = []
-        }
-        elements.push(<p key={`${blockIndex}-p-${lineIndex}`} className="ai-answer-para">{line}</p>)
-      }
-    }
-    if (pendingBullets.length) {
-      elements.push(<ul key={`${blockIndex}-ul-end`} className="ai-answer-list">{pendingBullets.map((bullet, bulletIdx) => <li key={bulletIdx}>{bullet.replace(/^[-•]\s+/, '')}</li>)}</ul>)
-    }
-    return <div key={blockIndex}>{elements}</div>
-  })
-}
 
 import { API_BASE_URL } from '../apiUrl'
 
@@ -402,167 +366,6 @@ function DrillDownTable({ issues, periodLabel }) {
   )
 }
 
-// ── MgmtAIChat ─────────────────────────────────────────────────────────────
-function MgmtAIChat({ mgmtData, dashData }) {
-  const [question, setQuestion] = useState('')
-  const [history,  setHistory]  = useState([])
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
-  const [pendingQuestion, setPendingQuestion] = useState('')
-  const chatEndRef = useRef(null)
-  const inputRef   = useRef(null)
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [history, loading])
-
-  const buildContext = () => {
-    if (!mgmtData) return ''
-    const lines = [
-      `=== HISTÓRICO (${mgmtData.period_weeks ?? '?'} semanas) ===`,
-      `Total entregues: ${mgmtData.total_done ?? 0}`,
-      `SLA: ${mgmtData.sla_rate ?? 0}%`,
-      `Ciclo médio: ${mgmtData.avg_cycle_days ?? 0}d`,
-      '', '--- POR SEMANA ---',
-    ]
-    for (const week of mgmtData.weeks ?? []) {
-      lines.push(`${week.week_label}: ${week.done_count} entregues (${week.on_time} no prazo, ciclo ${week.avg_cycle_days}d)`)
-    }
-    lines.push('', '--- POR DEV ---')
-    for (const dev of mgmtData.by_dev ?? []) {
-      lines.push(`${dev.name}: ${dev.done_count} entregues, ciclo médio ${dev.avg_cycle_days}d`)
-    }
-    lines.push('', '--- POR PRODUTO ---')
-    for (const product of mgmtData.by_product ?? []) {
-      lines.push(`${product.product}: ${product.done_count} entregues`)
-    }
-    if (dashData?.backlog) {
-      const activeIssues = dashData.backlog
-      lines.push('', '--- BACKLOG ATUAL ---',
-        `Total ativo: ${activeIssues.length}`,
-        `Atrasados: ${activeIssues.filter(issue => issue.is_overdue).length}`,
-        `Paralisados: ${(dashData.stale_issues ?? []).length}`,
-      )
-    }
-    return lines.join('\n')
-  }
-
-  const askAI = async (directQuestion) => {
-    const text = (directQuestion ?? question).trim()
-    if (!text || loading) return
-    setError('')
-    setPendingQuestion(text)
-    setLoading(true)
-
-    const recent = history.slice(-3).map(entry =>
-      `Pergunta anterior: ${entry.question}\nResposta anterior: ${entry.answer}`
-    ).join('\n\n')
-    const ctx = buildContext() + (recent ? `\n\n--- HISTÓRICO ---\n${recent}` : '')
-
-    try {
-      const res  = await fetch(`${API_BASE_URL}/api/ai/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text, context: ctx }),
-      })
-      const json = await res.json()
-      if (!res.ok) {
-        setError(json.detail ?? 'Erro ao consultar a IA.')
-      } else {
-        setHistory(prev => [...prev, { question: text, answer: json.answer }])
-        setQuestion('')
-        inputRef.current?.focus()
-      }
-    } catch {
-      setError('Não foi possível conectar ao servidor.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const SUGGESTIONS = [
-    'Como está a tendência de entregas nas últimas semanas?',
-    'Nossa taxa SLA está boa? O que está puxando para baixo?',
-    'Quem está entregando mais e quem precisa de atenção?',
-    'O ciclo médio de entrega está melhorando ou piorando?',
-    'Quais produtos têm mais atrasos históricos?',
-  ]
-
-  return (
-    <div className="mgmt-ai-panel">
-      <div className="mgmt-ai-header">
-        <span className="mgmt-ai-title">IA com visão histórica</span>
-        <span className="mgmt-ai-badge">✦ Claude Sonnet 4.6</span>
-      </div>
-
-      {(history.length > 0 || loading) && (
-        <div className="mgmt-ai-history">
-          {history.map((item, idx) => (
-            <div key={idx} className="mgmt-ai-exchange">
-              <div className="mgmt-ai-bubble mgmt-ai-bubble--user">
-                <span className="mgmt-ai-who">Você</span>
-                {item.question}
-              </div>
-              <div className="mgmt-ai-bubble mgmt-ai-bubble--ai">
-                <span className="mgmt-ai-who">✦ IA</span>
-                <div className="mgmt-ai-answer">{renderAIAnswer(item.answer)}</div>
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div className="mgmt-ai-exchange">
-              <div className="mgmt-ai-bubble mgmt-ai-bubble--user">
-                <span className="mgmt-ai-who">Você</span>
-                {pendingQuestion}
-              </div>
-              <div className="mgmt-ai-bubble mgmt-ai-bubble--ai">
-                <span className="mgmt-ai-who">✦ IA</span>
-                <span className="ai-dots"><span /><span /><span /></span>
-              </div>
-            </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
-      )}
-
-      <div className="mgmt-ai-input-row">
-        <input
-          ref={inputRef}
-          type="text"
-          value={question}
-          onChange={e => setQuestion(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && askAI()}
-          placeholder="Pergunte sobre o histórico de entregas, SLA, tendências..."
-          disabled={loading}
-        />
-        <button
-          className="mgmt-ai-send-btn"
-          onClick={() => askAI()}
-          disabled={loading || !question.trim()}
-        >
-          {loading ? <span className="ai-send-spinner" /> : 'Enviar'}
-        </button>
-      </div>
-
-      {error && <div className="mgmt-ai-error">⚠ {error}</div>}
-
-      {history.length === 0 && !loading && (
-        <div className="mgmt-ai-suggestions">
-          {SUGGESTIONS.map(s => (
-            <button key={s} onClick={() => { setQuestion(s); askAI(s) }}>{s}</button>
-          ))}
-        </div>
-      )}
-
-      {history.length > 0 && (
-        <button className="mgmt-ai-clear" onClick={() => { setHistory([]); setError('') }}>
-          ↺ Nova conversa
-        </button>
-      )}
-    </div>
-  )
-}
-
 // ── Main Component ──────────────────────────────────────────────────────────
 export default function ManagementView({ data, filters }) {
   const [period,   setPeriod]   = useState(PERIODS[2])   // default: Este mês
@@ -576,7 +379,7 @@ export default function ManagementView({ data, filters }) {
     setError('')
     setMgmtData(null)
 
-    fetch(`${API_BASE_URL}/api/management?period=${periodKey}`, { signal })
+    fetch(`${API_BASE_URL}/api/management?period=${periodKey}`, { signal, headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } })
       .then(res => {
         if (!res.ok) return res.json().then(j => Promise.reject(j.detail ?? `HTTP ${res.status}`))
         return res.json()
@@ -914,8 +717,7 @@ export default function ManagementView({ data, filters }) {
             </div>
           </div>
 
-          {/* AI Chat */}
-          <MgmtAIChat mgmtData={mgmtData} dashData={data} />
+          {/* AI Chat removido — assistente IA flutuante já disponível em todas as telas */}
         </>
       )}
     </div>
