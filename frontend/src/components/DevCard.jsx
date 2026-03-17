@@ -65,7 +65,8 @@ function HealthBar({ issues }) {
 }
 
 export default function DevCard({ dev, jiraBaseUrl }) {
-  const { assignee, active_issues, issue_count } = dev
+  if (!dev?.assignee) return null
+  const { assignee, active_issues = [], issue_count = 0 } = dev
   const overdueCount = active_issues.filter(i => i.is_overdue).length
 
   return (

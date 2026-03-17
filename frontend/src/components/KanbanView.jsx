@@ -1,13 +1,22 @@
 import './KanbanView.css'
 
 export default function KanbanView({ data }) {
+  if (!data?.backlog?.length) {
+    return (
+      <div className="kanban-view">
+        <h2>Kanban - Visão da Área</h2>
+        <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 0' }}>Nenhuma issue encontrada.</p>
+      </div>
+    )
+  }
+
   // Agrupar issues por status
   const statusGroups = data.backlog.reduce((acc, issue) => {
-    const statusName = issue.status.name
+    const statusName = issue.status?.name || 'Sem Status'
     if (!acc[statusName]) {
       acc[statusName] = {
         name: statusName,
-        category: issue.status.category,
+        category: issue.status?.category || 'new',
         issues: []
       }
     }
@@ -43,7 +52,7 @@ export default function KanbanView({ data }) {
       </div>
       <h4 className="card-summary">{issue.summary}</h4>
       <div className="card-meta">
-        <span className="card-type">{issue.issue_type.name}</span>
+        <span className="card-type">{issue.issue_type?.name || 'N/A'}</span>
         {issue.assignee && (
           <span className="card-assignee">{issue.assignee.display_name}</span>
         )}
@@ -81,8 +90,8 @@ export default function KanbanView({ data }) {
                   if (!a.is_overdue && b.is_overdue) return 1
 
                   const priorityOrder = { 'highest': 0, 'high': 1, 'medium': 2, 'low': 3, 'lowest': 4 }
-                  const prioA = priorityOrder[a.priority?.name.toLowerCase()] ?? 2
-                  const prioB = priorityOrder[b.priority?.name.toLowerCase()] ?? 2
+                  const prioA = priorityOrder[a.priority?.name?.toLowerCase()] ?? 2
+                  const prioB = priorityOrder[b.priority?.name?.toLowerCase()] ?? 2
                   return prioA - prioB
                 })
                 .map(issue => (

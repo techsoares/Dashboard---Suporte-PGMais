@@ -1,8 +1,6 @@
 import { useMemo } from 'react'
+import { issuePrio } from '../utils/constants'
 import './DashboardHome.css'
-
-const PRIO_ORDER = { Highest: 0, Blocker: 0, High: 1, Medium: 2, Low: 3, Lowest: 4 }
-const issuePrio = i => PRIO_ORDER[i.priority?.name] ?? 2
 
 export default function DashboardHome({ data, user, bus }) {
   const userBu = useMemo(() => {

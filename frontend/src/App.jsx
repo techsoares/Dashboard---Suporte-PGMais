@@ -19,14 +19,12 @@ import TimelineView from './components/TimelineView'
 import AIAssistantCollapsible from './components/AIAssistantCollapsible'
 import { API_BASE_URL } from './apiUrl'
 import { identify, track } from './analytics'
+import { PRIO_ORDER, issuePrio, isWaiting, isInProgress } from './utils/constants'
+import ErrorBoundary from './components/ErrorBoundary'
 import './App.css'
 
 const REFRESH_SECRET = import.meta.env.VITE_REFRESH_SECRET ?? ''
 const REFRESH_INTERVAL = 5 * 60 * 1000
-
-// Ordem de prioridade Jira
-const PRIO_ORDER = { Highest: 0, Blocker: 0, High: 1, Medium: 2, Low: 3, Lowest: 4 }
-const issuePrio = i => PRIO_ORDER[i.priority?.name] ?? 2
 
 const sortIssues = (issues) =>
   [...issues].sort((a, b) => {
@@ -303,13 +301,8 @@ export default function App() {
     const issues = filteredData.backlog
     return {
       total_sprint: issues.length,
-      in_progress: issues.filter(i =>
-        i.status?.category === 'indeterminate' &&
-        !i.status?.name?.toLowerCase().includes('aguard')
-      ).length,
-      waiting: issues.filter(i =>
-        i.status?.name?.toLowerCase().includes('aguard')
-      ).length,
+      in_progress: issues.filter(i => isInProgress(i)).length,
+      waiting: issues.filter(i => isWaiting(i)).length,
       done_this_week: (filteredData.done_issues || []).length,
       overdue: issues.filter(i => i.is_overdue).length,
     }
@@ -545,12 +538,12 @@ export default function App() {
         </>
       )}
 
-      {currentView === 'management' && data && <ManagementView data={filteredData} filters={filters} />}
-      {currentView === 'product' && filteredData && <ProductView data={filteredData} />}
-      {currentView === 'timeline' && data && <TimelineView data={data} />}
-      {currentView === 'kanban' && data && <KanbanView data={data} />}
-      {currentView === 'admin' && user?.permissions?.includes('admin') && <AdminView assignees={filterOptions.assignees} onBusChange={setBus} user={user} />}
-      {currentView === 'prioritization' && data && <PrioritizationView data={data} bus={bus} user={user} />}
+      {currentView === 'management' && data && <ErrorBoundary name="Gestão"><ManagementView data={filteredData} filters={filters} /></ErrorBoundary>}
+      {currentView === 'product' && filteredData && <ErrorBoundary name="Produto"><ProductView data={filteredData} /></ErrorBoundary>}
+      {currentView === 'timeline' && data && <ErrorBoundary name="Timeline"><TimelineView data={data} /></ErrorBoundary>}
+      {currentView === 'kanban' && data && <ErrorBoundary name="Kanban"><KanbanView data={data} /></ErrorBoundary>}
+      {currentView === 'admin' && user?.permissions?.includes('admin') && <ErrorBoundary name="Admin"><AdminView assignees={filterOptions.assignees} onBusChange={setBus} user={user} /></ErrorBoundary>}
+      {currentView === 'prioritization' && data && <ErrorBoundary name="Priorização"><PrioritizationView data={data} bus={bus} user={user} /></ErrorBoundary>}
 
       {showPrioritizationWizard && (
         <PrioritizationWizard

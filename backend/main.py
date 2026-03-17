@@ -844,6 +844,25 @@ async def get_dashboard(
         dashboard.backlog = [issue for issue in dashboard.backlog if issue.issue_type.name == issue_type]
         dashboard.done_issues = [issue for issue in dashboard.done_issues if issue.issue_type.name == issue_type]
 
+    # Recalcular KPIs após filtros para manter consistência com listas filtradas
+    if account or product or assignee or issue_type:
+        from jira_client import _WAITING_KEYWORDS
+        filtered_backlog = dashboard.backlog
+        dashboard.kpis = KpiSummary(
+            total_sprint=len(filtered_backlog),
+            in_progress=sum(
+                1 for i in filtered_backlog
+                if i.status.category == "indeterminate"
+                and not any(k in i.status.name.lower() for k in _WAITING_KEYWORDS)
+            ),
+            waiting=sum(
+                1 for i in filtered_backlog
+                if any(k in i.status.name.lower() for k in _WAITING_KEYWORDS)
+            ),
+            done_this_week=len(dashboard.done_issues),
+            overdue=sum(1 for i in filtered_backlog if i.is_overdue),
+        )
+
     logger.info(
         "Dashboard retornado: %d devs, %d issues ativas, %d concluídas na semana",
         len(dashboard.devs),

@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { track } from '../analytics'
+import { PRIO_ORDER, isWaiting, isInProgress } from '../utils/constants'
 import './ProductView.css'
 
 // ═══════════════════════════════════════════════════════════════
@@ -41,7 +42,6 @@ const STOP_WORDS = new Set([
   'pela','pelos','pelas','entre','sobre','após','onde','também','criar',
 ])
 
-const PRIO_ORDER = { Highest: 0, Blocker: 0, High: 1, Medium: 2, Low: 3, Lowest: 4 }
 
 // ═══════════════════════════════════════════════════════════════
 //  BI ENGINE — Inteligência Operacional
@@ -161,7 +161,7 @@ function buildStats(issues) {
     if (issue.status?.category === 'done') {
       acc[name].done++
     } else if (issue.status?.category === 'indeterminate') {
-      if (issue.status?.name?.toLowerCase().includes('aguard')) acc[name].waiting++
+      if (isWaiting(issue)) acc[name].waiting++
       else acc[name].inProgress++
     }
     if (issue.is_overdue) acc[name].overdue++
@@ -465,7 +465,7 @@ function DrillPanel({ productName, issues, jiraBaseUrl, onClose, health }) {
               </div>
               <div className="pv-drill-right">
                 <span className="pv-drill-assignee">{i.assignee?.display_name || '\u2014'}</span>
-                <span className={`pv-drill-status ${i.is_overdue ? 'pv-drill-status--overdue' : i.status?.name?.toLowerCase().includes('aguard') ? 'pv-drill-status--waiting' : ''}`}>
+                <span className={`pv-drill-status ${i.is_overdue ? 'pv-drill-status--overdue' : isWaiting(i) ? 'pv-drill-status--waiting' : ''}`}>
                   {i.status?.name || '\u2014'}
                 </span>
                 {i.is_overdue && <span className="pv-drill-overdue-tag">ATRASADA</span>}
@@ -508,8 +508,8 @@ export default function ProductView({ data }) {
 
   const globalStats = useMemo(() => ({
     total: issues.length,
-    inProgress: issues.filter(i => i.status?.category === 'indeterminate' && !i.status?.name?.toLowerCase().includes('aguard')).length,
-    waiting: issues.filter(i => i.status?.name?.toLowerCase().includes('aguard')).length,
+    inProgress: issues.filter(i => isInProgress(i)).length,
+    waiting: issues.filter(i => isWaiting(i)).length,
     overdue: issues.filter(i => i.is_overdue).length,
   }), [issues])
 
