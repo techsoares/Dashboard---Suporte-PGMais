@@ -83,9 +83,9 @@ _raw_origins = os.getenv("ALLOWED_ORIGINS", "")
 _extra_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
 _origin_parts = [
-    r"https?://localhost.*",
-    r"https?://127\.0\.0\.1.*",
-    r"https://.*\.app\.github\.dev.*",   # HTTPS apenas para tunnels externos
+    r"https?://localhost(:\d+)?$",
+    r"https?://127\.0\.0\.1(:\d+)?$",
+    r"https://[a-zA-Z0-9\-]+\.app\.github\.dev$",   # HTTPS apenas para tunnels externos
 ]
 if _extra_origins:
     _origin_parts.extend(re.escape(o) for o in _extra_origins)
@@ -101,6 +101,10 @@ app.add_middleware(
 class AIChatRequest(BaseModel):
     question: str
     context: str = ""
+
+    def model_post_init(self, __context):
+        self.question = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', self.question)[:2000].strip()
+        self.context = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', self.context)[:50000].strip()
 
 
 class BUCreate(BaseModel):
@@ -123,6 +127,20 @@ class PriorityRequest(BaseModel):
     issue_summary: str = ""
     issue_type: str = ""
     account: str = ""
+
+    @classmethod
+    def _sanitize(cls, v: str, max_len: int = 500) -> str:
+        return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', str(v or ''))[:max_len].strip()
+
+    def model_post_init(self, __context):
+        if not re.match(r'^[A-Z][A-Z0-9]+-\d+$', self.issue_key):
+            raise ValueError("issue_key deve ter formato PROJ-123")
+        self.requester_name = self._sanitize(self.requester_name, 200)
+        self.justification = self._sanitize(self.justification, 2000)
+        self.requester_bu = self._sanitize(self.requester_bu, 200)
+        self.issue_summary = self._sanitize(self.issue_summary, 500)
+        self.issue_type = self._sanitize(self.issue_type, 100)
+        self.account = self._sanitize(self.account, 200)
 
 
 
@@ -207,6 +225,10 @@ def _load_bus() -> list[dict]:
             return json.load(f)
     return []
 
+async def _load_bus_safe() -> list[dict]:
+    async with _file_lock:
+        return _load_bus()
+
 async def _save_bus(bus_list: list[dict]):
     async with _file_lock:
         with open(BUS_FILE, "w", encoding="utf-8") as f:
@@ -227,38 +249,44 @@ async def list_jira_users(
 
 @app.get("/api/admin/bus", tags=["admin"], summary="Lista todas as BUs")
 async def list_bus(_user: UserProfile = Depends(get_current_user)):
-    return _load_bus()
+    return await _load_bus_safe()
 
 
 @app.post("/api/admin/bus", tags=["admin"], status_code=201, summary="Cria nova BU")
 async def create_bu(body: BUCreate, _user: UserProfile = Depends(require_permission("admin"))):
     if not body.name.strip():
         raise HTTPException(status_code=400, detail="Nome da BU é obrigatório")
-    bus = _load_bus()
-    new_bu = {"id": str(uuid.uuid4()), "name": body.name.strip(), "members": [], "bu_type": body.bu_type}
-    bus.append(new_bu)
-    await _save_bus(bus)
+    async with _file_lock:
+        bus = _load_bus()
+        new_bu = {"id": str(uuid.uuid4()), "name": body.name.strip(), "members": [], "bu_type": body.bu_type}
+        bus.append(new_bu)
+        with open(BUS_FILE, "w", encoding="utf-8") as f:
+            json.dump(bus, f, ensure_ascii=False, indent=2)
     return new_bu
 
 
 @app.put("/api/admin/bus/{bu_id}", tags=["admin"], summary="Atualiza nome e membros de uma BU")
 async def update_bu(bu_id: str, body: BUUpdate, _user: UserProfile = Depends(require_permission("admin"))):
-    bus_list = _load_bus()
-    for index, existing_bu in enumerate(bus_list):
-        if existing_bu["id"] == bu_id:
-            bus_list[index] = {"id": bu_id, "name": body.name.strip(), "members": body.members, "bu_type": body.bu_type}
-            await _save_bus(bus_list)
-            return bus_list[index]
+    async with _file_lock:
+        bus_list = _load_bus()
+        for index, existing_bu in enumerate(bus_list):
+            if existing_bu["id"] == bu_id:
+                bus_list[index] = {"id": bu_id, "name": body.name.strip(), "members": body.members, "bu_type": body.bu_type}
+                with open(BUS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(bus_list, f, ensure_ascii=False, indent=2)
+                return bus_list[index]
     raise HTTPException(status_code=404, detail="BU não encontrada")
 
 
 @app.delete("/api/admin/bus/{bu_id}", tags=["admin"], summary="Remove uma BU")
 async def delete_bu(bu_id: str, _user: UserProfile = Depends(require_permission("admin"))):
-    bus_list = _load_bus()
-    filtered_bus = [bu for bu in bus_list if bu["id"] != bu_id]
-    if len(filtered_bus) == len(bus_list):
-        raise HTTPException(status_code=404, detail="BU não encontrada")
-    await _save_bus(filtered_bus)
+    async with _file_lock:
+        bus_list = _load_bus()
+        filtered_bus = [bu for bu in bus_list if bu["id"] != bu_id]
+        if len(filtered_bus) == len(bus_list):
+            raise HTTPException(status_code=404, detail="BU não encontrada")
+        with open(BUS_FILE, "w", encoding="utf-8") as f:
+            json.dump(filtered_bus, f, ensure_ascii=False, indent=2)
     return {"status": "deleted"}
 
 
@@ -274,14 +302,18 @@ def _load_ranking() -> list[str]:
             return json.load(f)
     return []
 
+async def _load_ranking_safe() -> list[str]:
+    async with _file_lock:
+        return _load_ranking()
+
 def _save_ranking(ranking: list[str]):
     with open(RANKING_FILE, "w", encoding="utf-8") as f:
         json.dump(ranking, f, ensure_ascii=False, indent=2)
 
 
 @app.get("/api/admin/account-ranking", tags=["admin"], summary="Retorna ranking de accounts por faturamento")
-async def get_account_ranking(_user: UserProfile = Depends(get_current_user)):
-    return _load_ranking()
+async def get_account_ranking(_user: UserProfile = Depends(require_permission("admin"))):
+    return await _load_ranking_safe()
 
 
 @app.put("/api/admin/account-ranking", tags=["admin"], summary="Atualiza ranking de accounts")
@@ -302,6 +334,10 @@ def _load_priority_requests() -> list[dict]:
         with open(PRIORITY_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return []
+
+async def _load_priority_requests_safe() -> list[dict]:
+    async with _file_lock:
+        return _load_priority_requests()
 
 async def _save_priority_requests(requests: list[dict]):
     async with _file_lock:
@@ -390,7 +426,7 @@ async def _evaluate_priority_with_ai(body: PriorityRequest, bu_type: str) -> tup
 
 @app.get("/api/priority-requests", tags=["priority"], summary="Lista todas as solicitações de prioridade ativas")
 async def get_priority_requests(_user: UserProfile = Depends(get_current_user)):
-    return _load_priority_requests()
+    return await _load_priority_requests_safe()
 
 
 @app.post("/api/priority-requests", tags=["priority"], summary="Solicita prioridade para um chamado com avaliação por IA")
@@ -399,10 +435,10 @@ async def create_priority_request(body: PriorityRequest, _user: UserProfile = De
     Recebe solicitação de prioridade, avalia com IA e atribui um boost ao score.
     Limita a 1 pedido por pessoa por issue.
     """
-    existing_requests = _load_priority_requests()
     normalized_requester = body.requester_name.strip().lower()
 
-    # Verifica duplicata: mesma pessoa + mesma issue
+    # Pre-check duplicata (sem lock — fast path)
+    existing_requests = _load_priority_requests()
     for request in existing_requests:
         if request["issue_key"] == body.issue_key and request["requester_name"].strip().lower() == normalized_requester:
             return {"error": "duplicate", "message": f"{body.requester_name} já solicitou prioridade para {body.issue_key}"}
@@ -410,7 +446,7 @@ async def create_priority_request(body: PriorityRequest, _user: UserProfile = De
     # Determina o tipo da BU do solicitante para multiplicador de boost
     requester_bu_type = _resolve_bu_type(body.requester_bu)
 
-    # Avaliação por IA
+    # Avaliação por IA (fora do lock pois é lenta)
     boost, ai_verdict = await _evaluate_priority_with_ai(body, requester_bu_type)
 
     # Multiplicador por tipo de BU: gestão tem 1.5x de impacto
@@ -429,24 +465,33 @@ async def create_priority_request(body: PriorityRequest, _user: UserProfile = De
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
-    existing_requests.append(request_entry)
-    await _save_priority_requests(existing_requests)
+    # Atomic read-check-write com lock
+    async with _file_lock:
+        existing_requests = _load_priority_requests()
+        for request in existing_requests:
+            if request["issue_key"] == body.issue_key and request["requester_name"].strip().lower() == normalized_requester:
+                return {"error": "duplicate", "message": f"{body.requester_name} já solicitou prioridade para {body.issue_key}"}
+        existing_requests.append(request_entry)
+        with open(PRIORITY_FILE, "w", encoding="utf-8") as f:
+            json.dump(existing_requests, f, ensure_ascii=False, indent=2)
 
     return request_entry
 
 
 @app.delete("/api/priority-requests/{request_id}", tags=["priority"], summary="Remove uma solicitação de prioridade")
 async def delete_priority_request(request_id: str, current_user: UserProfile = Depends(get_current_user)):
-    all_requests = _load_priority_requests()
-    target = next((r for r in all_requests if r["id"] == request_id), None)
-    if not target:
-        raise HTTPException(status_code=404, detail="Solicitação não encontrada")
-    is_owner = target["requester_name"].strip().lower() == current_user.name.strip().lower()
-    is_admin = "admin" in current_user.permissions
-    if not is_owner and not is_admin:
-        raise HTTPException(status_code=403, detail="Sem permissão para remover esta solicitação")
-    filtered_requests = [req for req in all_requests if req["id"] != request_id]
-    await _save_priority_requests(filtered_requests)
+    async with _file_lock:
+        all_requests = _load_priority_requests()
+        target = next((r for r in all_requests if r["id"] == request_id), None)
+        if not target:
+            raise HTTPException(status_code=404, detail="Solicitação não encontrada")
+        is_owner = target["requester_name"].strip().lower() == current_user.name.strip().lower()
+        is_admin = "admin" in current_user.permissions
+        if not is_owner and not is_admin:
+            raise HTTPException(status_code=403, detail="Sem permissão para remover esta solicitação")
+        filtered_requests = [req for req in all_requests if req["id"] != request_id]
+        with open(PRIORITY_FILE, "w", encoding="utf-8") as f:
+            json.dump(filtered_requests, f, ensure_ascii=False, indent=2)
     return {"status": "deleted"}
 
 
@@ -460,15 +505,16 @@ class DeprioritizeRequest(BaseModel):
 async def deprioritize_issue(body: DeprioritizeRequest, current_user: UserProfile = Depends(get_current_user)):
     """Remove todas as solicitações de prioridade de um chamado. Admins e BUs de tipo gestão podem fazer isso."""
     is_admin = "admin" in current_user.permissions
-    requester_bu_type = _resolve_bu_type(body.requester_bu)
 
-    if not is_admin and requester_bu_type != "gestao":
+    if not is_admin and current_user.bu_type != "gestao":
         raise HTTPException(status_code=403, detail="Apenas admins ou BUs de gestão (Diretoria / C-Level) podem despriorizar chamados.")
 
-    all_requests = _load_priority_requests()
-    remaining_requests = [req for req in all_requests if req["issue_key"] != body.issue_key]
-    removed_count = len(all_requests) - len(remaining_requests)
-    _save_priority_requests(remaining_requests)
+    async with _file_lock:
+        all_requests = _load_priority_requests()
+        remaining_requests = [req for req in all_requests if req["issue_key"] != body.issue_key]
+        removed_count = len(all_requests) - len(remaining_requests)
+        with open(PRIORITY_FILE, "w", encoding="utf-8") as f:
+            json.dump(remaining_requests, f, ensure_ascii=False, indent=2)
     return {"status": "deprioritized", "issue_key": body.issue_key, "removed": removed_count}
 
 

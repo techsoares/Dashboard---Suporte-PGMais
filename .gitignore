@@ -132,3 +132,4 @@ backend/pgmais.db
 backend/bus.json
 backend/account_ranking.json
 backend/priority_requests.json
+backend/users.json

@@ -71,7 +71,7 @@ export default function LoginView({ onLoginSuccess }) {
       onLoginSuccess(data.user)
     } catch (err) {
       if (err.message.includes('Failed to fetch')) {
-        setError('Não conseguimos conectar ao servidor. Verifique se o backend está rodando em ' + API_BASE_URL)
+        setError('Não conseguimos conectar ao servidor. Verifique se o backend está rodando.')
       } else {
         setError(err.message || 'Erro ao fazer login')
       }
@@ -97,7 +97,7 @@ export default function LoginView({ onLoginSuccess }) {
         <div className={`backend-status ${backendStatus}`}>
           <span className={`status-dot ${backendStatus}`}></span>
           {backendStatus === 'online' ? '✓ Backend online' : '✗ Backend offline'}
-          {backendStatus === 'offline' && <span className="text-small"> ({API_BASE_URL})</span>}
+          {backendStatus === 'offline' && <span className="text-small"> (servidor indisponível)</span>}
         </div>
 
         {error && (

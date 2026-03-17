@@ -11,22 +11,26 @@ export default function SSOCallback() {
         const email = params.get('email')
 
         if (token && email) {
-          // Se temos token e email do SSO
-          localStorage.setItem('access_token', token)
-          
-          // Buscar dados do usuário
+          // Validar formato básico do token (JWT = 3 segmentos base64url separados por ponto)
+          const jwtPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/
+          if (!jwtPattern.test(token)) {
+            throw new Error('Token com formato inválido')
+          }
+
+          // Validar token contra o backend ANTES de armazenar
           const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
             headers: { 'Authorization': `Bearer ${token}` },
           })
 
           if (response.ok) {
             const user = await response.json()
+            localStorage.setItem('access_token', token)
             localStorage.setItem('user', JSON.stringify(user))
-            
+
             // Redirecionar para dashboard
             window.location.href = '/'
           } else {
-            throw new Error('Falha ao buscar dados do usuário')
+            throw new Error('Token inválido ou expirado')
           }
         } else {
           throw new Error('Token ou email não fornecido')

@@ -63,7 +63,7 @@ ADMIN_CREDENTIALS: dict[str, str] = {}
 if _ADMIN_EMAIL and _ADMIN_PASSWORD_HASH:
     ADMIN_CREDENTIALS[_ADMIN_EMAIL] = _ADMIN_PASSWORD_HASH
 
-ALLOWED_DOMAINS = ["@pgmais", "@ciclo"]
+ALLOWED_DOMAINS = ["pgmais.com.br", "ciclo.com.br", "pgmais", "ciclo"]
 
 
 def get_admin_credentials() -> dict:
@@ -193,8 +193,11 @@ def authenticate_user(email: str, password: str = "") -> UserProfile:
     try:
         email_lower = email.strip().lower()
         
-        # Verificar se é domínio permitido (@pgmais ou @ciclo)
-        is_allowed_domain = any(domain in email_lower for domain in ALLOWED_DOMAINS)
+        # Verificar se é domínio permitido (@pgmais ou @ciclo) — extração estrita do domínio
+        if "@" not in email_lower:
+            raise HTTPException(status_code=401, detail="Email inválido")
+        email_domain = email_lower.rsplit("@", 1)[1]
+        is_allowed_domain = any(email_domain == d or email_domain.endswith("." + d) for d in ALLOWED_DOMAINS)
         
         if not is_allowed_domain:
             logger.warning("Domínio não permitido: %s", email_lower)

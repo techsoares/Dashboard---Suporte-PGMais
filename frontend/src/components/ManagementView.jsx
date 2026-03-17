@@ -338,7 +338,7 @@ function DrillDownTable({ issues, periodLabel }) {
                     key={issue.key}
                     href={issue.jira_url}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="mgmt-drill-cols mgmt-drill-cols--row"
                   >
                     <span className="mgmt-drill-key">{issue.key}</span>
@@ -687,7 +687,7 @@ export default function ManagementView({ data, filters }) {
                 <div className="mgmt-risk-section">
                   <span className="mgmt-risk-label">Atrasados ({riskItems.overdue.length})</span>
                   {riskItems.overdue.map(i => (
-                    <a key={i.key} href={i.jira_url} target="_blank" rel="noreferrer"
+                    <a key={i.key} href={i.jira_url} target="_blank" rel="noopener noreferrer"
                       className="mgmt-risk-item mgmt-risk-item--overdue">
                       <span className="mgmt-risk-key">{i.key}</span>
                       <span className="mgmt-risk-summary">{i.summary}</span>
@@ -700,7 +700,7 @@ export default function ManagementView({ data, filters }) {
                 <div className="mgmt-risk-section">
                   <span className="mgmt-risk-label">Paralisados +30 dias ({riskItems.stale.length})</span>
                   {riskItems.stale.map(i => (
-                    <a key={i.key} href={i.jira_url} target="_blank" rel="noreferrer"
+                    <a key={i.key} href={i.jira_url} target="_blank" rel="noopener noreferrer"
                       className="mgmt-risk-item mgmt-risk-item--stale">
                       <span className="mgmt-risk-key">{i.key}</span>
                       <span className="mgmt-risk-summary">{i.summary}</span>
