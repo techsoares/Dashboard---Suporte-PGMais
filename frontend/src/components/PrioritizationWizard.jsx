@@ -14,6 +14,7 @@ export default function PrioritizationWizard({ data, user, bus, onClose }) {
   const [step, setStep] = useState(1)
   const [selectedIssue, setSelectedIssue] = useState(null)
   const [justification, setJustification] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -26,10 +27,23 @@ export default function PrioritizationWizard({ data, user, bus, onClose }) {
 
   const backlogIssues = useMemo(() => {
     return (data?.backlog || [])
-      .filter(i => !i.is_overdue)
-      .sort((a, b) => (a.priority?.name === 'Highest' ? -1 : 1))
-      .slice(0, 50)
+      .sort((a, b) => {
+        const prioOrder = { Highest: 0, Blocker: 0, High: 1, Medium: 2, Low: 3, Lowest: 4 }
+        return (prioOrder[a.priority?.name] ?? 2) - (prioOrder[b.priority?.name] ?? 2)
+      })
   }, [data])
+
+  const filteredIssues = useMemo(() => {
+    if (!searchQuery.trim()) return backlogIssues.slice(0, 50)
+    const q = searchQuery.trim().toLowerCase()
+    return backlogIssues.filter(i =>
+      i.key?.toLowerCase().includes(q) ||
+      i.summary?.toLowerCase().includes(q) ||
+      i.assignee?.display_name?.toLowerCase().includes(q) ||
+      i.account?.toLowerCase().includes(q) ||
+      i.product?.toLowerCase().includes(q)
+    )
+  }, [backlogIssues, searchQuery])
 
   const handleSelectIssue = (issue) => {
     setSelectedIssue(issue)
@@ -110,11 +124,27 @@ export default function PrioritizationWizard({ data, user, bus, onClose }) {
           <div className="pw-modal-body">
             <p className="pw-step-desc">Escolha o jira que deseja priorizar</p>
 
+            <div className="pw-search-wrap">
+              <input
+                className="pw-search"
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Buscar por chave, título, responsável, account ou produto..."
+                autoFocus
+              />
+              {searchQuery && (
+                <button className="pw-search-clear" onClick={() => setSearchQuery('')}>✕</button>
+              )}
+            </div>
+
             <div className="pw-issue-list">
-              {backlogIssues.length === 0 ? (
-                <p className="pw-empty">Nenhum jira disponível para priorização</p>
+              {filteredIssues.length === 0 ? (
+                <p className="pw-empty">
+                  {backlogIssues.length === 0 ? 'Nenhum jira disponível para priorização' : 'Nenhum resultado para a busca'}
+                </p>
               ) : (
-                backlogIssues.map(issue => (
+                filteredIssues.map(issue => (
                   <button
                     key={issue.key}
                     className={`pw-issue-item ${selectedIssue?.key === issue.key ? 'active' : ''}`}

@@ -28,5 +28,18 @@
     "permissions": [
       "read"
     ]
+  },
+  "teste@pgmais.com.br": {
+    "email": "teste@pgmais.com.br",
+    "name": "Teste",
+    "bu_id": "default",
+    "bu_name": "PGMais",
+    "bu_type": "operacional",
+    "roles": [
+      "dev"
+    ],
+    "permissions": [
+      "read"
+    ]
   }
 }

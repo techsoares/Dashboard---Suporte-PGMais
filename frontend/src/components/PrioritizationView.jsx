@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { API_BASE_URL } from '../apiUrl'
+import FilterDropdown from './FilterDropdown'
 import './PrioritizationView.css'
 
 const SCORE_WEIGHTS = {
@@ -33,11 +34,6 @@ function findRankIndex(account, ranking) {
     if (rankWords.some(rWord => normalizedAccount.includes(rWord)) || accountWords.some(aWord => normalizedRankEntry.includes(aWord))) return rankIdx
   }
   return -1
-}
-
-// Check if account matches any of the top N ranked accounts
-function isInTopAccounts(account, ranking, topCount) {
-  return findRankIndex(account, ranking.slice(0, topCount)) >= 0
 }
 
 function calcScore(issue, ranking, productionKeys, boost = 0) {
@@ -79,6 +75,13 @@ function fmtAge(created) {
   return `${days} dias`
 }
 
+function isCreatedToday(created) {
+  if (!created) return false
+  const d = new Date(created)
+  const now = new Date()
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+}
+
 function isIncidentType(t) { return ['incident', 'incidente', 'bug'].includes((t || '').toLowerCase()) }
 function isProblemType(t)  { return ['problem', 'problema'].includes((t || '').toLowerCase()) }
 
@@ -98,18 +101,54 @@ export default function PrioritizationView({ data, bus = [], user }) {
   const [productionKeys, setProductionKeys] = useState([])
   const [classifying, setClassifying]       = useState(false)
   const [savingRank, setSavingRank]         = useState(false)
-  const [filterTopOnly, setFilterTopOnly]   = useState(false)
   const [activeFilter, setActiveFilter]     = useState(null)   // null|'all'|'production'|'incident'|'problem'
   const [expandedKey, setExpandedKey]       = useState(null)
   const [summaries, setSummaries]           = useState({})      // { issueKey: { loading, text, error } }
   const [searchQuery, setSearchQuery]       = useState('')
   const [prioRequests, setPrioRequests]     = useState([])    // all priority requests
   const [prioForm, setPrioForm]             = useState(null)   // { issueKey, summary, type, account } or null
-  const [prioName, setPrioName]             = useState(() => localStorage.getItem('prio_user_name') || '')
+  const [prioName, setPrioName]             = useState(() => user?.name || localStorage.getItem('prio_user_name') || '')
   const [prioJustification, setPrioJustification] = useState('')
   const [prioBu, setPrioBu]                 = useState('')
   const [prioSubmitting, setPrioSubmitting] = useState(false)
+  const [localFilters, setLocalFilters]     = useState({ assignee: [], account: [], issue_type: [] })
+  const [clock, setClock]                   = useState(() => new Date())
+
+  // Clock update
+  useEffect(() => {
+    const timer = setInterval(() => setClock(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Local filter options derived from prioritized data
+  const localFilterOptions = useMemo(() => {
+    if (!data?.backlog) return { assignees: [], accounts: [], issueTypes: [] }
+    const allIssues = [...(data.backlog || []), ...(data.devs || []).flatMap(d => d.active_issues || [])]
+    return {
+      assignees: [...new Set(allIssues.map(i => i.assignee?.display_name).filter(Boolean))].sort(),
+      accounts: [...new Set(allIssues.map(i => i.account).filter(Boolean))].sort(),
+      issueTypes: [...new Set(allIssues.map(i => i.issue_type?.name).filter(Boolean))].sort(),
+    }
+  }, [data])
+
+  const toggleLocalFilter = useCallback((key, value) => {
+    setLocalFilters(prev => {
+      const cur = prev[key] || []
+      return { ...prev, [key]: cur.includes(value) ? cur.filter(v => v !== value) : [...cur, value] }
+    })
+  }, [])
+
+  const clearLocalFilter = useCallback((key) => {
+    setLocalFilters(prev => ({ ...prev, [key]: [] }))
+  }, [])
+
+  // Resolve user's BU automatically from bus list
+  const userBuResolved = useMemo(() => {
+    if (!user?.bu_name || !bus.length) return null
+    return bus.find(b => b.name === user.bu_name) || null
+  }, [user, bus])
   const [showHelp, setShowHelp]             = useState(false)
+  const [showRanking, setShowRanking]       = useState(false)
 
   // All unique accounts from data
   const allAccounts = useMemo(() => {
@@ -140,7 +179,8 @@ export default function PrioritizationView({ data, bus = [], user }) {
 
   // Submit priority request
   const submitPrioRequest = useCallback(() => {
-    if (!prioForm || !prioName.trim() || !prioJustification.trim() || !prioBu) return
+    const resolvedBu = prioBu || userBuResolved?.name || ''
+    if (!prioForm || !prioName.trim() || !prioJustification.trim() || !resolvedBu) return
     setPrioSubmitting(true)
     fetch(`${API_BASE_URL}/api/priority-requests`, {
       method: 'POST',
@@ -149,7 +189,7 @@ export default function PrioritizationView({ data, bus = [], user }) {
         issue_key: prioForm.issueKey,
         requester_name: prioName.trim(),
         justification: prioJustification.trim(),
-        requester_bu: prioBu,
+        requester_bu: resolvedBu,
         issue_summary: prioForm.summary || '',
         issue_type: prioForm.type || '',
         account: prioForm.account || '',
@@ -195,9 +235,13 @@ export default function PrioritizationView({ data, bus = [], user }) {
   const boostByKey = useMemo(() => {
     const boostMap = {}
     prioRequests.forEach(request => {
-      if (!boostMap[request.issue_key]) boostMap[request.issue_key] = { total: 0, requests: [] }
-      boostMap[request.issue_key].total += request.boost || 0
-      boostMap[request.issue_key].requests.push(request)
+      if (!boostMap[request.issue_key]) boostMap[request.issue_key] = { total: 0, requests: [], deprioritized: [] }
+      if (request.deprioritized_by) {
+        boostMap[request.issue_key].deprioritized.push(request)
+      } else {
+        boostMap[request.issue_key].total += request.boost || 0
+        boostMap[request.issue_key].requests.push(request)
+      }
     })
     return boostMap
   }, [prioRequests])
@@ -274,23 +318,35 @@ export default function PrioritizationView({ data, bus = [], user }) {
         accountRank: findRankIndex(issue.account, ranking),
         prioBoost: boost,
         prioRequests: boostByKey[issue.key]?.requests || [],
+        prioDeprioritized: boostByKey[issue.key]?.deprioritized || [],
       }
     })
-    if (filterTopOnly) {
-      issues = issues.filter(issue => isInTopAccounts(issue.account, ranking, 10))
-    }
     const sorted = issues.sort((a, b) => b.score - a.score)
     return sorted.map((item, idx) => ({ ...item, originalRank: idx + 1 }))
-  }, [data, ranking, productionKeys, filterTopOnly, boostByKey])
+  }, [data, ranking, productionKeys, boostByKey])
 
-  // Stats
-  const stats = useMemo(() => ({
-    total: prioritized.length,
-    incidents: prioritized.filter(i => isIncidentType(i.issue_type?.name)).length,
-    problems: prioritized.filter(i => isProblemType(i.issue_type?.name)).length,
-    production: prioritized.filter(i => i.isProduction).length,
-    boosted: prioritized.filter(i => i.prioBoost > 0).length,
-  }), [prioritized])
+  // Stats — includes dynamic type breakdown
+  const stats = useMemo(() => {
+    const base = {
+      total: prioritized.length,
+      incidents: prioritized.filter(i => isIncidentType(i.issue_type?.name)).length,
+      problems: prioritized.filter(i => isProblemType(i.issue_type?.name)).length,
+      production: prioritized.filter(i => i.isProduction).length,
+      boosted: prioritized.filter(i => i.prioBoost > 0).length,
+      todayIncProb: prioritized.filter(i => isCreatedToday(i.created) && (isIncidentType(i.issue_type?.name) || isProblemType(i.issue_type?.name))).length,
+    }
+    // Count remaining types not covered by incident/problem
+    const otherTypes = {}
+    prioritized.forEach(i => {
+      const name = i.issue_type?.name || ''
+      if (!name || isIncidentType(name) || isProblemType(name)) return
+      const key = name.toLowerCase()
+      if (!otherTypes[key]) otherTypes[key] = { label: name, count: 0 }
+      otherTypes[key].count++
+    })
+    base.otherTypes = Object.values(otherTypes).sort((a, b) => b.count - a.count)
+    return base
+  }, [prioritized])
 
   // AI summary for an issue
   const fetchSummary = useCallback((issue) => {
@@ -318,16 +374,77 @@ export default function PrioritizationView({ data, bus = [], user }) {
     }
   }, [expandedKey, fetchSummary])
 
-  // Filter by stat pill + search
+  // Filter by stat pill + local filters + search
   const displayList = useMemo(() => {
     let list = prioritized
+    // Stat pill filter
     if (activeFilter) {
       switch (activeFilter) {
         case 'production': list = list.filter(i => i.isProduction); break
         case 'incident':   list = list.filter(i => isIncidentType(i.issue_type?.name)); break
         case 'problem':    list = list.filter(i => isProblemType(i.issue_type?.name)); break
         case 'boosted':    list = list.filter(i => i.prioBoost > 0); break
+        case 'today':      list = list.filter(i => isCreatedToday(i.created) && (isIncidentType(i.issue_type?.name) || isProblemType(i.issue_type?.name))); break
+        default:
+          if (activeFilter.startsWith('type:')) {
+            const typeKey = activeFilter.slice(5)
+            list = list.filter(i => (i.issue_type?.name || '').toLowerCase() === typeKey)
+          }
+          break
       }
+    }
+    // Local dropdown filters
+    if (localFilters.assignee.length > 0) {
+      list = list.filter(i => localFilters.assignee.includes(i.assignee?.display_name))
+    }
+    if (localFilters.account.length > 0) {
+      list = list.filter(i => localFilters.account.includes(i.account))
+    }
+    if (localFilters.issue_type.length > 0) {
+      list = list.filter(i => localFilters.issue_type.includes(i.issue_type?.name))
+    }
+    // Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      list = list.filter(i =>
+        i.key?.toLowerCase().includes(q) ||
+        i.summary?.toLowerCase().includes(q) ||
+        i.account?.toLowerCase().includes(q) ||
+        i.assignee?.display_name?.toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [prioritized, activeFilter, localFilters, searchQuery])
+
+  // Mensageria BU sidebar data
+  const mensageriaBu = useMemo(() => bus.find(b => b.name === 'Mensageria'), [bus])
+  const mensageriaMembers = useMemo(() => mensageriaBu?.members || [], [mensageriaBu])
+
+  // Shared filter function for reuse in mensageria
+  const applyLocalFilters = useCallback((issues) => {
+    let list = issues
+    if (activeFilter) {
+      switch (activeFilter) {
+        case 'production': list = list.filter(i => productionKeys.includes(i.key)); break
+        case 'incident':   list = list.filter(i => isIncidentType(i.issue_type?.name)); break
+        case 'problem':    list = list.filter(i => isProblemType(i.issue_type?.name)); break
+        case 'today':      list = list.filter(i => isCreatedToday(i.created) && (isIncidentType(i.issue_type?.name) || isProblemType(i.issue_type?.name))); break
+        default:
+          if (activeFilter.startsWith('type:')) {
+            const typeKey = activeFilter.slice(5)
+            list = list.filter(i => (i.issue_type?.name || '').toLowerCase() === typeKey)
+          }
+          break
+      }
+    }
+    if (localFilters.assignee.length > 0) {
+      list = list.filter(i => localFilters.assignee.includes(i.assignee?.display_name))
+    }
+    if (localFilters.account.length > 0) {
+      list = list.filter(i => localFilters.account.includes(i.account))
+    }
+    if (localFilters.issue_type.length > 0) {
+      list = list.filter(i => localFilters.issue_type.includes(i.issue_type?.name))
     }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase()
@@ -339,7 +456,25 @@ export default function PrioritizationView({ data, bus = [], user }) {
       )
     }
     return list
-  }, [prioritized, activeFilter, searchQuery])
+  }, [activeFilter, localFilters, searchQuery, productionKeys])
+
+  const mensageriaByMember = useMemo(() => {
+    if (!data || !mensageriaMembers.length) return []
+    return mensageriaMembers.map(member => {
+      const memberLower = member.toLowerCase()
+      const dev = (data.devs || []).find(d => (d.assignee?.display_name || '').toLowerCase() === memberLower)
+      const activeIssues = dev?.active_issues || []
+      const backlogIssues = (data.backlog || []).filter(i => (i.assignee?.display_name || '').toLowerCase() === memberLower)
+      const allIssues = [...activeIssues, ...backlogIssues]
+      // deduplicate by key
+      const seen = new Set()
+      const deduped = allIssues.filter(i => { if (seen.has(i.key)) return false; seen.add(i.key); return true })
+      // apply same filters as the main list
+      const issues = applyLocalFilters(deduped)
+      const firstName = member.split(' ')[0]
+      return { name: member, firstName, issues }
+    })
+  }, [data, mensageriaMembers, applyLocalFilters])
 
   // Accounts NOT in ranking (using fuzzy match)
   const unrankedAccounts = allAccounts.filter(a => findRankIndex(a, ranking) === -1)
@@ -348,23 +483,58 @@ export default function PrioritizationView({ data, bus = [], user }) {
     <div className="prio-root">
       <div className="prio-header">
         <div>
-          <h2 className="prio-title">Priorização de Demandas</h2>
+          <h2 className="prio-title">Priorização</h2>
           <p className="prio-subtitle">Ordenação inteligente baseada em faturamento, tipo, produção e idade</p>
         </div>
         <div className="prio-header-actions">
+          <span className="prio-clock" title="Hora atual">
+            {clock.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </span>
+          <div className="prio-ranking-collapsible">
+            <button className={`prio-help-btn ${showRanking ? 'prio-help-btn--active' : ''}`} onClick={() => setShowRanking(v => !v)}>
+              Ranking de Faturamento {ranking.length > 0 && <span className="prio-ranking-toggle-count">{ranking.length}</span>}
+              {savingRank && <span className="prio-saving">...</span>}
+            </button>
+            {showRanking && (
+              <div className="prio-ranking-dropdown">
+                {ranking.length > 0 && (
+                  <div className="prio-ranking-list">
+                    {ranking.map((account, idx) => (
+                      <div key={account} className={`prio-ranking-item ${idx < 10 ? 'prio-ranking-item--top' : ''}`} title={idx < 10 ? `#${idx + 1} — +${(11 - (idx + 1)) * 40} pts` : `#${idx + 1}`}>
+                        <span className="prio-ranking-pos">{idx + 1}</span>
+                        <span className="prio-ranking-name">{account}</span>
+                        {isAdmin && (
+                          <div className="prio-ranking-actions">
+                            <button className="prio-rank-btn" onClick={() => moveAccount(account, -1)} disabled={idx === 0} title="Subir">▲</button>
+                            <button className="prio-rank-btn" onClick={() => moveAccount(account, 1)} disabled={idx === ranking.length - 1} title="Descer">▼</button>
+                            <button className="prio-rank-btn prio-rank-btn--remove" onClick={() => removeFromRanking(account)} title="Remover">✕</button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {isAdmin && unrankedAccounts.length > 0 && (
+                  <>
+                    <div className="prio-unranked-header">Sem ranking</div>
+                    <div className="prio-unranked-list">
+                      {unrankedAccounts.map(account => (
+                        <button key={account} className="prio-unranked-btn" onClick={() => addToRanking(account)} title="Adicionar">+ {account}</button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           <button className="prio-help-btn" onClick={() => setShowHelp(v => !v)}>
             Como pedir prioridade?
-          </button>
-          <button
-            className={`prio-filter-btn ${filterTopOnly ? 'active' : ''}`}
-            onClick={() => setFilterTopOnly(v => !v)}
-          >
-            {filterTopOnly ? 'Mostrando Top 10' : 'Todos accounts'}
           </button>
           <button
             className="prio-classify-btn"
             onClick={classifyProduction}
             disabled={classifying}
+            title="Usar IA para identificar issues que afetam ambiente de produção"
           >
             {classifying ? 'Analisando...' : '✦ Reclassificar produção'}
           </button>
@@ -388,43 +558,56 @@ export default function PrioritizationView({ data, bus = [], user }) {
         </div>
       )}
 
-      {/* Stats — clickable filters */}
+      {/* Stats pills + filters inline */}
       <div className="prio-stats-row">
-        <button className={`prio-stat ${activeFilter === null ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(activeFilter === null ? null : null)}>
+        <button className={`prio-stat ${activeFilter === null ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(null)} title="Total de issues na fila de priorização">
           <span className="prio-stat-value">{stats.total}</span>
           <span className="prio-stat-label">na fila</span>
         </button>
-        <button className={`prio-stat prio-stat--danger ${activeFilter === 'production' ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(v => v === 'production' ? null : 'production')}>
+        <button className={`prio-stat prio-stat--danger ${activeFilter === 'production' ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(v => v === 'production' ? null : 'production')} title="Issues afetando produção">
           <span className="prio-stat-value">{stats.production}</span>
-          <span className="prio-stat-label">produção afetada</span>
+          <span className="prio-stat-label">produção</span>
         </button>
-        <button className={`prio-stat prio-stat--incident ${activeFilter === 'incident' ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(v => v === 'incident' ? null : 'incident')}>
+        <button className={`prio-stat prio-stat--incident ${activeFilter === 'incident' ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(v => v === 'incident' ? null : 'incident')} title="Incidentes ou Bugs">
           <span className="prio-stat-value">{stats.incidents}</span>
           <span className="prio-stat-label">incidentes</span>
         </button>
-        <button className={`prio-stat prio-stat--problem ${activeFilter === 'problem' ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(v => v === 'problem' ? null : 'problem')}>
+        <button className={`prio-stat prio-stat--problem ${activeFilter === 'problem' ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(v => v === 'problem' ? null : 'problem')} title="Problemas">
           <span className="prio-stat-value">{stats.problems}</span>
           <span className="prio-stat-label">problemas</span>
         </button>
+        {stats.otherTypes.map(t => (
+          <button key={t.label} className={`prio-stat prio-stat--type ${activeFilter === 'type:' + t.label.toLowerCase() ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(v => v === 'type:' + t.label.toLowerCase() ? null : 'type:' + t.label.toLowerCase())} title={t.label}>
+            <span className="prio-stat-value">{t.count}</span>
+            <span className="prio-stat-label">{t.label.toLowerCase()}</span>
+          </button>
+        ))}
+        <button className={`prio-stat prio-stat--today ${activeFilter === 'today' ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(v => v === 'today' ? null : 'today')} title="Recebidos hoje">
+          <span className="prio-stat-value">{stats.todayIncProb}</span>
+          <span className="prio-stat-label">hoje</span>
+        </button>
         {stats.boosted > 0 && (
-          <button className={`prio-stat prio-stat--boosted ${activeFilter === 'boosted' ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(v => v === 'boosted' ? null : 'boosted')}>
+          <button className={`prio-stat prio-stat--boosted ${activeFilter === 'boosted' ? 'prio-stat--active' : ''}`} onClick={() => setActiveFilter(v => v === 'boosted' ? null : 'boosted')} title="Issues com solicitação de prioridade">
             <span className="prio-stat-value">{stats.boosted}</span>
-            <span className="prio-stat-label">com prioridade</span>
+            <span className="prio-stat-label">priorizados</span>
           </button>
         )}
-      </div>
 
-      {/* Search */}
-      <div className="prio-search-bar">
-        <span className="prio-search-icon">🔍</span>
-        <input
-          className="prio-search-input"
-          type="text"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Buscar por chave, título, account ou responsável..."
-        />
-        {searchQuery && <button className="prio-search-clear" onClick={() => setSearchQuery('')}>✕</button>}
+        <span className="prio-stats-divider" />
+
+        <FilterDropdown label="Responsável" options={localFilterOptions.assignees} selected={localFilters.assignee} onToggle={v => toggleLocalFilter('assignee', v)} onClear={() => clearLocalFilter('assignee')} />
+        <FilterDropdown label="Account" options={localFilterOptions.accounts} selected={localFilters.account} onToggle={v => toggleLocalFilter('account', v)} onClear={() => clearLocalFilter('account')} />
+        <FilterDropdown label="Tipo" options={localFilterOptions.issueTypes} selected={localFilters.issue_type} onToggle={v => toggleLocalFilter('issue_type', v)} onClear={() => clearLocalFilter('issue_type')} />
+        <div className="prio-search-inline">
+          <input
+            className="prio-search-input"
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Buscar..."
+          />
+          {searchQuery && <button className="prio-search-clear" onClick={() => setSearchQuery('')}>✕</button>}
+        </div>
       </div>
 
       <div className="prio-body">
@@ -451,16 +634,16 @@ export default function PrioritizationView({ data, bus = [], user }) {
                       rel="noreferrer"
                       className={`prio-item ${idx === 0 ? 'prio-item--next' : ''} ${issue.isProduction ? 'prio-item--production' : ''} ${issue.prioBoost > 0 ? 'prio-item--boosted' : ''}`}
                     >
-                      <span className="prio-rank">#{issue.originalRank}</span>
+                      <span className="prio-rank" title={`Posição #${issue.originalRank} na fila de atendimento`}>#{issue.originalRank}</span>
                       <div className="prio-item-main">
                         <div className="prio-item-top">
-                          <span className="prio-key">{issue.key}</span>
+                          <span className="prio-key" title={`Abrir ${issue.key} no Jira`}>{issue.key}</span>
                           <TypeBadge type={issue.issue_type?.name} />
                           {issue.isProduction && (
-                            <span className="prio-prod-flag">PRODUÇÃO</span>
+                            <span className="prio-prod-flag" title="IA classificou esta issue como afetando produção (+1000 pontos)">PRODUÇÃO</span>
                           )}
                           {isTopAccount && (
-                            <span className="prio-top-badge">Top {issue.accountRank + 1}</span>
+                            <span className="prio-top-badge" title={`Conta ranqueada em #${issue.accountRank + 1} por faturamento (+${(11 - (issue.accountRank + 1)) * 40} pontos)`}>Top {issue.accountRank + 1}</span>
                           )}
                           {issue.prioBoost > 0 && (
                             <span className="prio-boost-badge" title={issue.prioRequests.map(r => `${r.requester_name}: ${r.justification} (boost +${r.boost})`).join('\n')}>
@@ -468,12 +651,13 @@ export default function PrioritizationView({ data, bus = [], user }) {
                             </span>
                           )}
                         </div>
-                        <span className="prio-summary">{issue.summary}</span>
+                        <span className="prio-summary" title={issue.summary}>{issue.summary}</span>
                         <div className="prio-item-meta">
-                          <span className="prio-account">{issue.account || '—'}</span>
-                          <span className="prio-assignee">{issue.assignee?.display_name || 'Não atribuído'}</span>
-                          <span className="prio-age">{fmtAge(issue.created)}</span>
-                          <span className="prio-score">Score: {issue.score}</span>
+                          <span className="prio-account" title={`Account: ${issue.account || 'Não definido'}`}>{issue.account || '—'}</span>
+                          {issue.product && <span className="prio-product" title={`Produto: ${issue.product}`}>{issue.product}</span>}
+                          <span className="prio-assignee" title={`Responsável: ${issue.assignee?.display_name || 'Não atribuído'}`}>{issue.assignee?.display_name || 'Não atribuído'}</span>
+                          <span className="prio-age" title={`Criado há ${fmtAge(issue.created)} — issues mais antigas ganham mais pontos (até 200)`}>{fmtAge(issue.created)}</span>
+                          <span className="prio-score" title="Score total: soma de pontos por produção, tipo, ranking de faturamento, idade e boost de priorização">Score: {issue.score}</span>
                         </div>
                         {issue.prioRequests.length > 0 && (
                           <div className="prio-boost-history">
@@ -503,6 +687,20 @@ export default function PrioritizationView({ data, bus = [], user }) {
                             )}
                           </div>
                         )}
+                        {issue.prioDeprioritized.length > 0 && (
+                          <div className="prio-deprio-history">
+                            {issue.prioDeprioritized.map(r => (
+                              <div key={r.id} className="prio-deprio-entry">
+                                <span className="prio-deprio-icon">✕</span>
+                                <span className="prio-deprio-text">
+                                  Despriorizado por <strong>{r.deprioritized_by}</strong>
+                                  {r.deprioritized_at && ` em ${new Date(r.deprioritized_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
+                                </span>
+                                <span className="prio-deprio-original">solicitado por {r.requester_name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="prio-item-actions">
                         <button
@@ -510,6 +708,8 @@ export default function PrioritizationView({ data, bus = [], user }) {
                           onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
+                            setPrioName(user?.name || localStorage.getItem('prio_user_name') || '')
+                            setPrioBu(userBuResolved?.name || '')
                             setPrioForm({ issueKey: issue.key, summary: issue.summary, type: issue.issue_type?.name, account: issue.account })
                           }}
                           title="Solicitar prioridade"
@@ -539,62 +739,46 @@ export default function PrioritizationView({ data, bus = [], user }) {
           )}
         </div>
 
-        {/* Sidebar: Account Ranking */}
-        <div className="prio-ranking-panel">
-          <div className="prio-ranking-header">
-            <span className="prio-ranking-title">Ranking de Faturamento</span>
-            {savingRank && <span className="prio-saving">salvando...</span>}
+        {/* Sidebar direita: Mensageria por membro */}
+        <div className="prio-mensageria-panel">
+          <div className="prio-mensageria-header">
+            <span className="prio-mensageria-title">Mensageria</span>
+            <span className="prio-mensageria-count">{mensageriaByMember.reduce((s, m) => s + m.issues.length, 0)}</span>
           </div>
 
-          {ranking.length > 0 && (
-            <div className="prio-ranking-list">
-              {ranking.map((account, idx) => (
-                <div key={account} className={`prio-ranking-item ${idx < 10 ? 'prio-ranking-item--top' : ''}`}>
-                  <span className="prio-ranking-pos">{idx + 1}</span>
-                  <span className="prio-ranking-name">{account}</span>
-                  {isAdmin && (
-                    <div className="prio-ranking-actions">
-                      <button
-                        className="prio-rank-btn"
-                        onClick={() => moveAccount(account, -1)}
-                        disabled={idx === 0}
-                        title="Subir"
-                      >▲</button>
-                      <button
-                        className="prio-rank-btn"
-                        onClick={() => moveAccount(account, 1)}
-                        disabled={idx === ranking.length - 1}
-                        title="Descer"
-                      >▼</button>
-                      <button
-                        className="prio-rank-btn prio-rank-btn--remove"
-                        onClick={() => removeFromRanking(account)}
-                        title="Remover"
-                      >✕</button>
-                    </div>
-                  )}
+          <div className="prio-mensageria-columns">
+            {mensageriaByMember.map(member => (
+              <div key={member.name} className="prio-mensageria-col">
+                <div className="prio-mensageria-member-header">
+                  <span className="prio-mensageria-member-name">{member.firstName}</span>
+                  <span className="prio-mensageria-member-count">{member.issues.length}</span>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Unranked accounts — somente admin pode adicionar */}
-          {isAdmin && unrankedAccounts.length > 0 && (
-            <>
-              <div className="prio-unranked-header">Accounts sem ranking</div>
-              <div className="prio-unranked-list">
-                {unrankedAccounts.map(account => (
-                  <button
-                    key={account}
-                    className="prio-unranked-btn"
-                    onClick={() => addToRanking(account)}
-                    title="Adicionar ao ranking"
-                  >
-                    + {account}
-                  </button>
-                ))}
+                {member.issues.length > 0 ? (
+                  <div className="prio-mensageria-list">
+                    {member.issues.map(issue => (
+                      <a key={issue.key} href={issue.jira_url} target="_blank" rel="noreferrer" className="prio-mensageria-item">
+                        <div className="prio-mensageria-item-top">
+                          <span className="prio-mensageria-key">{issue.key}</span>
+                          <span className="prio-mensageria-status">{issue.status?.name || '—'}</span>
+                        </div>
+                        <span className="prio-mensageria-summary">{issue.summary}</span>
+                        <div className="prio-mensageria-item-meta">
+                          {issue.product && <span className="prio-mensageria-product">{issue.product}</span>}
+                          {issue.account && <span className="prio-mensageria-account">{issue.account}</span>}
+                          <span className="prio-mensageria-age">{fmtAge(issue.created)}</span>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="prio-mensageria-empty">Sem demandas</p>
+                )}
               </div>
-            </>
+            ))}
+          </div>
+
+          {mensageriaByMember.length === 0 && (
+            <p className="prio-mensageria-empty">Nenhum membro na BU Mensageria.</p>
           )}
         </div>
       </div>
@@ -619,23 +803,35 @@ export default function PrioritizationView({ data, bus = [], user }) {
                 value={prioName}
                 onChange={e => setPrioName(e.target.value)}
                 placeholder="Ex: João Silva"
+                readOnly={!!user?.name}
+                className={user?.name ? 'prio-modal-input--readonly' : ''}
               />
             </div>
-            <div className="prio-modal-field">
-              <label>Sua BU</label>
-              <select
-                value={prioBu}
-                onChange={e => setPrioBu(e.target.value)}
-                className="prio-modal-select"
-              >
-                <option value="">Selecione sua BU...</option>
-                {bus.map(b => (
-                  <option key={b.id} value={b.name}>
-                    {b.name}{b.bu_type === 'gestao' ? ' (Gestão)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {userBuResolved ? (
+              <div className="prio-modal-field">
+                <label>Sua BU</label>
+                <div className="prio-modal-bu-auto">
+                  <span className="prio-modal-bu-name">{userBuResolved.name}</span>
+                  {userBuResolved.bu_type === 'gestao' && <span className="prio-modal-bu-tag">Gestão</span>}
+                </div>
+              </div>
+            ) : (
+              <div className="prio-modal-field">
+                <label>Sua BU</label>
+                <select
+                  value={prioBu}
+                  onChange={e => setPrioBu(e.target.value)}
+                  className="prio-modal-select"
+                >
+                  <option value="">Selecione sua BU...</option>
+                  {bus.map(b => (
+                    <option key={b.id} value={b.name}>
+                      {b.name}{b.bu_type === 'gestao' ? ' (Gestão)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="prio-modal-field">
               <label>Justificativa</label>
               <textarea
@@ -654,7 +850,7 @@ export default function PrioritizationView({ data, bus = [], user }) {
             <button
               className="prio-modal-submit"
               onClick={submitPrioRequest}
-              disabled={prioSubmitting || !prioName.trim() || !prioJustification.trim() || !prioBu}
+              disabled={prioSubmitting || !prioName.trim() || !prioJustification.trim() || (!prioBu && !userBuResolved)}
             >
               {prioSubmitting ? 'Avaliando...' : 'Enviar solicitação'}
             </button>

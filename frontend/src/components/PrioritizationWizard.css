@@ -123,6 +123,43 @@
   margin: 0;
 }
 
+/* ===== Search ===== */
+
+.pw-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pw-search {
+  width: 100%;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.88rem;
+  padding: 10px 36px 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-alt);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.pw-search:focus { border-color: var(--azul-primario); }
+.pw-search::placeholder { color: var(--text-muted); }
+
+.pw-search-clear {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.pw-search-clear:hover { color: var(--rosa); }
+
 /* ===== Issue List ===== */
 
 .pw-issue-list {

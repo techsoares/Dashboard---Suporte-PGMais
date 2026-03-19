@@ -411,15 +411,6 @@ export default function ManagementView({ data, filters }) {
     return { overdue, stale }
   }, [data])
 
-  // ── Trend: last week vs previous ────────────────────────────────────────
-  const trend = useMemo(() => {
-    const weeks = mgmtData?.weeks ?? []
-    if (weeks.length < 2) return null
-    const last = weeks[weeks.length - 1]
-    const prev = weeks[weeks.length - 2]
-    return { diff: last.done_count - prev.done_count }
-  }, [mgmtData])
-
   // ── Apply global filters to done_issues (client-side) ───────────────────
   const filteredDoneIssues = useMemo(() => {
     const issues = mgmtData?.done_issues ?? []
@@ -495,11 +486,6 @@ export default function ManagementView({ data, filters }) {
             <div className="mgmt-kpi-card">
               <span className="mgmt-kpi-label">Entregues — {period.label}</span>
               <span className="mgmt-kpi-value">{mgmtData.total_done}</span>
-              {trend && (
-                <span className={`mgmt-kpi-trend ${trend.diff >= 0 ? 'up' : 'down'}`}>
-                  {trend.diff >= 0 ? '↑' : '↓'} {Math.abs(trend.diff)} vs semana anterior
-                </span>
-              )}
             </div>
 
             <div className="mgmt-kpi-card">
@@ -518,16 +504,6 @@ export default function ManagementView({ data, filters }) {
                 {mgmtData.avg_cycle_days}d
               </span>
               <span className="mgmt-kpi-sub">criação → entrega</span>
-            </div>
-
-            <div className="mgmt-kpi-card mgmt-kpi-card--risk">
-              <span className="mgmt-kpi-label">Volume em Risco</span>
-              <span className="mgmt-kpi-value" style={{ color: 'var(--rosa)' }}>
-                {riskItems.overdue.length + riskItems.stale.length}
-              </span>
-              <span className="mgmt-kpi-sub">
-                {riskItems.overdue.length} atrasados · {riskItems.stale.length} paralisados
-              </span>
             </div>
           </div>
 

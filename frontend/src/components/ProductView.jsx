@@ -222,12 +222,20 @@ function buildMatrix(issues, rowField, colGetter) {
 //  MODULAR COMPONENTS
 // ═══════════════════════════════════════════════════════════════
 
-function StatCard({ label, value, unit, accent, subtitle, icon }) {
+function StatCard({ label, value, unit, accent, subtitle, icon, tooltip }) {
+  const [showTip, setShowTip] = useState(false)
   return (
     <div className={`pv-stat-card ${accent ? `pv-stat-card--${accent}` : ''}`}>
       <div className="pv-stat-card__header">
         {icon && <span className="pv-stat-card__icon">{icon}</span>}
         <span className="pv-stat-card__label">{label}</span>
+        {tooltip && (
+          <span className="pv-stat-card__tip-wrap"
+            onMouseEnter={() => setShowTip(true)} onMouseLeave={() => setShowTip(false)}>
+            <span className="pv-stat-card__tip-icon" aria-label="Informação">&#9432;</span>
+            {showTip && <span className="pv-stat-card__tooltip">{tooltip}</span>}
+          </span>
+        )}
       </div>
       <div className="pv-stat-card__body">
         <span className="pv-stat-card__value">{value}</span>
@@ -524,7 +532,7 @@ export default function ProductView({ data }) {
 
   const throughput = useMemo(() => computeThroughput(doneIssues), [doneIssues])
 
-  const bottlenecks = useMemo(() => detectBottlenecks(issues), [issues])
+  const bottlenecks = useMemo(() => detectBottlenecks(allIssues), [allIssues])
 
   const themes    = useMemo(() => buildThemes(issues), [issues])
   const devMatrix     = useMemo(() => buildMatrix(issues, 'product', i => i.assignee?.display_name), [issues])
@@ -563,7 +571,7 @@ export default function ProductView({ data }) {
       {/* ─── Header ─── */}
       <div className="pv-header">
         <div className="pv-header__left">
-          <h2 className="pv-title">Central de Operações — Produto</h2>
+          <h2 className="pv-title">Central de Operações — Fila Ativa</h2>
           <HealthBadge health={globalHealth} />
         </div>
         <div className="pv-controls">
@@ -586,6 +594,12 @@ export default function ProductView({ data }) {
         </div>
       </div>
 
+      {/* ─── Context Banner ─── */}
+      <div className="pv-context-banner">
+        <span className="pv-context-banner__icon">&#9432;</span>
+        <span>Análise em tempo real da <strong>fila ativa</strong> do backlog — issues abertas e em andamento, não inclui entregas passadas.</span>
+      </div>
+
       {/* ─── KPI Strip ─── */}
       <div className="pv-kpi-strip" role="region" aria-label="Indicadores operacionais">
         <StatCard label="Total Issues" value={globalStats.total} icon="&#9670;" accent="neutral" />
@@ -595,8 +609,9 @@ export default function ProductView({ data }) {
           subtitle={globalStats.total > 0 ? `${((globalStats.overdue / globalStats.total) * 100).toFixed(0)}% do total` : undefined} />
         <StatCard label="Lead Time Médio" value={globalLeadTime.toFixed(1)} unit="dias" icon="&#8986;" accent="neutral"
           subtitle="Criação → Resolução" />
-        <StatCard label="Throughput" value={throughput.perWeek} unit="/sem" icon="&#9889;" accent="done"
-          subtitle={`${doneIssues.length} concluídas total`} />
+        <StatCard label="Entregas da Semana" value={throughput.perWeek} unit="jiras" icon="&#9889;" accent="done"
+          subtitle={`${doneIssues.length} concluídas total`}
+          tooltip="Taxa de entrega: quantidade de jiras concluídos nos últimos 7 dias. Quanto maior, mais rápido o time está entregando." />
       </div>
 
       {/* ─── Bottleneck Alerts ─── */}

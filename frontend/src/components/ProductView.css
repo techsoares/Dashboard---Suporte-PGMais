@@ -103,6 +103,29 @@
    KPI Strip — StatCard
    ═══════════════════════════════════════════════════════════════ */
 
+.pv-context-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--azul-primario);
+  border-radius: 6px;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.pv-context-banner__icon {
+  font-size: 1rem;
+  color: var(--azul-primario);
+  flex-shrink: 0;
+}
+.pv-context-banner strong {
+  color: var(--text);
+}
+
 .pv-kpi-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -161,6 +184,47 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
+}
+
+.pv-stat-card__tip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  cursor: help;
+}
+
+.pv-stat-card__tip-icon {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  font-style: normal;
+}
+.pv-stat-card__tip-wrap:hover .pv-stat-card__tip-icon {
+  opacity: 1;
+}
+
+.pv-stat-card__tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  padding: 8px 10px;
+  background: var(--surface-alt);
+  color: var(--text);
+  font-family: 'Lato', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.45;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  z-index: 50;
+  pointer-events: none;
 }
 
 .pv-stat-card__body {

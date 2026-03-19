@@ -41,7 +41,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [lastFetch, setLastFetch] = useState(null)
-  const [currentView, setCurrentView] = useState('dashboard')
+  const [currentView, setCurrentView] = useState('prioritization')
   const [bus, setBus] = useState([])
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
@@ -367,32 +367,32 @@ export default function App() {
       <header className="app-header">
         <p className="tagline">tech, but <em>people first.</em></p>
         <nav className="header-nav">
-          <button className={`nav-pill ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => { setCurrentView('dashboard'); setDashboardSubView('grid') }} aria-label="Ir para Dashboard">Dashboard</button>
+          <button className={`nav-pill ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => { setCurrentView('dashboard'); setDashboardSubView('grid') }} aria-label="Ir para Dashboard" title="Visão principal com grid de desenvolvedores e KPIs">Dashboard</button>
           
           <div className="nav-pill-group">
             <button className={`nav-pill ${['management', 'ai', 'product'].includes(currentView) ? 'active' : ''}`} aria-label="Abrir menu de análise" aria-expanded={['management', 'ai', 'product'].includes(currentView)}>Análise</button>
             <div className="nav-pill-submenu">
-              <button className={`nav-pill-item ${currentView === 'management' ? 'active' : ''}`} onClick={() => setCurrentView('management')}>Gestão</button>
-              <button className={`nav-pill-item ${currentView === 'product' ? 'active' : ''}`} onClick={() => { setCurrentView('product'); track('view_product') }}>Produto</button>
-              <button className={`nav-pill-item ${currentView === 'timeline' ? 'active' : ''}`} onClick={() => setCurrentView('timeline')}>Timeline</button>
+              <button className={`nav-pill-item ${currentView === 'management' ? 'active' : ''}`} onClick={() => setCurrentView('management')} title="Visão executiva: entregas, SLA, capacity e gargalos">Gestão</button>
+              <button className={`nav-pill-item ${currentView === 'product' ? 'active' : ''}`} onClick={() => { setCurrentView('product'); track('view_product') }} title="Central de operações: volume, lead time e saúde por produto">Produto</button>
+              <button className={`nav-pill-item ${currentView === 'timeline' ? 'active' : ''}`} onClick={() => setCurrentView('timeline')} title="Visualização temporal Gantt das demandas ativas">Timeline</button>
             </div>
           </div>
           
           <div className="nav-pill-group">
             <button className={`nav-pill ${['kanban', 'prioritization'].includes(currentView) ? 'active' : ''}`} aria-label="Abrir menu de visualização" aria-expanded={['kanban', 'prioritization'].includes(currentView)}>Visualização</button>
             <div className="nav-pill-submenu">
-              <button className={`nav-pill-item ${currentView === 'kanban' ? 'active' : ''}`} onClick={() => setCurrentView('kanban')}>Kanban</button>
-              <button className={`nav-pill-item ${currentView === 'prioritization' ? 'active' : ''}`} onClick={() => setCurrentView('prioritization')}>Priorização</button>
+              <button className={`nav-pill-item ${currentView === 'kanban' ? 'active' : ''}`} onClick={() => setCurrentView('kanban')} title="Board Kanban com issues agrupadas por status">Kanban</button>
+              <button className={`nav-pill-item ${currentView === 'prioritization' ? 'active' : ''}`} onClick={() => setCurrentView('prioritization')} title="Fila priorizada por faturamento, tipo, produção e idade">Priorização</button>
             </div>
           </div>
         </nav>
         <div className="header-right">
           {user && (
             <div className="user-info">
-              <span className="user-name">{user.name}</span>
+              <span className="user-name" title={`Usuário: ${user.name} (${user.email})`}>{user.name}</span>
               <div className="user-bu-row">
-                {user.bu_name && <span className="user-bu">{user.bu_name}</span>}
-                {user.bu_type === 'gestao' && <span className="user-bu-badge">gestão</span>}
+                {user.bu_name && <span className="user-bu" title={`Unidade de Negócio: ${user.bu_name}`}>{user.bu_name}</span>}
+                {user.bu_type === 'gestao' && <span className="user-bu-badge" title="Perfil de gestão — acesso a visões gerenciais e multiplicador de priorização">gestão</span>}
               </div>
             </div>
           )}
@@ -420,7 +420,7 @@ export default function App() {
           <button className="theme-toggle-btn" onClick={() => setLightMode(p => !p)} aria-label={lightMode ? 'Ativar modo escuro' : 'Ativar modo claro'} title={lightMode ? 'Modo escuro' : 'Modo claro'}>
             {lightMode ? '🌙' : '☀️'}
           </button>
-          <button className={`refresh-btn ${refreshing ? 'loading' : ''}`} onClick={handleRefresh} disabled={refreshing} aria-label={refreshing ? 'Atualizando dados' : 'Atualizar dados agora'}>
+          <button className={`refresh-btn ${refreshing ? 'loading' : ''}`} onClick={handleRefresh} disabled={refreshing} aria-label={refreshing ? 'Atualizando dados' : 'Atualizar dados agora'} title="Forçar atualização dos dados do Jira">
             {refreshing ? 'atualizando...' : '↻ atualizar'}
           </button>
           {user?.permissions?.includes('admin') && (
@@ -511,7 +511,7 @@ export default function App() {
             {hasAnyFilter && (
               <div className="filter-status" role="status" aria-live="polite">
                 <span className="filter-status-text">Dados filtrados</span>
-                <button className="clear-filters-btn" onClick={() => { setFilters(EMPTY_FILTERS); setSearchQuery('') }} aria-label="Limpar todos os filtros">
+                <button className="clear-filters-btn" onClick={() => { setFilters(EMPTY_FILTERS); setSearchQuery('') }} aria-label="Limpar todos os filtros" title="Remover todos os filtros ativos e mostrar todos os dados">
                   ✕ limpar tudo
                 </button>
               </div>
@@ -526,7 +526,7 @@ export default function App() {
                 <DevGrid devs={filteredData.devs} jiraBaseUrl={filteredData.jira_base_url} bus={bus} />
               </main>
 
-              <button className="backlog-toggle-btn" onClick={() => setBacklogOpen(v => !v)} aria-label={backlogOpen ? 'Fechar backlog' : `Abrir backlog com ${filteredData.backlog.length} items`} aria-expanded={backlogOpen}>
+              <button className="backlog-toggle-btn" onClick={() => setBacklogOpen(v => !v)} aria-label={backlogOpen ? 'Fechar backlog' : `Abrir backlog com ${filteredData.backlog.length} items`} aria-expanded={backlogOpen} title={backlogOpen ? 'Fechar painel de backlog' : `Abrir painel de backlog (${filteredData.backlog.length} issues)`}>
                 {backlogOpen ? '✕' : `Backlog (${filteredData.backlog.length})`}
               </button>
               <div className={`backlog-drawer ${backlogOpen ? 'backlog-drawer--open' : ''}`}>
@@ -540,7 +540,7 @@ export default function App() {
 
       {currentView === 'management' && data && <ErrorBoundary name="Gestão"><ManagementView data={filteredData} filters={filters} /></ErrorBoundary>}
       {currentView === 'product' && filteredData && <ErrorBoundary name="Produto"><ProductView data={filteredData} /></ErrorBoundary>}
-      {currentView === 'timeline' && data && <ErrorBoundary name="Timeline"><TimelineView data={data} /></ErrorBoundary>}
+      {currentView === 'timeline' && data && <ErrorBoundary name="Timeline"><TimelineView data={filteredData || data} filters={filters} filterOptions={filterOptions} onToggleFilter={toggleFilter} onClearFilter={clearFilter} bus={bus} /></ErrorBoundary>}
       {currentView === 'kanban' && data && <ErrorBoundary name="Kanban"><KanbanView data={data} /></ErrorBoundary>}
       {currentView === 'admin' && user?.permissions?.includes('admin') && <ErrorBoundary name="Admin"><AdminView assignees={filterOptions.assignees} onBusChange={setBus} user={user} /></ErrorBoundary>}
       {currentView === 'prioritization' && data && <ErrorBoundary name="Priorização"><PrioritizationView data={data} bus={bus} user={user} /></ErrorBoundary>}
