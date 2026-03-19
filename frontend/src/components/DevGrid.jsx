@@ -36,13 +36,15 @@ export default function DevGrid({ devs, jiraBaseUrl, bus }) {
   }
 
   return (
+    <div className="dev-grid-wrapper">
+    <span className="dev-grid-note">Issues atribuídas — não necessariamente em andamento</span>
     <div className="bu-columns" style={{ gridTemplateColumns: `repeat(${groups.length}, 1fr)` }}>
       {groups.map((group) => (
         <div key={group.name || '__flat__'} className="bu-column">
           {group.name && (
-            <button className="bu-column-header" onClick={() => toggle(group.name)}>
+            <button className="bu-column-header" onClick={() => toggle(group.name)} title={`Clique para ${collapsed[group.name] ? 'expandir' : 'recolher'} a BU ${group.name}`}>
               <span className="bu-column-name">{group.name}</span>
-              <span className="bu-column-count">{group.devs.reduce((s, d) => s + d.active_issues.length, 0)}</span>
+              <span className="bu-column-count" title={`${group.devs.reduce((s, d) => s + d.active_issues.length, 0)} issues ativas nesta BU`}>{group.devs.reduce((s, d) => s + d.active_issues.length, 0)}</span>
             </button>
           )}
           {!collapsed[group.name] && (
@@ -54,6 +56,7 @@ export default function DevGrid({ devs, jiraBaseUrl, bus }) {
           )}
         </div>
       ))}
+    </div>
     </div>
   )
 }

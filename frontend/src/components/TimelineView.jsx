@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
+import FilterDropdown from './FilterDropdown'
 import './TimelineView.css'
 
 // ── Constantes ────────────────────────────────────────────────────────────
@@ -39,7 +40,7 @@ const GROUP_OPTIONS = [
 ]
 
 // ── Componente Principal ──────────────────────────────────────────────────
-export default function TimelineView({ data }) {
+export default function TimelineView({ data, filters, filterOptions, onToggleFilter, onClearFilter, bus }) {
   const [groupBy, setGroupBy]           = useState('assignee')
   const [search, setSearch]             = useState('')
   const [expandedGroups, setExpandedGroups] = useState({})
@@ -208,6 +209,7 @@ export default function TimelineView({ data }) {
                 key={opt.value}
                 className={`tv-group-btn ${groupBy === opt.value ? 'active' : ''}`}
                 onClick={() => setGroupBy(opt.value)}
+                title={`Agrupar issues por ${opt.label.toLowerCase()}`}
               >
                 {opt.label}
               </button>
@@ -222,21 +224,35 @@ export default function TimelineView({ data }) {
         </div>
       </div>
 
+      {/* Global filters */}
+      {filters && filterOptions && (
+        <div className="tv-filters-row">
+          {bus?.length > 0 && (
+            <FilterDropdown label="BU" options={bus.map(b => b.name)} selected={filters.bu || []} onToggle={v => onToggleFilter('bu', v)} onClear={() => onClearFilter('bu')} />
+          )}
+          <FilterDropdown label="Responsável" options={filterOptions.assignees || []} selected={filters.assignee || []} onToggle={v => onToggleFilter('assignee', v)} onClear={() => onClearFilter('assignee')} />
+          <FilterDropdown label="Account" options={filterOptions.accounts || []} selected={filters.account || []} onToggle={v => onToggleFilter('account', v)} onClear={() => onClearFilter('account')} />
+          <FilterDropdown label="Produto" options={filterOptions.products || []} selected={filters.product || []} onToggle={v => onToggleFilter('product', v)} onClear={() => onClearFilter('product')} />
+          <FilterDropdown label="Tipo" options={filterOptions.issueTypes || []} selected={filters.issue_type || []} onToggle={v => onToggleFilter('issue_type', v)} onClear={() => onClearFilter('issue_type')} />
+          <FilterDropdown label="Status" options={filterOptions.statuses || []} selected={filters.status || []} onToggle={v => onToggleFilter('status', v)} onClear={() => onClearFilter('status')} />
+        </div>
+      )}
+
       {/* Stats strip — clickable filters */}
       <div className="tv-stats">
-        <button className={`tv-stat ${activeFilter === null ? '' : 'tv-stat--dimmed'}`} onClick={() => setActiveFilter(null)}>
+        <button className={`tv-stat ${activeFilter === null ? '' : 'tv-stat--dimmed'}`} onClick={() => setActiveFilter(null)} title="Total de issues na timeline — clique para limpar filtro">
           <span className="tv-stat-val">{stats.total}</span>
           <span className="tv-stat-lbl">total</span>
         </button>
-        <button className={`tv-stat tv-stat--danger ${activeFilter === 'overdue' ? 'tv-stat--active' : ''}`} onClick={() => toggleFilter('overdue')}>
+        <button className={`tv-stat tv-stat--danger ${activeFilter === 'overdue' ? 'tv-stat--active' : ''}`} onClick={() => toggleFilter('overdue')} title="Issues com prazo vencido — clique para filtrar">
           <span className="tv-stat-val">{stats.overdue}</span>
           <span className="tv-stat-lbl">atrasadas</span>
         </button>
-        <button className={`tv-stat tv-stat--warn ${activeFilter === 'thisWeek' ? 'tv-stat--active' : ''}`} onClick={() => toggleFilter('thisWeek')}>
+        <button className={`tv-stat tv-stat--warn ${activeFilter === 'thisWeek' ? 'tv-stat--active' : ''}`} onClick={() => toggleFilter('thisWeek')} title="Issues com vencimento nos próximos 7 dias — clique para filtrar">
           <span className="tv-stat-val">{stats.thisWeek}</span>
           <span className="tv-stat-lbl">vencem esta semana</span>
         </button>
-        <button className={`tv-stat tv-stat--muted ${activeFilter === 'noDueDate' ? 'tv-stat--active' : ''}`} onClick={() => toggleFilter('noDueDate')}>
+        <button className={`tv-stat tv-stat--muted ${activeFilter === 'noDueDate' ? 'tv-stat--active' : ''}`} onClick={() => toggleFilter('noDueDate')} title="Issues sem data de vencimento definida — clique para filtrar">
           <span className="tv-stat-val">{stats.noDueDate}</span>
           <span className="tv-stat-lbl">sem data</span>
         </button>
@@ -260,10 +276,10 @@ export default function TimelineView({ data }) {
           <div className="tv-left-body">
             {grouped.map(group => (
               <div key={group.name} className="tv-grp">
-                <button className="tv-grp-toggle" onClick={() => toggleGroup(group.name)}>
+                <button className="tv-grp-toggle" onClick={() => toggleGroup(group.name)} title={`${group.name}: ${group.items.length} issue(s) — clique para ${expandedGroups[group.name] ? 'recolher' : 'expandir'}`}>
                   <span className={`tv-grp-arrow ${expandedGroups[group.name] ? 'open' : ''}`}>&#9654;</span>
                   <span className="tv-grp-name">{group.name}</span>
-                  <span className="tv-grp-count">{group.items.length}</span>
+                  <span className="tv-grp-count" title={`${group.items.length} issues neste grupo`}>{group.items.length}</span>
                 </button>
                 {expandedGroups[group.name] && group.items.map(issue => (
                   <div
@@ -306,7 +322,9 @@ export default function TimelineView({ data }) {
               )
             })}
             {/* Today marker */}
-            {todayLeft !== null && <div className="tv-today" style={{ left: todayLeft }} />}
+            {todayLeft !== null && (
+              <div className="tv-today" style={{ left: todayLeft }} data-date={today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} />
+            )}
           </div>
 
           {/* Bars */}
@@ -391,12 +409,12 @@ export default function TimelineView({ data }) {
       {/* Legenda */}
       <div className="tv-legend">
         {Object.entries(STATUS_MAP).filter(([, m], i, arr) => arr.findIndex(([, m2]) => m2.label === m.label) === i).map(([, meta]) => (
-          <div key={meta.label} className="tv-legend-item">
+          <div key={meta.label} className="tv-legend-item" title={`Cor para status: ${meta.label}`}>
             <span className="tv-legend-dot" style={{ background: meta.color }} />
             {meta.label}
           </div>
         ))}
-        <div className="tv-legend-item">
+        <div className="tv-legend-item" title="Linha vertical indicando a data de hoje">
           <span className="tv-legend-dot tv-legend-dot--today" />
           Hoje
         </div>

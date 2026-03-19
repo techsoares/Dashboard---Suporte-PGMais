@@ -29,16 +29,16 @@ export default function ProductStrip({ issues }) {
   return (
     <div className="product-strip">
       {groups.map(g => (
-        <div key={g.key} className="ps-card" style={{ '--ps-color': g.color }}>
+        <div key={g.key} className="ps-card" style={{ '--ps-color': g.color }} title={`${g.label}: ${g.stats.total} issues no backlog, ${g.stats.inProgress} em andamento, ${g.stats.overdue} atrasada(s)`}>
           <span className="ps-label">{g.label}</span>
-          <span className="ps-total">{g.stats.total}</span>
+          <span className="ps-total" title={`${g.stats.total} issues de ${g.label} no backlog`}>{g.stats.total}</span>
           <div className="ps-sub">
-            <span className="ps-sub-item ps-sub-progress">
+            <span className="ps-sub-item ps-sub-progress" title={`${g.stats.inProgress} issues de ${g.label} em andamento`}>
               <span className="ps-dot" style={{ background: 'var(--azul-primario)' }} />
               {g.stats.inProgress} andamento
             </span>
             {g.stats.overdue > 0 && (
-              <span className="ps-sub-item ps-sub-overdue">
+              <span className="ps-sub-item ps-sub-overdue" title={`${g.stats.overdue} issue(s) de ${g.label} com prazo vencido`}>
                 <span className="ps-dot" style={{ background: 'var(--rosa)' }} />
                 {g.stats.overdue} atrasado{g.stats.overdue > 1 ? 's' : ''}
               </span>

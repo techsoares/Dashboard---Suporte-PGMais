@@ -10,7 +10,7 @@ function Avatar({ assignee }) {
     .toUpperCase()
 
   return (
-    <div className="dev-avatar-ring">
+    <div className="dev-avatar-ring" title={assignee.display_name}>
       {assignee.avatar_url
         ? <img className="dev-avatar-img" src={assignee.avatar_url} alt={assignee.display_name} />
         : <div className="dev-avatar-initials">{initials}</div>
@@ -55,10 +55,10 @@ function HealthBar({ issues }) {
         ))}
       </div>
       <div className="dev-health-legend">
-        {inProgress > 0  && <span style={{ color: '#3DB7F4' }}>{inProgress} andamento</span>}
-        {waiting    > 0  && <span style={{ color: '#F2F24B' }}>{waiting} aguardando</span>}
-        {overdue    > 0  && <span style={{ color: '#FE70BD' }}>{overdue} em atraso</span>}
-        {avgDays    !== null && <span className="avg-days">⌀ {avgDays}d em progresso</span>}
+        {inProgress > 0  && <span style={{ color: '#3DB7F4' }} title={`${inProgress} issue(s) sendo trabalhada(s)`}>{inProgress} andamento</span>}
+        {waiting    > 0  && <span style={{ color: '#F2F24B' }} title={`${waiting} issue(s) aguardando ação externa`}>{waiting} aguardando</span>}
+        {overdue    > 0  && <span style={{ color: '#FE70BD' }} title={`${overdue} issue(s) com prazo vencido`}>{overdue} em atraso</span>}
+        {avgDays    !== null && <span className="avg-days" title="Tempo médio que as issues ficam em progresso">⌀ {avgDays}d em progresso</span>}
       </div>
     </div>
   )
@@ -66,19 +66,20 @@ function HealthBar({ issues }) {
 
 export default function DevCard({ dev, jiraBaseUrl }) {
   if (!dev?.assignee) return null
-  const { assignee, active_issues = [], issue_count = 0 } = dev
+  const { assignee, active_issues = [] } = dev
+  const count = active_issues.length
   const overdueCount = active_issues.filter(i => i.is_overdue).length
 
   return (
-    <div className={`dev-card ${overdueCount > 0 ? 'dev-card-alert' : ''}`} role="article" aria-label={`Card do desenvolvedor ${assignee.display_name} com ${issue_count} issue${issue_count !== 1 ? 's' : ''}`}>
+    <div className={`dev-card ${overdueCount > 0 ? 'dev-card-alert' : ''}`} role="article" aria-label={`Card do desenvolvedor ${assignee.display_name} com ${count} issue${count !== 1 ? 's' : ''}`}>
       <div className="dev-card-header">
         <Avatar assignee={assignee} />
         <div className="dev-info">
-          <span className="dev-name">{assignee.display_name}</span>
-          <span className="dev-sub">{issue_count} issue{issue_count !== 1 ? 's' : ''}</span>
+          <span className="dev-name" title={assignee.display_name}>{assignee.display_name}</span>
+          <span className="dev-sub" title={`${count} issue(s) atribuída(s) a este desenvolvedor`}>{count} issue{count !== 1 ? 's' : ''}</span>
         </div>
         {overdueCount > 0 && (
-          <span className="dev-alert-badge">⚠ {overdueCount}</span>
+          <span className="dev-alert-badge" title={`${overdueCount} issue(s) atrasada(s)`}>⚠ {overdueCount}</span>
         )}
       </div>
 

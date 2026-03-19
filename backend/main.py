@@ -312,7 +312,7 @@ def _save_ranking(ranking: list[str]):
 
 
 @app.get("/api/admin/account-ranking", tags=["admin"], summary="Retorna ranking de accounts por faturamento")
-async def get_account_ranking(_user: UserProfile = Depends(require_permission("admin"))):
+async def get_account_ranking(_user: UserProfile = Depends(get_current_user)):
     return await _load_ranking_safe()
 
 
@@ -489,9 +489,14 @@ async def delete_priority_request(request_id: str, current_user: UserProfile = D
         is_admin = "admin" in current_user.permissions
         if not is_owner and not is_admin:
             raise HTTPException(status_code=403, detail="Sem permissão para remover esta solicitação")
-        filtered_requests = [req for req in all_requests if req["id"] != request_id]
+        for req in all_requests:
+            if req["id"] == request_id:
+                req["deprioritized_by"] = current_user.name
+                req["deprioritized_at"] = datetime.now(timezone.utc).isoformat()
+                req["boost"] = 0
+                break
         with open(PRIORITY_FILE, "w", encoding="utf-8") as f:
-            json.dump(filtered_requests, f, ensure_ascii=False, indent=2)
+            json.dump(all_requests, f, ensure_ascii=False, indent=2)
     return {"status": "deleted"}
 
 
@@ -511,10 +516,15 @@ async def deprioritize_issue(body: DeprioritizeRequest, current_user: UserProfil
 
     async with _file_lock:
         all_requests = _load_priority_requests()
-        remaining_requests = [req for req in all_requests if req["issue_key"] != body.issue_key]
-        removed_count = len(all_requests) - len(remaining_requests)
+        removed_count = 0
+        for req in all_requests:
+            if req["issue_key"] == body.issue_key and not req.get("deprioritized_by"):
+                req["deprioritized_by"] = current_user.name
+                req["deprioritized_at"] = datetime.now(timezone.utc).isoformat()
+                req["boost"] = 0
+                removed_count += 1
         with open(PRIORITY_FILE, "w", encoding="utf-8") as f:
-            json.dump(remaining_requests, f, ensure_ascii=False, indent=2)
+            json.dump(all_requests, f, ensure_ascii=False, indent=2)
     return {"status": "deprioritized", "issue_key": body.issue_key, "removed": removed_count}
 
 

@@ -76,7 +76,7 @@ export default function DashboardHome({ data, user, bus }) {
 
         <div className="dh-grid-3">
           {/* Workload */}
-          <div className="dh-card dh-card--workload">
+          <div className="dh-card dh-card--workload" title="Quantidade total de issues atribuídas a você que estão abertas ou em andamento">
             <div className="dh-card-header">
               <span className="dh-card-icon">📊</span>
               <span className="dh-card-title">Sua Carga</span>
@@ -84,12 +84,12 @@ export default function DashboardHome({ data, user, bus }) {
             <div className="dh-card-value">{devStats.workload}</div>
             <div className="dh-card-sub">issues ativas</div>
             {devStats.avgDays > 0 && (
-              <div className="dh-card-meta">⌀ {devStats.avgDays}d em progresso</div>
+              <div className="dh-card-meta" title="Tempo médio que suas issues ficam em progresso">⌀ {devStats.avgDays}d em progresso</div>
             )}
           </div>
 
           {/* Urgentes */}
-          <div className="dh-card dh-card--urgent">
+          <div className="dh-card dh-card--urgent" title="Issues com prioridade High ou Highest que não estão atrasadas — atenção imediata necessária">
             <div className="dh-card-header">
               <span className="dh-card-icon">🔴</span>
               <span className="dh-card-title">Urgentes</span>
@@ -108,7 +108,7 @@ export default function DashboardHome({ data, user, bus }) {
           </div>
 
           {/* Atrasadas */}
-          <div className="dh-card dh-card--overdue">
+          <div className="dh-card dh-card--overdue" title="Issues cujo prazo de entrega já passou — priorize resolvê-las">
             <div className="dh-card-header">
               <span className="dh-card-icon">⚠️</span>
               <span className="dh-card-title">Atrasadas</span>
@@ -127,7 +127,7 @@ export default function DashboardHome({ data, user, bus }) {
           </div>
 
           {/* Bloqueadas */}
-          <div className="dh-card dh-card--blocked">
+          <div className="dh-card dh-card--blocked" title="Issues bloqueadas por dependência externa, aprovação ou impedimento técnico">
             <div className="dh-card-header">
               <span className="dh-card-icon">🚫</span>
               <span className="dh-card-title">Bloqueadas</span>
@@ -146,7 +146,7 @@ export default function DashboardHome({ data, user, bus }) {
           </div>
 
           {/* Próximas Deadlines */}
-          <div className="dh-card dh-card--deadline">
+          <div className="dh-card dh-card--deadline" title="Próximos vencimentos das suas issues mais urgentes e atrasadas">
             <div className="dh-card-header">
               <span className="dh-card-icon">📅</span>
               <span className="dh-card-title">Próximas Deadlines</span>
@@ -197,7 +197,7 @@ export default function DashboardHome({ data, user, bus }) {
 
         <div className="dh-grid-3">
           {/* Saúde Geral */}
-          <div className="dh-card dh-card--health">
+          <div className="dh-card dh-card--health" title={`Score de risco: ${gestaoStats.riskScore} — Calculado com base em atrasadas (×10), paralisadas (×5) e aguardando (×2)`}>
             <div className="dh-card-header">
               <span className="dh-card-icon">❤️</span>
               <span className="dh-card-title">Saúde Geral</span>
@@ -211,7 +211,7 @@ export default function DashboardHome({ data, user, bus }) {
           </div>
 
           {/* Atrasadas */}
-          <div className="dh-card dh-card--overdue">
+          <div className="dh-card dh-card--overdue" title="Issues com prazo de entrega vencido em todo o backlog">
             <div className="dh-card-header">
               <span className="dh-card-icon">⏰</span>
               <span className="dh-card-title">Atrasadas</span>
@@ -221,7 +221,7 @@ export default function DashboardHome({ data, user, bus }) {
           </div>
 
           {/* Paralisadas */}
-          <div className="dh-card dh-card--stale">
+          <div className="dh-card dh-card--stale" title="Issues sem nenhuma atualização há mais de 30 dias — podem estar esquecidas ou bloqueadas">
             <div className="dh-card-header">
               <span className="dh-card-icon">🧊</span>
               <span className="dh-card-title">Paralisadas</span>
@@ -246,7 +246,7 @@ export default function DashboardHome({ data, user, bus }) {
           )}
 
           {/* Em Andamento */}
-          <div className="dh-card dh-card--progress">
+          <div className="dh-card dh-card--progress" title="Issues sendo trabalhadas ativamente pelo time no momento">
             <div className="dh-card-header">
               <span className="dh-card-icon">⚙️</span>
               <span className="dh-card-title">Em Andamento</span>
@@ -256,7 +256,7 @@ export default function DashboardHome({ data, user, bus }) {
           </div>
 
           {/* Aguardando */}
-          <div className="dh-card dh-card--waiting">
+          <div className="dh-card dh-card--waiting" title="Issues paradas aguardando aprovação, revisão ou desbloqueio">
             <div className="dh-card-header">
               <span className="dh-card-icon">⏳</span>
               <span className="dh-card-title">Aguardando</span>
@@ -297,7 +297,7 @@ export default function DashboardHome({ data, user, bus }) {
 
         <div className="dh-grid-3">
           {/* Saúde */}
-          <div className={`dh-card dh-card--health dh-card--${executiveStats.health}`}>
+          <div className={`dh-card dh-card--health dh-card--${executiveStats.health}`} title={`${executiveStats.overdue} atrasadas, ${executiveStats.stale} paralisadas — Saúde: ${executiveStats.health === 'green' ? 'Verde' : executiveStats.health === 'yellow' ? 'Amarelo' : 'Vermelho'}`}>
             <div className="dh-card-header">
               <span className="dh-card-icon">
                 {executiveStats.health === 'green' ? '✅' : executiveStats.health === 'yellow' ? '⚠️' : '🔴'}
@@ -313,7 +313,7 @@ export default function DashboardHome({ data, user, bus }) {
           </div>
 
           {/* Total */}
-          <div className="dh-card dh-card--total">
+          <div className="dh-card dh-card--total" title="Total de issues abertas e em andamento no pipeline completo">
             <div className="dh-card-header">
               <span className="dh-card-icon">📦</span>
               <span className="dh-card-title">Backlog Total</span>
@@ -337,7 +337,7 @@ export default function DashboardHome({ data, user, bus }) {
           </div>
 
           {/* Clientes em Risco */}
-          <div className="dh-card dh-card--risk">
+          <div className="dh-card dh-card--risk" title="Contas (accounts) que possuem issues com prazo vencido — risco de impacto em SLA e satisfação">
             <div className="dh-card-header">
               <span className="dh-card-icon">🚨</span>
               <span className="dh-card-title">Clientes em Risco</span>
@@ -347,7 +347,7 @@ export default function DashboardHome({ data, user, bus }) {
             {executiveStats.riskAccounts.length > 0 && (
               <div className="dh-card-list">
                 {executiveStats.riskAccounts.map(acc => (
-                  <span key={acc} className="dh-risk-account">{acc}</span>
+                  <span key={acc} className="dh-risk-account" title={`Account ${acc} possui issues atrasadas`}>{acc}</span>
                 ))}
               </div>
             )}

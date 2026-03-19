@@ -1,1 +1,52 @@
-[]
+[
+  {
+    "id": "c2722ae9-dbb4-4dfc-b35f-057628261542",
+    "issue_key": "ON-36506",
+    "requester_name": "Andressa Soares",
+    "justification": "risco de perda de faturamento, cliente em produção",
+    "requester_bu": "Gestores gerais",
+    "bu_type": "gestao",
+    "boost": 0,
+    "ai_verdict": "Cliente em produção com falha no envio de link de fatura, representando risco direto de perda de faturamento imediato.",
+    "created_at": "2026-03-18T18:25:20.858497+00:00",
+    "deprioritized_by": "Andressa Soares",
+    "deprioritized_at": "2026-03-19T11:31:35.174667+00:00"
+  },
+  {
+    "id": "d5cf2496-8523-4d39-97a2-89c930f852de",
+    "issue_key": "ON-36512",
+    "requester_name": "Andressa Soares",
+    "justification": "Cliente crítico com SLA vencido. Risco de churn.",
+    "requester_bu": "Gestores gerais",
+    "bu_type": "gestao",
+    "boost": 0,
+    "ai_verdict": "Cliente crítico com SLA já vencido e risco de churn confirmado, indicando impacto direto na retenção e potencial perda financeira imediata.",
+    "created_at": "2026-03-18T18:55:43.513320+00:00",
+    "deprioritized_by": "Andressa Soares",
+    "deprioritized_at": "2026-03-19T11:31:42.770750+00:00"
+  },
+  {
+    "id": "cbe2019c-d67e-41b9-80a9-9d3d00fc93c4",
+    "issue_key": "ON-36148",
+    "requester_name": "Andressa Soares",
+    "justification": "tste",
+    "requester_bu": "Gestores gerais",
+    "bu_type": "gestao",
+    "boost": 0,
+    "ai_verdict": "Justificativa inválida ('tste') sem evidência de impacto real, apesar do cliente ser de grande porte.",
+    "created_at": "2026-03-19T11:33:17.441382+00:00",
+    "deprioritized_by": "Andressa Soares",
+    "deprioritized_at": "2026-03-19T11:35:12.075974+00:00"
+  },
+  {
+    "id": "d908ef90-cdbb-484a-a81d-62d9fe1ec33f",
+    "issue_key": "ON-36509",
+    "requester_name": "Andressa Soares",
+    "justification": "Bloqueador para outras equipes. Impede progresso.",
+    "requester_bu": "Gestores gerais",
+    "bu_type": "gestao",
+    "boost": 315,
+    "ai_verdict": "Funcionalidade bloqueante para múltiplas equipes, mas sem evidência de perda financeira imediata ou SLA crítico estourado.",
+    "created_at": "2026-03-19T12:26:38.638949+00:00"
+  }
+]

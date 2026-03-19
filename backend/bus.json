@@ -107,5 +107,13 @@
       "Jane Benevenuto"
     ],
     "bu_type": "gestao"
+  },
+  {
+    "id": "52cbe02b-b6e3-4ea9-b79c-fa40e490342c",
+    "name": "Gestão de talentos",
+    "members": [
+      "Victoria Castro"
+    ],
+    "bu_type": "operacional"
   }
 ]

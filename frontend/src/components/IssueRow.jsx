@@ -55,7 +55,7 @@ function SlaBar({ issue }) {
       <div className="ir-sla-track">
         <div className="ir-sla-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <span className="ir-sla-pct" style={{ color }}>{Math.round(pct)}% prazo</span>
+      <span className="ir-sla-pct" style={{ color }} title={`${Math.round(pct)}% do prazo consumido`}>{Math.round(pct)}% prazo</span>
     </div>
   )
 }
@@ -84,36 +84,36 @@ export default function IssueRow({ issue, jiraBaseUrl, compact }) {
     >
       {/* Linha 1: chave + status + idade */}
       <div className="ir-row1">
-        <span className="ir-key">{issue.key}</span>
-        {prioEmoji && <span className="ir-prio" title={issue.priority?.name}>{prioEmoji}</span>}
-        {type && <span className={`ir-type ${type.cls}`}>{type.label}</span>}
+        <span className="ir-key" title={`Abrir ${issue.key} no Jira`}>{issue.key}</span>
+        {prioEmoji && <span className="ir-prio" title={`Prioridade: ${issue.priority?.name}`}>{prioEmoji}</span>}
+        {type && <span className={`ir-type ${type.cls}`} title={`Tipo: ${issue.issue_type?.name}`}>{type.label}</span>}
         {status?.label && (
-          <span className={`ir-status ${status.cls}`}>{status.label}</span>
+          <span className={`ir-status ${status.cls}`} title={`Status: ${status.label}`}>{status.label}</span>
         )}
         {!status?.label && issue.status?.name && (
-          <span className="ir-status-raw">{issue.status.name}</span>
+          <span className="ir-status-raw" title={`Status: ${issue.status.name}`}>{issue.status.name}</span>
         )}
         {age !== null && (
-          <span className="ir-age" style={{ color: ageColor }}>
+          <span className="ir-age" style={{ color: ageColor }} title={`Criado há ${age} dia(s)`}>
             {age === 0 ? 'hoje' : `${age}d`}
           </span>
         )}
       </div>
 
       {/* Linha 2: título */}
-      <p className="ir-summary">{issue.summary}</p>
+      <p className="ir-summary" title={issue.summary}>{issue.summary}</p>
 
       {/* Linha 3: datas + tempo + componente */}
       <div className="ir-row3">
         {issue.is_overdue && issue.due_date && (
-          <span className="ir-due-overdue">⚠ venceu {issue.due_date}</span>
+          <span className="ir-due-overdue" title={`Prazo vencido em ${issue.due_date}`}>⚠ venceu {issue.due_date}</span>
         )}
         {!issue.is_overdue && issue.due_date && (
-          <span className="ir-due">vence {issue.due_date}</span>
+          <span className="ir-due" title={`Prazo de entrega: ${issue.due_date}`}>vence {issue.due_date}</span>
         )}
-        {progTime && <span className="ir-meta">⏱ {progTime} em progresso</span>}
-        {component && <span className="ir-component">{component}</span>}
-        {issue.activity_type && <span className="ir-meta">{issue.activity_type}</span>}
+        {progTime && <span className="ir-meta" title="Tempo total em status de progresso">⏱ {progTime} em progresso</span>}
+        {component && <span className="ir-component" title={`Componente: ${component}`}>{component}</span>}
+        {issue.activity_type && <span className="ir-meta" title={`Tipo de atividade: ${issue.activity_type}`}>{issue.activity_type}</span>}
       </div>
 
       {/* Barra de SLA */}

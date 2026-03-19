@@ -9,6 +9,14 @@
   box-sizing: border-box;
 }
 
+/* ── Filters row ──────────────────────────────────────────────── */
+.tv-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
 /* ── Header ────────────────────────────────────────────────────── */
 .tv-header {
   display: flex;
@@ -423,7 +431,7 @@
 }
 
 .tv-today::after {
-  content: 'HOJE';
+  content: 'HOJE ' attr(data-date);
   position: absolute;
   top: 2px;
   left: 4px;
@@ -432,6 +440,7 @@
   color: var(--rosa);
   letter-spacing: 0.05em;
   font-family: 'Lato', sans-serif;
+  white-space: nowrap;
 }
 
 .tv-today-body {

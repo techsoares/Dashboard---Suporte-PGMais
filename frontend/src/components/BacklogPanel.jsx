@@ -27,8 +27,8 @@ export default function BacklogPanel({ issues, jiraBaseUrl }) {
   return (
     <aside className="backlog-panel" role="complementary" aria-label="Painel de backlog geral">
       <div className="backlog-header">
-        <span className="backlog-title">Backlog Geral</span>
-        <span className="backlog-count" aria-live="polite">{filtered.length}</span>
+        <span className="backlog-title" title="Lista geral de issues no backlog">Backlog Geral</span>
+        <span className="backlog-count" aria-live="polite" title={`${filtered.length} issue(s) no backlog filtrado`}>{filtered.length}</span>
       </div>
 
       <div className="backlog-filters">

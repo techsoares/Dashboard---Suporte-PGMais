@@ -347,7 +347,7 @@ function DrillDownTable({ issues, periodLabel }) {
                     <span className="mgmt-drill-who">{issue.assignee?.display_name ?? '—'}</span>
                     <span className="mgmt-drill-product">{issue.product ?? '—'}</span>
                     <span className="mgmt-drill-date">{fmtDate(issue.resolved_date)}</span>
-                    <span className={`mgmt-drill-sla ${wasOnTime(issue) ? 'ok' : 'late'}`}>
+                    <span className={`mgmt-drill-sla ${wasOnTime(issue) ? 'ok' : 'late'}`} title={wasOnTime(issue) ? 'Entregue dentro do prazo' : 'Entregue com atraso'}>
                       {wasOnTime(issue) ? '✓ Prazo' : '✗ Atraso'}
                     </span>
                   </a>
@@ -381,15 +381,18 @@ export default function ManagementView({ data, filters }) {
 
     fetch(`${API_BASE_URL}/api/management?period=${periodKey}`, { signal, headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` } })
       .then(res => {
+        if (signal.aborted) return
         if (!res.ok) return res.json().then(j => Promise.reject(j.detail ?? `HTTP ${res.status}`))
         return res.json()
       })
       .then(d => {
+        if (!d || signal.aborted) return
         setMgmtData(d)
+        setError('')
         setLoading(false)
       })
       .catch(err => {
-        if (err?.name === 'AbortError') return
+        if (err?.name === 'AbortError' || signal.aborted) return
         setError(typeof err === 'string' ? err : 'Não foi possível carregar os dados históricos.')
         setLoading(false)
       })
@@ -444,6 +447,7 @@ export default function ManagementView({ data, filters }) {
               key={p.period}
               className={`mgmt-period-btn ${period.period === p.period ? 'active' : ''}`}
               onClick={() => setPeriod(p)}
+              title={`Exibir dados de entregas: ${p.label}`}
             >
               {p.label}
             </button>
@@ -483,12 +487,12 @@ export default function ManagementView({ data, filters }) {
         <>
           {/* KPIs */}
           <div className="mgmt-kpi-row">
-            <div className="mgmt-kpi-card">
+            <div className="mgmt-kpi-card" title="Total de issues concluídas no período selecionado">
               <span className="mgmt-kpi-label">Entregues — {period.label}</span>
               <span className="mgmt-kpi-value">{mgmtData.total_done}</span>
             </div>
 
-            <div className="mgmt-kpi-card">
+            <div className="mgmt-kpi-card" title="Percentual de issues entregues dentro do prazo (SLA). Meta: acima de 85%">
               <span className="mgmt-kpi-label">Taxa SLA</span>
               <span className="mgmt-kpi-value" style={{ color: slaColor(mgmtData.sla_rate) }}>
                 {mgmtData.sla_rate}%
@@ -498,7 +502,7 @@ export default function ManagementView({ data, filters }) {
               </span>
             </div>
 
-            <div className="mgmt-kpi-card">
+            <div className="mgmt-kpi-card" title="Tempo médio entre a criação e a entrega de uma issue. Quanto menor, melhor">
               <span className="mgmt-kpi-label">Ciclo Médio</span>
               <span className="mgmt-kpi-value" style={{ color: cycleColor(mgmtData.avg_cycle_days) }}>
                 {mgmtData.avg_cycle_days}d
@@ -548,12 +552,12 @@ export default function ManagementView({ data, filters }) {
                   )
                   const isBottleneck = days === maxDays && days > 0
                   return (
-                    <div key={label} className={`mgmt-bottleneck-card ${isBottleneck ? 'mgmt-bottleneck-card--highlight' : ''}`}>
+                    <div key={label} className={`mgmt-bottleneck-card ${isBottleneck ? 'mgmt-bottleneck-card--highlight' : ''}`} title={`Tempo médio em ${label.toLowerCase()}: ${days > 0 ? days + ' dias' : 'sem dados'}${isBottleneck ? ' — Esta é a fase mais lenta do processo' : ''}`}>
                       <span className="mgmt-bottleneck-label">{label}</span>
                       <span className="mgmt-bottleneck-value" style={{ color: isBottleneck ? 'var(--rosa)' : color }}>
                         {days > 0 ? `${days}d` : '—'}
                       </span>
-                      {isBottleneck && days > 0 && <span className="mgmt-bottleneck-badge">⚠ Gargalo</span>}
+                      {isBottleneck && days > 0 && <span className="mgmt-bottleneck-badge" title="Esta fase é o principal gargalo do time">⚠ Gargalo</span>}
                       <div className="mgmt-bottleneck-bar-wrap">
                         <div
                           className="mgmt-bottleneck-bar"
@@ -573,13 +577,13 @@ export default function ManagementView({ data, filters }) {
                   const maxType = mgmtData.by_type?.[0]?.count ?? 1
                   const sla     = t.count > 0 ? Math.round(t.on_time / t.count * 100) : 0
                   return (
-                    <div key={t.type_name} className="mgmt-type-row">
+                    <div key={t.type_name} className="mgmt-type-row" title={`${t.type_name}: ${t.count} entregues, ${sla}% dentro do SLA`}>
                       <span className="mgmt-type-name">{t.type_name}</span>
                       <div className="mgmt-type-bar-wrap">
                         <div className="mgmt-type-bar" style={{ width: `${(t.count / maxType) * 100}%` }} />
                       </div>
-                      <span className="mgmt-type-count">{t.count}</span>
-                      <span className="mgmt-type-sla" style={{ color: slaColor(sla) }}>{sla}%</span>
+                      <span className="mgmt-type-count" title={`${t.count} issues do tipo ${t.type_name}`}>{t.count}</span>
+                      <span className="mgmt-type-sla" style={{ color: slaColor(sla) }} title={`${sla}% das issues deste tipo foram entregues no prazo`}>{sla}%</span>
                     </div>
                   )
                 })}
@@ -623,10 +627,10 @@ export default function ManagementView({ data, filters }) {
                           </div>
                         </div>
                       ))}
-                      <span className="mgmt-phase-cycle" style={{ color: cycleColor(d.avg_cycle_days) }}>
+                      <span className="mgmt-phase-cycle" style={{ color: cycleColor(d.avg_cycle_days) }} title={`Ciclo médio de entrega: ${d.avg_cycle_days > 0 ? d.avg_cycle_days + ' dias' : 'sem dados'}`}>
                         {d.avg_cycle_days > 0 ? `${d.avg_cycle_days}d` : '—'}
                       </span>
-                      <span className="mgmt-phase-sla" style={{ color: slaColor(sla) }}>{sla}%</span>
+                      <span className="mgmt-phase-sla" style={{ color: slaColor(sla) }} title={`${sla}% das entregas de ${d.name} foram dentro do prazo`}>{sla}%</span>
                     </div>
                   )
                 })}
@@ -642,14 +646,14 @@ export default function ManagementView({ data, filters }) {
                 {(mgmtData.by_product ?? []).slice(0, 8).map(p => {
                   const sla = p.done_count > 0 ? Math.round(p.on_time / p.done_count * 100) : 0
                   return (
-                    <div key={p.product} className="mgmt-prod-row">
-                      <span className="mgmt-prod-name">{p.product}</span>
+                    <div key={p.product} className="mgmt-prod-row" title={`${p.product}: ${p.done_count} entregues, ${sla}% dentro do SLA`}>
+                      <span className="mgmt-prod-name" title={p.product}>{p.product}</span>
                       <div className="mgmt-prod-bar-wrap">
                         <div className="mgmt-prod-bar" style={{ width: `${(p.done_count / maxProd) * 100}%` }} />
                       </div>
                       <div className="mgmt-prod-stats">
-                        <span className="mgmt-prod-count">{p.done_count}</span>
-                        <span className="mgmt-prod-sla" style={{ color: slaColor(sla) }}>{sla}%</span>
+                        <span className="mgmt-prod-count" title={`${p.done_count} entregas`}>{p.done_count}</span>
+                        <span className="mgmt-prod-sla" style={{ color: slaColor(sla) }} title={`${sla}% das entregas no prazo`}>{sla}%</span>
                       </div>
                     </div>
                   )
@@ -664,7 +668,7 @@ export default function ManagementView({ data, filters }) {
                   <span className="mgmt-risk-label">Atrasados ({riskItems.overdue.length})</span>
                   {riskItems.overdue.map(i => (
                     <a key={i.key} href={i.jira_url} target="_blank" rel="noopener noreferrer"
-                      className="mgmt-risk-item mgmt-risk-item--overdue">
+                      className="mgmt-risk-item mgmt-risk-item--overdue" title={`${i.key}: ${i.summary} — Responsável: ${i.assignee?.display_name ?? 'Não atribuído'} — Prazo: ${i.due_date || '—'}`}>
                       <span className="mgmt-risk-key">{i.key}</span>
                       <span className="mgmt-risk-summary">{i.summary}</span>
                       <span className="mgmt-risk-who">{i.assignee?.display_name ?? '—'}</span>
@@ -677,7 +681,7 @@ export default function ManagementView({ data, filters }) {
                   <span className="mgmt-risk-label">Paralisados +30 dias ({riskItems.stale.length})</span>
                   {riskItems.stale.map(i => (
                     <a key={i.key} href={i.jira_url} target="_blank" rel="noopener noreferrer"
-                      className="mgmt-risk-item mgmt-risk-item--stale">
+                      className="mgmt-risk-item mgmt-risk-item--stale" title={`${i.key}: ${i.summary} — Responsável: ${i.assignee?.display_name ?? 'Não atribuído'} — Paralisada há +30 dias`}>
                       <span className="mgmt-risk-key">{i.key}</span>
                       <span className="mgmt-risk-summary">{i.summary}</span>
                       <span className="mgmt-risk-who">{i.assignee?.display_name ?? '—'}</span>

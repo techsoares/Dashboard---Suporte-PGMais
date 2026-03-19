@@ -239,6 +239,7 @@
   overflow: hidden;
   transition: all 0.15s;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .kb-card:hover {
   border-color: var(--border-strong);

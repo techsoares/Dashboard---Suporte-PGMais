@@ -30,7 +30,8 @@ const daysDiff = d => {
 // ── WIP Limit badge ───────────────────────────────────────────────────────
 function WipBadge({ count }) {
   const level = count > 10 ? 'critical' : count > 6 ? 'warn' : 'ok'
-  return <span className={`kb-wip kb-wip--${level}`} title="Work in Progress">{count}</span>
+  const levelLabel = level === 'critical' ? 'Carga crítica' : level === 'warn' ? 'Carga alta' : 'Carga saudável'
+  return <span className={`kb-wip kb-wip--${level}`} title={`${count} issues nesta coluna — ${levelLabel}`}>{count}</span>
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────
@@ -50,15 +51,15 @@ function IssueCard({ issue }) {
       className={`kb-card ${isOverdue ? 'kb-card--overdue' : ''} ${waiting ? 'kb-card--waiting' : ''}`}
     >
       {/* Priority stripe */}
-      <div className="kb-card__prio-stripe" style={{ background: prioColor }} />
+      <div className="kb-card__prio-stripe" style={{ background: prioColor }} title={`Prioridade: ${prioName}`} />
 
       <div className="kb-card__body">
         <div className="kb-card__top">
-          <span className="kb-card__key">{issue.key}</span>
-          <span className="kb-card__prio" style={{ color: prioColor }}>{prioName}</span>
+          <span className="kb-card__key" title={`Abrir ${issue.key} no Jira`}>{issue.key}</span>
+          <span className="kb-card__prio" style={{ color: prioColor }} title={`Prioridade: ${prioName}`}>{prioName}</span>
         </div>
 
-        <p className="kb-card__summary">{issue.summary}</p>
+        <p className="kb-card__summary" title={issue.summary}>{issue.summary}</p>
 
         <div className="kb-card__tags">
           {issue.issue_type?.name && (
@@ -77,11 +78,11 @@ function IssueCard({ issue }) {
         </div>
 
         <div className="kb-card__footer">
-          <span className="kb-card__assignee">
+          <span className="kb-card__assignee" title={`Responsável: ${issue.assignee?.display_name || 'Não atribuído'}`}>
             {issue.assignee?.display_name || 'Não atribuído'}
           </span>
           {issue.due_date && (
-            <span className={`kb-card__due ${isOverdue ? 'kb-card__due--late' : isUrgent ? 'kb-card__due--urgent' : ''}`}>
+            <span className={`kb-card__due ${isOverdue ? 'kb-card__due--late' : isUrgent ? 'kb-card__due--urgent' : ''}`} title={`Prazo: ${issue.due_date}`}>
               {isOverdue ? `Atrasado ${Math.abs(daysLeft)}d` : isUrgent ? `Vence em ${daysLeft}d` : fmtDate(issue.due_date)}
             </span>
           )}
@@ -90,8 +91,8 @@ function IssueCard({ issue }) {
         {/* Flags */}
         {(isOverdue || waiting) && (
           <div className="kb-card__flags">
-            {isOverdue && <span className="kb-card__flag kb-card__flag--overdue">ATRASADO</span>}
-            {waiting && <span className="kb-card__flag kb-card__flag--waiting">AGUARDANDO</span>}
+            {isOverdue && <span className="kb-card__flag kb-card__flag--overdue" title={`Issue atrasada — prazo: ${issue.due_date}`}>ATRASADO</span>}
+            {waiting && <span className="kb-card__flag kb-card__flag--waiting" title="Issue aguardando ação externa ou aprovação">AGUARDANDO</span>}
           </div>
         )}
       </div>
@@ -119,7 +120,7 @@ export default function KanbanView({ data }) {
       )
     }
     if (filterPrio) {
-      result = result.filter(i => i.priority?.name === filterPrio)
+      result = result.filter(i => (i.priority?.name || 'Medium') === filterPrio)
     }
     return result
   }, [issues, search, filterPrio])
@@ -209,19 +210,19 @@ export default function KanbanView({ data }) {
 
       {/* Stats strip */}
       <div className="kb-stats">
-        <div className="kb-stat">
+        <div className="kb-stat" title="Total de issues no board">
           <span className="kb-stat-val">{stats.total}</span>
           <span className="kb-stat-lbl">total</span>
         </div>
-        <div className="kb-stat kb-stat--progress">
+        <div className="kb-stat kb-stat--progress" title="Issues sendo trabalhadas ativamente">
           <span className="kb-stat-val">{stats.inProgress}</span>
           <span className="kb-stat-lbl">andamento</span>
         </div>
-        <div className="kb-stat kb-stat--waiting">
+        <div className="kb-stat kb-stat--waiting" title="Issues aguardando ação externa ou aprovação">
           <span className="kb-stat-val">{stats.waiting}</span>
           <span className="kb-stat-lbl">aguardando</span>
         </div>
-        <div className="kb-stat kb-stat--danger">
+        <div className="kb-stat kb-stat--danger" title="Issues com prazo de entrega vencido">
           <span className="kb-stat-val">{stats.overdue}</span>
           <span className="kb-stat-lbl">atrasadas</span>
         </div>
@@ -235,6 +236,7 @@ export default function KanbanView({ data }) {
             className={`kb-prio-pill ${filterPrio === prio ? 'kb-prio-pill--active' : ''}`}
             style={{ '--prio-color': PRIO_COLORS[prio] }}
             onClick={() => togglePrio(prio)}
+            title={`${filterPrio === prio ? 'Remover filtro' : 'Filtrar por'} prioridade ${prio} (${prioDist[prio]} issues)`}
           >
             <span className="kb-prio-pill__dot" />
             {prio} ({prioDist[prio]})
@@ -254,8 +256,8 @@ export default function KanbanView({ data }) {
                   <WipBadge count={col.issues.length} />
                 </div>
                 <div className="kb-col-header__indicators">
-                  {col.overdueCount > 0 && <span className="kb-col-indicator kb-col-indicator--overdue" title="Atrasadas">{col.overdueCount}</span>}
-                  {col.waitingCount > 0 && <span className="kb-col-indicator kb-col-indicator--waiting" title="Aguardando">{col.waitingCount}</span>}
+                  {col.overdueCount > 0 && <span className="kb-col-indicator kb-col-indicator--overdue" title={`${col.overdueCount} issue(s) atrasada(s) neste status`}>{col.overdueCount}</span>}
+                  {col.waitingCount > 0 && <span className="kb-col-indicator kb-col-indicator--waiting" title={`${col.waitingCount} issue(s) aguardando neste status`}>{col.waitingCount}</span>}
                 </div>
               </div>
               <div className="kb-col-body">

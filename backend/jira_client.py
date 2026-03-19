@@ -138,12 +138,16 @@ def _calculate_time_in_status(changelog_histories: list[dict]) -> TimeInStatus:
     )
 
 
+_DONE_KEYWORDS = {"done", "concluído", "concluída", "concluido", "concluida", "fechado", "closed", "resolved", "resolvido", "resolvida", "cancelado", "cancelled", "canceled"}
+
 def _classify_status_by_name(name: str) -> str:
     lower = name.lower()
     if any(k in lower for k in _WAITING_KEYWORDS):
         return "waiting"
     if any(k in lower for k in {"em andamento", "in progress", "doing", "dev", "desenvolvimento", "análise", "analise"}):
         return "in_progress"
+    if any(k in lower for k in _DONE_KEYWORDS):
+        return "done"
     return "backlog"
 
 

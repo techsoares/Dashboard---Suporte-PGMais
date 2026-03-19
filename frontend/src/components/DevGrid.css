@@ -62,6 +62,21 @@
   .bu-columns { grid-template-columns: 1fr !important; }
 }
 
+.dev-grid-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dev-grid-note {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+  text-align: right;
+  padding-right: 4px;
+}
+
 .dev-grid-empty {
   font-family: 'Lato', sans-serif;
   font-size: 1rem;

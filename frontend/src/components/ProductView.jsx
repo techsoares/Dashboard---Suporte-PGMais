@@ -248,7 +248,7 @@ function StatCard({ label, value, unit, accent, subtitle, icon, tooltip }) {
 
 function HealthBadge({ health }) {
   return (
-    <div className={`pv-health-badge pv-health-badge--${health.level}`} role="status" aria-label={`Saúde operacional: ${health.label}`}>
+    <div className={`pv-health-badge pv-health-badge--${health.level}`} role="status" aria-label={`Saúde operacional: ${health.label}`} title={`Saúde: ${health.label} — Risco ${(health.risk * 100).toFixed(0)}% (baseado em atrasos e itens aguardando)`}>
       <span className="pv-health-badge__dot" />
       <span className="pv-health-badge__label">{health.label}</span>
       <span className="pv-health-badge__pct">{(health.risk * 100).toFixed(0)}% risco</span>
@@ -267,7 +267,7 @@ function BottleneckAlert({ bottlenecks }) {
       </div>
       <div className="pv-bottleneck-list">
         {bottlenecks.map((b, i) => (
-          <div key={i} className="pv-bottleneck-item">
+          <div key={i} className="pv-bottleneck-item" title={`${b.type === 'assignee' ? 'Responsável' : 'Account'} ${b.name}: ${b.overdue} de ${b.total} issues atrasadas (${(b.pct * 100).toFixed(0)}%) — Requer atenção`}>
             <span className="pv-bottleneck-type">{b.type === 'assignee' ? 'Responsável' : 'Account'}</span>
             <span className="pv-bottleneck-name">{b.name}</span>
             <span className="pv-bottleneck-stats">{b.overdue}/{b.total} atrasadas ({(b.pct * 100).toFixed(0)}%)</span>
@@ -355,7 +355,7 @@ function IdealVsRealRadar({ products, maxTotal, idealProfile }) {
 function ThemeBar({ word, count, maxCount }) {
   const pct = maxCount > 0 ? (count / maxCount) * 100 : 0
   return (
-    <div className="pv-theme-row">
+    <div className="pv-theme-row" title={`"${word}" aparece em ${count} issues`}>
       <span className="pv-theme-word">{word}</span>
       <div className="pv-theme-track">
         <div className="pv-theme-fill" style={{ width: `${pct}%` }} />
@@ -576,17 +576,18 @@ export default function ProductView({ data }) {
         </div>
         <div className="pv-controls">
           <div className="pv-legend">
-            <span className="pv-leg-item"><span className="pv-leg-dot" style={{ background: STATUS_COLORS.progress }} />Andamento</span>
-            <span className="pv-leg-item"><span className="pv-leg-dot" style={{ background: STATUS_COLORS.waiting }} />Aguardando</span>
-            <span className="pv-leg-item"><span className="pv-leg-dot" style={{ background: STATUS_COLORS.overdue }} />Atrasado</span>
-            <span className="pv-leg-item"><span className="pv-leg-dot" style={{ background: 'var(--verde)' }} />Ideal</span>
+            <span className="pv-leg-item" title="Issues sendo trabalhadas ativamente"><span className="pv-leg-dot" style={{ background: STATUS_COLORS.progress }} />Andamento</span>
+            <span className="pv-leg-item" title="Issues aguardando ação externa"><span className="pv-leg-dot" style={{ background: STATUS_COLORS.waiting }} />Aguardando</span>
+            <span className="pv-leg-item" title="Issues com prazo vencido"><span className="pv-leg-dot" style={{ background: STATUS_COLORS.overdue }} />Atrasado</span>
+            <span className="pv-leg-item" title="Perfil ideal para produto saudável"><span className="pv-leg-dot" style={{ background: 'var(--verde)' }} />Ideal</span>
           </div>
           <div className="pv-period-btns" role="radiogroup" aria-label="Filtro de período">
             {PERIOD_OPTIONS.map(opt => (
               <button key={opt.label}
                 className={`pv-period-btn ${period === opt.days ? 'active' : ''}`}
                 role="radio" aria-checked={period === opt.days}
-                onClick={() => { setPeriod(opt.days); track('product_period_filter', { period: opt.label }) }}>
+                onClick={() => { setPeriod(opt.days); track('product_period_filter', { period: opt.label }) }}
+                title={`Filtrar issues criadas ${opt.days ? `nos últimos ${opt.days} dias` : 'em qualquer período'}`}>
                 {opt.label}
               </button>
             ))}
@@ -602,13 +603,18 @@ export default function ProductView({ data }) {
 
       {/* ─── KPI Strip ─── */}
       <div className="pv-kpi-strip" role="region" aria-label="Indicadores operacionais">
-        <StatCard label="Total Issues" value={globalStats.total} icon="&#9670;" accent="neutral" />
-        <StatCard label="Em Andamento" value={globalStats.inProgress} icon="&#9654;" accent="progress" />
-        <StatCard label="Aguardando" value={globalStats.waiting} icon="&#9208;" accent="waiting" />
+        <StatCard label="Total Issues" value={globalStats.total} icon="&#9670;" accent="neutral"
+          tooltip="Total de issues ativas na fila (abertas e em andamento)" />
+        <StatCard label="Em Andamento" value={globalStats.inProgress} icon="&#9654;" accent="progress"
+          tooltip="Issues sendo trabalhadas ativamente pelo time" />
+        <StatCard label="Aguardando" value={globalStats.waiting} icon="&#9208;" accent="waiting"
+          tooltip="Issues aguardando aprovação, revisão, desbloqueio ou ação externa" />
         <StatCard label="Atrasadas" value={globalStats.overdue} icon="&#9888;" accent="overdue"
-          subtitle={globalStats.total > 0 ? `${((globalStats.overdue / globalStats.total) * 100).toFixed(0)}% do total` : undefined} />
+          subtitle={globalStats.total > 0 ? `${((globalStats.overdue / globalStats.total) * 100).toFixed(0)}% do total` : undefined}
+          tooltip="Issues com prazo de entrega vencido. Alto número indica problemas de capacity ou estimativa" />
         <StatCard label="Lead Time Médio" value={globalLeadTime.toFixed(1)} unit="dias" icon="&#8986;" accent="neutral"
-          subtitle="Criação → Resolução" />
+          subtitle="Criação → Resolução"
+          tooltip="Tempo médio entre criação e resolução. Quanto menor, mais rápido o fluxo de trabalho" />
         <StatCard label="Entregas da Semana" value={throughput.perWeek} unit="jiras" icon="&#9889;" accent="done"
           subtitle={`${doneIssues.length} concluídas total`}
           tooltip="Taxa de entrega: quantidade de jiras concluídos nos últimos 7 dias. Quanto maior, mais rápido o time está entregando." />
@@ -715,9 +721,9 @@ export default function ProductView({ data }) {
                   ranked.forEach(p => { counts[productHealthMap[p.name]?.level || 'healthy']++ })
                   return (
                     <>
-                      {counts.healthy > 0  && <span className="pv-health-pill pv-health-pill--healthy">{counts.healthy} saudável</span>}
-                      {counts.alert > 0    && <span className="pv-health-pill pv-health-pill--alert">{counts.alert} alerta</span>}
-                      {counts.critical > 0 && <span className="pv-health-pill pv-health-pill--critical">{counts.critical} crítico</span>}
+                      {counts.healthy > 0  && <span className="pv-health-pill pv-health-pill--healthy" title={`${counts.healthy} produto(s) com saúde operacional normal`}>{counts.healthy} saudável</span>}
+                      {counts.alert > 0    && <span className="pv-health-pill pv-health-pill--alert" title={`${counts.alert} produto(s) com risco moderado — requer monitoramento`}>{counts.alert} alerta</span>}
+                      {counts.critical > 0 && <span className="pv-health-pill pv-health-pill--critical" title={`${counts.critical} produto(s) em estado crítico — ação imediata necessária`}>{counts.critical} crítico</span>}
                     </>
                   )
                 })()}
@@ -748,8 +754,8 @@ export default function ProductView({ data }) {
                       <tr key={p.name}
                           className={`pv-table-row-click${activeDrill === p.name ? ' pv-table-row-active' : ''} ${isBottleneck ? 'pv-table-row--bottleneck' : ''}`}
                           onClick={() => handleDrillClick(p.name)}>
-                        <td><span className="pv-rank" style={{ background: COLORS[i % COLORS.length] }}>#{i+1}</span></td>
-                        <td className="pv-td-name">{p.name}</td>
+                        <td><span className="pv-rank" style={{ background: COLORS[i % COLORS.length] }} title={`Ranking #${i+1} por volume`}>#{i+1}</span></td>
+                        <td className="pv-td-name" title={`Clique para ver detalhes de ${p.name}`}>{p.name}</td>
                         <td>
                           {health && (
                             <span className={`pv-health-dot pv-health-dot--${health.level}`} title={health.label}>
@@ -757,17 +763,17 @@ export default function ProductView({ data }) {
                             </span>
                           )}
                         </td>
-                        <td className="pv-td-num">{p.total}</td>
-                        <td className="pv-td-num pv-td--progress">{p.inProgress}</td>
-                        <td className="pv-td-num pv-td--waiting">{p.waiting}</td>
-                        <td className="pv-td-num pv-td--overdue">{p.overdue}</td>
+                        <td className="pv-td-num" title={`${p.total} issues ativas`}>{p.total}</td>
+                        <td className="pv-td-num pv-td--progress" title={`${p.inProgress} em andamento`}>{p.inProgress}</td>
+                        <td className="pv-td-num pv-td--waiting" title={`${p.waiting} aguardando`}>{p.waiting}</td>
+                        <td className="pv-td-num pv-td--overdue" title={`${p.overdue} atrasadas`}>{p.overdue}</td>
                         <td className="pv-td-num">
                           <span className={`pv-pct ${isBottleneck ? 'pv-pct--high' : ''}`}>
                             {(overduePct * 100).toFixed(0)}%
                           </span>
-                          {isBottleneck && <span className="pv-bottleneck-tag" title="Gargalo identificado">gargalo</span>}
+                          {isBottleneck && <span className="pv-bottleneck-tag" title={`Gargalo: ${(overduePct * 100).toFixed(0)}% de atraso excede o limiar de ${BOTTLENECK_THRESHOLD * 100}%`}>gargalo</span>}
                         </td>
-                        <td className="pv-td-num pv-td--leadtime">{lt ? `${lt.avg.toFixed(1)}d` : '\u2014'}</td>
+                        <td className="pv-td-num pv-td--leadtime" title={lt ? `Lead Time médio: ${lt.avg.toFixed(1)} dias / P90: ${lt.p90.toFixed(1)} dias` : 'Sem dados de Lead Time'}>{lt ? `${lt.avg.toFixed(1)}d` : '\u2014'}</td>
                       </tr>
                     )
                   })}
