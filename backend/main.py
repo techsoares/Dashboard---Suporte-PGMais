@@ -45,10 +45,12 @@ from jira_client import fetch_active_issues, fetch_done_this_week, fetch_done_la
 from models import DashboardResponse, KpiSummary, ManagementData
 from mock_data import get_mock_dashboard, get_mock_management
 from auth import (
-    UserProfile, LoginRequest, LoginResponse, create_jwt_token, decode_jwt_token,
+    UserProfile, LoginRequest, LoginResponse, GoogleLoginRequest,
+    create_jwt_token, decode_jwt_token,
     get_current_user, require_permission, require_role,
-    get_user_bu, set_user_bu, authenticate_user,
-    get_admin_credentials, add_admin, remove_admin
+    get_user_bu, set_user_bu, authenticate_user, authenticate_google_user,
+    get_admin_credentials, add_admin, remove_admin,
+    get_online_users, get_all_registered_users, save_jira_users_cache
 )
 
 # ---------------------------------------------------------------------------
@@ -241,6 +243,8 @@ async def list_jira_users(
 ):
     try:
         users = await fetch_all_jira_users()
+        # Salvar cache para matching de nomes no login
+        save_jira_users_cache(users)
         return users
     except Exception as e:
         logger.error("Erro ao buscar usuários do Jira: %s", e)
@@ -618,6 +622,32 @@ async def login(body: LoginRequest, request: Request):
 
 
 
+@app.post("/api/auth/google", response_model=LoginResponse, tags=["auth"], summary="Login via Google OAuth2")
+async def login_google(body: GoogleLoginRequest, request: Request):
+    """Realiza login com conta Google.
+
+    Recebe o ID Token do Google Sign-In, valida assinatura e audience,
+    verifica domínio (@pgmais ou @ciclo) e retorna JWT.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    if not auth_limiter.is_allowed(client_ip):
+        SecurityLogger.log_rate_limit_exceeded(client_ip, "/api/auth/google")
+        raise HTTPException(status_code=429, detail="Muitas tentativas de login. Tente novamente em alguns minutos.")
+
+    try:
+        logger.debug("Google login attempt from IP: %s", client_ip)
+        user = authenticate_google_user(body.credential)
+        access_token = create_jwt_token(user)
+        logger.info("Login Google bem-sucedido: %s (BU: %s, Admin: %s)", user.email, user.bu_name or "sem BU", "admin" in user.roles)
+        return LoginResponse(access_token=access_token, user=user)
+    except HTTPException as e:
+        logger.warning("Login Google falhou: %s", e.detail)
+        raise
+    except Exception as e:
+        logger.error("Erro interno no login Google: %s", str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Erro interno no servidor. Contate o administrador.")
+
+
 @app.get("/api/auth/me", response_model=UserProfile, tags=["auth"], summary="Retorna perfil do usuário autenticado")
 async def get_me(user: UserProfile = Depends(get_current_user)):
     """Retorna informações do usuário autenticado."""
@@ -731,6 +761,23 @@ async def update_admin(email: str, body: dict, admin_user: UserProfile = Depends
     
     add_admin(email, password)  # add_admin sobrescreve se já existe
     return {"status": "updated", "email": email}
+
+
+@app.get("/api/admin/online-users", tags=["admin"], summary="Lista usuários online no momento")
+async def list_online_users(
+    minutes: int = 10,
+    admin_user: UserProfile = Depends(require_permission("admin"))
+):
+    """Retorna usuários com atividade nos últimos N minutos (padrão: 10)."""
+    return get_online_users(threshold_minutes=min(minutes, 60))
+
+
+@app.get("/api/admin/registered-users", tags=["admin"], summary="Lista todos os usuários registrados")
+async def list_registered_users(
+    admin_user: UserProfile = Depends(require_permission("admin"))
+):
+    """Retorna todos os usuários que já fizeram login no sistema."""
+    return get_all_registered_users()
 
 
 # ---------------------------------------------------------------------------

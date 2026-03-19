@@ -133,3 +133,5 @@ backend/bus.json
 backend/account_ranking.json
 backend/priority_requests.json
 backend/users.json
+# Cache de usuários Jira para matching
+backend/.jira_users_cache.json

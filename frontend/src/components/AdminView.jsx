@@ -22,6 +22,9 @@ export default function AdminView({ assignees: fallbackAssignees = [], onBusChan
   const [userFilter, setUserFilter] = useState('')
   const [editingAdmin, setEditingAdmin] = useState(null)
   const [editAdminPassword, setEditAdminPassword] = useState('')
+  const [onlineUsers, setOnlineUsers] = useState([])
+  const [registeredUsers, setRegisteredUsers] = useState([])
+  const [loadingOnline, setLoadingOnline] = useState(false)
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('access_token')
@@ -59,7 +62,21 @@ export default function AdminView({ assignees: fallbackAssignees = [], onBusChan
       .finally(() => setLoadingUsers(false))
   }
 
-  useEffect(() => { load(); loadJiraUsers(); loadAdmins() }, [])
+  const loadOnlineUsers = () => {
+    setLoadingOnline(true)
+    Promise.all([
+      fetch(`${API_BASE_URL}/api/admin/online-users?minutes=10`, { headers: getAuthHeaders() }).then(r => r.json()),
+      fetch(`${API_BASE_URL}/api/admin/registered-users`, { headers: getAuthHeaders() }).then(r => r.json()),
+    ])
+      .then(([online, registered]) => {
+        setOnlineUsers(Array.isArray(online) ? online : [])
+        setRegisteredUsers(Array.isArray(registered) ? registered : [])
+      })
+      .catch(() => {})
+      .finally(() => setLoadingOnline(false))
+  }
+
+  useEffect(() => { load(); loadJiraUsers(); loadAdmins(); loadOnlineUsers() }, [])
 
   const loadAdmins = () => {
     fetch(`${API_BASE_URL}/api/admin/admins`, {
@@ -286,11 +303,17 @@ export default function AdminView({ assignees: fallbackAssignees = [], onBusChan
           >
             Unidades de Negócio
           </button>
-          <button 
+          <button
             className={`admin-tab ${activeTab === 'admins' ? 'active' : ''}`}
             onClick={() => setActiveTab('admins')}
           >
             Administradores
+          </button>
+          <button
+            className={`admin-tab ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('users'); loadOnlineUsers() }}
+          >
+            Usuários {onlineUsers.length > 0 && <span className="admin-online-badge">{onlineUsers.length}</span>}
           </button>
         </div>
       </div>
@@ -584,6 +607,98 @@ export default function AdminView({ assignees: fallbackAssignees = [], onBusChan
               <small className="admin-add-admin-hint">
                 O novo admin poderá fazer login com o email e senha definidos aqui.
               </small>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'users' && (
+        <div className="admin-body">
+          <div className="admin-users-section">
+            {loadingOnline && <p className="admin-empty">Carregando...</p>}
+
+            {/* Usuários Online */}
+            <div className="admin-users-block">
+              <h3 className="admin-section-title">
+                Usuários Online
+                <span className="admin-online-count">{onlineUsers.length}</span>
+              </h3>
+              <p className="admin-section-desc">Usuários com atividade nos últimos 10 minutos.</p>
+
+              {onlineUsers.length === 0 && !loadingOnline && (
+                <p className="admin-empty">Nenhum usuário online no momento.</p>
+              )}
+
+              <div className="admin-users-grid">
+                {onlineUsers.map(u => (
+                  <div key={u.email} className="admin-user-card admin-user-card--online">
+                    <div className="admin-user-card-avatar">
+                      {u.picture ? (
+                        <img src={u.picture} alt={u.name} className="admin-user-card-img" referrerPolicy="no-referrer" />
+                      ) : (
+                        <span className="admin-user-card-initials">
+                          {u.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                      <span className="admin-user-card-status admin-user-card-status--online" title="Online" />
+                    </div>
+                    <div className="admin-user-card-info">
+                      <span className="admin-user-card-name">{u.name}</span>
+                      <span className="admin-user-card-email">{u.email}</span>
+                      <div className="admin-user-card-meta">
+                        {u.bu_name && <span className="admin-user-card-bu">{u.bu_name}</span>}
+                        {u.roles?.includes('admin') && <span className="admin-user-card-role">Admin</span>}
+                        <span className="admin-user-card-provider">{u.auth_provider === 'google' ? 'Google' : 'Email'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Todos os Usuários Registrados */}
+            <div className="admin-users-block">
+              <h3 className="admin-section-title">
+                Todos os Usuários Registrados
+                <span className="admin-online-count">{registeredUsers.length}</span>
+              </h3>
+              <p className="admin-section-desc">Todos os usuários que já fizeram login no sistema.</p>
+
+              <div className="admin-users-grid">
+                {registeredUsers.map(u => {
+                  const isOnline = onlineUsers.some(o => o.email === u.email)
+                  const lastSeen = u.last_seen ? new Date(u.last_seen) : null
+                  const lastLogin = u.last_login ? new Date(u.last_login) : null
+
+                  return (
+                    <div key={u.email} className={`admin-user-card ${isOnline ? 'admin-user-card--online' : ''}`}>
+                      <div className="admin-user-card-avatar">
+                        {u.picture ? (
+                          <img src={u.picture} alt={u.name} className="admin-user-card-img" referrerPolicy="no-referrer" />
+                        ) : (
+                          <span className="admin-user-card-initials">
+                            {u.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </span>
+                        )}
+                        <span className={`admin-user-card-status ${isOnline ? 'admin-user-card-status--online' : 'admin-user-card-status--offline'}`} title={isOnline ? 'Online' : 'Offline'} />
+                      </div>
+                      <div className="admin-user-card-info">
+                        <span className="admin-user-card-name">{u.name}</span>
+                        <span className="admin-user-card-email">{u.email}</span>
+                        <div className="admin-user-card-meta">
+                          {u.bu_name && <span className="admin-user-card-bu">{u.bu_name}</span>}
+                          {u.roles?.includes('admin') && <span className="admin-user-card-role">Admin</span>}
+                          <span className="admin-user-card-provider">{u.auth_provider === 'google' ? 'Google' : 'Email'}</span>
+                        </div>
+                        <div className="admin-user-card-times">
+                          {lastLogin && <span className="admin-user-card-time" title="Último login">Login: {lastLogin.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>}
+                          {lastSeen && <span className="admin-user-card-time" title="Última atividade">Visto: {lastSeen.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
