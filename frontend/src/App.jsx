@@ -444,7 +444,7 @@ export default function App() {
           ) : (
             <>
               <div className="kpi-product-row" role="region" aria-label="Indicadores de desempenho">
-                <KpiBar kpis={filteredKpis} delta={hasAnyFilter ? null : data.kpi_delta} />
+                <KpiBar kpis={filteredKpis} delta={hasAnyFilter ? null : data.kpi_delta} backlog={filteredData.backlog} doneIssues={data.done_issues} doneHistorical={data.done_issues_historical} />
                 <div className="kpi-product-divider" aria-hidden="true" />
                 <ProductStrip issues={filteredData.backlog} />
               </div>
