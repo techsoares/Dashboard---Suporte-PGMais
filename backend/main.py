@@ -20,9 +20,11 @@ from datetime import datetime, timezone, date, timedelta
 _file_lock = asyncio.Lock()
 
 import httpx
+from pathlib import Path
 from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -1161,6 +1163,26 @@ async def _fetch_all():
     )
     return active_issues, done_issues, done_last_week, done_historical
 
+
+# ---------------------------------------------------------------------------
+# Servir frontend (SPA) — arquivos estáticos do build React/Vite
+# ---------------------------------------------------------------------------
+
+_FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+if _FRONTEND_DIST.is_dir():
+    # Servir assets estáticos (JS, CSS, imagens)
+    app.mount("/assets", StaticFiles(directory=_FRONTEND_DIST / "assets"), name="static-assets")
+
+    # Catch-all: qualquer rota que não seja /api/* devolve o index.html (SPA)
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        file_path = _FRONTEND_DIST / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(_FRONTEND_DIST / "index.html")
+else:
+    logger.warning("Frontend build não encontrado em %s — rode 'npm run build' no frontend", _FRONTEND_DIST)
 
 # ---------------------------------------------------------------------------
 # Entrypoint (dev)

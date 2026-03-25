@@ -14,7 +14,11 @@
       "write",
       "admin",
       "manage_users"
-    ]
+    ],
+    "picture": "https://lh3.googleusercontent.com/a/ACg8ocIimihA58F_d-GXux4AC01SNfUMJbdkYmWkubh33LsLDSCs8yE=s96-c",
+    "auth_provider": "google",
+    "last_seen": "2026-03-25T11:33:09.108748+00:00",
+    "last_login": "2026-03-25T11:33:07.347193+00:00"
   },
   "usuario@pgmais.com.br": {
     "email": "usuario@pgmais.com.br",
@@ -40,6 +44,23 @@
     ],
     "permissions": [
       "read"
-    ]
+    ],
+    "last_login": "2026-03-25T11:33:06.821792+00:00",
+    "last_seen": "2026-03-25T11:33:07.738686+00:00"
+  },
+  "teste@ciclo.com.br": {
+    "email": "teste@ciclo.com.br",
+    "name": "Teste",
+    "bu_id": "default",
+    "bu_name": "PGMais",
+    "bu_type": "operacional",
+    "roles": [
+      "dev"
+    ],
+    "permissions": [
+      "read"
+    ],
+    "last_login": "2026-03-25T00:04:51.065495+00:00",
+    "last_seen": "2026-03-25T00:04:51.065495+00:00"
   }
 }
