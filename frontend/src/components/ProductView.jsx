@@ -433,7 +433,7 @@ function LeadTimeTable({ leadTimes, ranked }) {
   )
 }
 
-function DrillPanel({ productName, issues, jiraBaseUrl, onClose, health }) {
+function DrillPanel({ productName, issues, jiraBaseUrl, onClose }) {
   const sorted = [...issues].sort((a, b) => {
     if (a.is_overdue !== b.is_overdue) return a.is_overdue ? -1 : 1
     return (PRIO_ORDER[a.priority?.name] ?? 2) - (PRIO_ORDER[b.priority?.name] ?? 2)
@@ -447,7 +447,6 @@ function DrillPanel({ productName, issues, jiraBaseUrl, onClose, health }) {
       <div className="pv-drill-header">
         <div className="pv-drill-title-row">
           <h3 className="pv-drill-title">{productName}</h3>
-          {health && <HealthBadge health={health} />}
           <div className="pv-drill-meta">
             <span className="pv-drill-chip">{sorted.length} issues</span>
             {inProgress > 0 && <span className="pv-drill-chip pv-drill-chip--progress">{inProgress} andamento</span>}
@@ -572,7 +571,6 @@ export default function ProductView({ data }) {
       <div className="pv-header">
         <div className="pv-header__left">
           <h2 className="pv-title">Central de Operações — Fila Ativa</h2>
-          <HealthBadge health={globalHealth} />
         </div>
         <div className="pv-controls">
           <div className="pv-legend">
@@ -620,8 +618,7 @@ export default function ProductView({ data }) {
           tooltip="Taxa de entrega: quantidade de jiras concluídos nos últimos 7 dias. Quanto maior, mais rápido o time está entregando." />
       </div>
 
-      {/* ─── Bottleneck Alerts ─── */}
-      <BottleneckAlert bottlenecks={bottlenecks} />
+      {/* Bottleneck Alerts removido */}
 
       {/* ─── Row 1: Volume + Radar ─── */}
       <div className="pv-grid-2">
@@ -713,22 +710,6 @@ export default function ProductView({ data }) {
             </span>
           </div>
           <div className="pv-detail-toggle__right">
-            {/* Health summary pills */}
-            {!detailsExpanded && ranked.length > 0 && (
-              <div className="pv-health-summary-pills">
-                {(() => {
-                  const counts = { healthy: 0, alert: 0, critical: 0 }
-                  ranked.forEach(p => { counts[productHealthMap[p.name]?.level || 'healthy']++ })
-                  return (
-                    <>
-                      {counts.healthy > 0  && <span className="pv-health-pill pv-health-pill--healthy" title={`${counts.healthy} produto(s) com saúde operacional normal`}>{counts.healthy} saudável</span>}
-                      {counts.alert > 0    && <span className="pv-health-pill pv-health-pill--alert" title={`${counts.alert} produto(s) com risco moderado — requer monitoramento`}>{counts.alert} alerta</span>}
-                      {counts.critical > 0 && <span className="pv-health-pill pv-health-pill--critical" title={`${counts.critical} produto(s) em estado crítico — ação imediata necessária`}>{counts.critical} crítico</span>}
-                    </>
-                  )
-                })()}
-              </div>
-            )}
             <span className={`pv-detail-chevron ${detailsExpanded ? 'pv-detail-chevron--open' : ''}`}>&#9660;</span>
           </div>
         </button>
@@ -739,7 +720,7 @@ export default function ProductView({ data }) {
               <table className="pv-table">
                 <thead>
                   <tr>
-                    <th>#</th><th>Produto</th><th>Saúde</th><th>Total</th>
+                    <th>#</th><th>Produto</th><th>Total</th>
                     <th>Andamento</th><th>Aguardando</th><th>Atrasado</th><th>% Atraso</th><th>Lead Time</th>
                   </tr>
                 </thead>
@@ -756,13 +737,6 @@ export default function ProductView({ data }) {
                           onClick={() => handleDrillClick(p.name)}>
                         <td><span className="pv-rank" style={{ background: COLORS[i % COLORS.length] }} title={`Ranking #${i+1} por volume`}>#{i+1}</span></td>
                         <td className="pv-td-name" title={`Clique para ver detalhes de ${p.name}`}>{p.name}</td>
-                        <td>
-                          {health && (
-                            <span className={`pv-health-dot pv-health-dot--${health.level}`} title={health.label}>
-                              {health.label}
-                            </span>
-                          )}
-                        </td>
                         <td className="pv-td-num" title={`${p.total} issues ativas`}>{p.total}</td>
                         <td className="pv-td-num pv-td--progress" title={`${p.inProgress} em andamento`}>{p.inProgress}</td>
                         <td className="pv-td-num pv-td--waiting" title={`${p.waiting} aguardando`}>{p.waiting}</td>
@@ -788,7 +762,6 @@ export default function ProductView({ data }) {
                 issues={drillIssues}
                 jiraBaseUrl={data.jira_base_url}
                 onClose={() => setDrillProduct(null)}
-                health={drillStats}
               />
             )}
           </div>
