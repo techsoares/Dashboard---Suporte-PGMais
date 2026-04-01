@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { API_BASE_URL } from '../apiUrl'
 import FilterDropdown from './FilterDropdown'
+import { DeprioritizeModal } from './DeprioritizeModal'
 import './PrioritizationView.css'
 
 const SCORE_WEIGHTS = {
@@ -111,6 +112,10 @@ export default function PrioritizationView({ data, bus = [], user }) {
   const [prioJustification, setPrioJustification] = useState('')
   const [prioBu, setPrioBu]                 = useState('')
   const [prioSubmitting, setPrioSubmitting] = useState(false)
+  const [deprioritizeModal, setDeprioritizeModal] = useState({
+    isOpen: false,
+    issueKey: null,
+  })
   const [localFilters, setLocalFilters]     = useState({ assignee: [], account: [], issue_type: [] })
   const [clock, setClock]                   = useState(() => new Date())
 
@@ -221,15 +226,45 @@ export default function PrioritizationView({ data, bus = [], user }) {
 
   // Deprioritize all — admin removes all priority requests for an issue
   const deprioritizeAll = useCallback((issueKey) => {
-    if (!confirm(`Remover TODAS as solicitações de prioridade deste chamado?`)) return
-    fetch(`${API_BASE_URL}/api/priority-requests/deprioritize`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-      body: JSON.stringify({ issue_key: issueKey, requester_name: user?.name || '', requester_bu: user?.bu_name || '' }),
-    })
-      .then(() => loadPrioRequests())
-      .catch(() => {})
-  }, [loadPrioRequests, user])
+    setDeprioritizeModal({ isOpen: true, issueKey });
+  }, [])
+
+  // Handle modal confirm
+  const handleDeprioritizeConfirm = useCallback((reason) => {
+    return new Promise((resolve, reject) => {
+      fetch(`${API_BASE_URL}/api/priority-requests/deprioritize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        },
+        body: JSON.stringify({
+          issue_key: deprioritizeModal.issueKey,
+          deprioritization_reason: reason,
+        }),
+      })
+        .then(res => {
+          if (!res.ok) {
+            return res.json().then(err => {
+              throw new Error(err.detail || 'Erro ao despriorizar');
+            });
+          }
+          return res.json();
+        })
+        .then(data => {
+          setDeprioritizeModal({ isOpen: false, issueKey: null });
+          loadPrioRequests();
+          resolve(data);
+        })
+        .catch(err => {
+          reject(err);
+        });
+    });
+  }, [deprioritizeModal.issueKey, loadPrioRequests])
+
+  const handleDeprioritizeCancel = useCallback(() => {
+    setDeprioritizeModal({ isOpen: false, issueKey: null });
+  }, [])
 
   // Compute boost per issue from priority requests
   const boostByKey = useMemo(() => {
@@ -857,6 +892,13 @@ export default function PrioritizationView({ data, bus = [], user }) {
           </div>
         </>
       )}
+
+      <DeprioritizeModal
+        issueKey={deprioritizeModal.issueKey}
+        isOpen={deprioritizeModal.isOpen}
+        onConfirm={handleDeprioritizeConfirm}
+        onCancel={handleDeprioritizeCancel}
+      />
     </div>
   )
 }
