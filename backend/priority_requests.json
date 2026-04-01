@@ -45,9 +45,12 @@
     "justification": "Bloqueador para outras equipes. Impede progresso.",
     "requester_bu": "Gestores gerais",
     "bu_type": "gestao",
-    "boost": 315,
+    "boost": 0,
     "ai_verdict": "Funcionalidade bloqueante para múltiplas equipes, mas sem evidência de perda financeira imediata ou SLA crítico estourado.",
-    "created_at": "2026-03-19T12:26:38.638949+00:00"
+    "created_at": "2026-03-19T12:26:38.638949+00:00",
+    "deprioritized_by": "Andressa Soares",
+    "deprioritized_at": "2026-04-01T17:51:39.367343+00:00",
+    "deprioritization_reason": "Cliente resolveu o problema internamente"
   },
   {
     "id": "d0593f84-cabd-4b7d-8042-05adbf5cb819",
@@ -82,9 +85,11 @@
     "justification": "Bloqueador para outras equipes. Impede progresso.",
     "requester_bu": "Gestores gerais",
     "bu_type": "gestao",
-    "boost": 315,
+    "boost": 0,
     "ai_verdict": "Impacto moderado com potencial bloqueio de outras equipes, mas sem evidência de perda financeira imediata ou SLA crítico estourado.",
-    "created_at": "2026-03-24T18:11:46.802297+00:00"
+    "created_at": "2026-03-24T18:11:46.802297+00:00",
+    "deprioritized_by": "Andressa Soares",
+    "deprioritized_at": "2026-04-01T17:18:44.169298+00:00"
   },
   {
     "id": "3ce2cf35-bc86-465d-9b7a-796c45217d5a",
@@ -122,5 +127,45 @@
     "created_at": "2026-03-25T00:07:05.767760+00:00",
     "deprioritized_by": "Teste",
     "deprioritized_at": "2026-03-25T00:07:21.314373+00:00"
+  },
+  {
+    "id": "4d33cb79-aead-438c-832c-494032d4070b",
+    "issue_key": "ON-36288",
+    "requester_name": "Andressa Soares",
+    "justification": "impactando faturamento",
+    "requester_bu": "Gestores gerais",
+    "bu_type": "gestao",
+    "boost": 0,
+    "ai_verdict": "Campanha do Itaú PF travada em 'ENVIANDO' com impacto direto em faturamento, caracterizando produção parada em cliente de alto valor com perda financeira imediata.",
+    "created_at": "2026-04-01T17:13:11.768568+00:00",
+    "deprioritized_by": "Andressa Soares",
+    "deprioritized_at": "2026-04-01T17:15:06.738080+00:00"
+  },
+  {
+    "id": "5f915b86-c5a8-470b-950f-28d6a04e49b8",
+    "issue_key": "ON-36176",
+    "requester_name": "Andressa Soares",
+    "justification": "oi",
+    "requester_bu": "Gestores gerais",
+    "bu_type": "gestao",
+    "boost": 0,
+    "ai_verdict": "Cliente grande (Porto Seguro) com sistema crítico de contencioso sem retornar ocorrências, mas justificativa vazia não permite confirmar impacto real em produção.",
+    "created_at": "2026-04-01T17:43:28.429739+00:00",
+    "deprioritized_by": "Andressa Soares",
+    "deprioritized_at": "2026-04-01T17:52:44.658766+00:00"
+  },
+  {
+    "id": "f5cb8ef1-7df0-45bb-9156-99a0f7f40450",
+    "issue_key": "ON-36537",
+    "requester_name": "Andressa Soares",
+    "justification": "teste",
+    "requester_bu": "Gestores gerais",
+    "bu_type": "gestao",
+    "boost": 0,
+    "ai_verdict": "Justificativa 'teste' não apresenta nenhuma informação de impacto ou urgência real.",
+    "created_at": "2026-04-01T17:53:14.194263+00:00",
+    "deprioritized_by": "Andressa Soares",
+    "deprioritized_at": "2026-04-01T18:02:33.852326+00:00",
+    "deprioritization_reason": "Cambio de prioridad: Cliente resolvio internamente"
   }
 ]
