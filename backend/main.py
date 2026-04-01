@@ -25,7 +25,7 @@ from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 from database import init_db, get_bus, save_bus, get_priority_requests, save_priority_request
@@ -508,8 +508,12 @@ async def delete_priority_request(request_id: str, current_user: UserProfile = D
 
 class DeprioritizeRequest(BaseModel):
     issue_key: str
-    requester_name: str
-    requester_bu: str
+    deprioritization_reason: str = Field(
+        ...,
+        min_length=1,
+        max_length=150,
+        description="Motivo obrigatório da despiorização"
+    )
 
 
 @app.post("/api/priority-requests/deprioritize", tags=["priority"], summary="Desprioriza um chamado (admins ou BU gestão)")
@@ -1162,6 +1166,88 @@ async def _fetch_all():
         fetch_done_last_n_weeks(from_date=one_month_ago, to_date=start_of_week),  # Últimas 4 semanas completas (exceto semana atual)
     )
     return active_issues, done_issues, done_last_week, done_historical
+
+
+# ---------------------------------------------------------------------------
+# Avatar proxy — busca imagens do Jira autenticado e repassa ao browser
+# ---------------------------------------------------------------------------
+
+# Cache em memória: account_id → bytes da imagem (evita re-fetch a cada render)
+_avatar_cache: dict[str, tuple[bytes, str]] = {}  # {account_id: (bytes, content_type)}
+
+_ALLOWED_AVATAR_HOSTS = {
+    "avatar-management--avatars.us-west-2.prod.public.atl-paas.net",
+    "secure.gravatar.com",
+    "avatar-management--avatars.us-east-1.prod.public.atl-paas.net",
+}
+
+
+@app.get("/api/avatar", tags=["jira"], summary="Proxy autenticado para avatares do Jira")
+async def proxy_avatar(
+    url: str,
+    _user: UserProfile = Depends(get_current_user),
+):
+    """Faz proxy da imagem de avatar do Jira com autenticação Basic Auth.
+    O browser não consegue carregar essas imagens diretamente pois o Jira
+    exige cookies de sessão ou Basic Auth — este endpoint resolve isso.
+    """
+    from fastapi.responses import Response
+    import urllib.parse
+
+    # Validar que a URL é de um host permitido do Jira/Gravatar
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ("https", "http") or parsed.netloc not in _ALLOWED_AVATAR_HOSTS:
+            raise HTTPException(status_code=400, detail="URL de avatar não permitida")
+    except Exception:
+        raise HTTPException(status_code=400, detail="URL inválida")
+
+    # Cache hit
+    if url in _avatar_cache:
+        img_bytes, content_type = _avatar_cache[url]
+        return Response(
+            content=img_bytes,
+            media_type=content_type,
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+
+    email = os.getenv("JIRA_EMAIL", "")
+    token = os.getenv("JIRA_TOKEN", "")
+    if not email or not token:
+        raise HTTPException(status_code=503, detail="Credenciais Jira não configuradas")
+
+    credentials = base64.b64encode(f"{email}:{token}".encode()).decode()
+
+    try:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            resp = await client.get(
+                url,
+                headers={
+                    "Authorization": f"Basic {credentials}",
+                    "Accept": "image/*",
+                },
+            )
+            if resp.status_code != 200:
+                raise HTTPException(status_code=404, detail="Avatar não encontrado")
+
+            content_type = resp.headers.get("content-type", "image/png").split(";")[0].strip()
+            if not content_type.startswith("image/"):
+                raise HTTPException(status_code=400, detail="Resposta não é uma imagem")
+
+            img_bytes = resp.content
+
+            # Guardar no cache em memória (máx 500 avatares ~= ~10MB)
+            if len(_avatar_cache) < 500:
+                _avatar_cache[url] = (img_bytes, content_type)
+
+            return Response(
+                content=img_bytes,
+                media_type=content_type,
+                headers={"Cache-Control": "public, max-age=86400"},
+            )
+    except httpx.RequestError as exc:
+        logger.warning("Avatar proxy request error: %s", exc)
+        raise HTTPException(status_code=502, detail="Erro ao buscar avatar")
 
 
 # ---------------------------------------------------------------------------
