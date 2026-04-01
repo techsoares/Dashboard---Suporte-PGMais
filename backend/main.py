@@ -531,11 +531,12 @@ async def deprioritize_issue(body: DeprioritizeRequest, current_user: UserProfil
             if req["issue_key"] == body.issue_key and not req.get("deprioritized_by"):
                 req["deprioritized_by"] = current_user.name
                 req["deprioritized_at"] = datetime.now(timezone.utc).isoformat()
+                req["deprioritization_reason"] = body.deprioritization_reason.strip()
                 req["boost"] = 0
                 removed_count += 1
         with open(PRIORITY_FILE, "w", encoding="utf-8") as f:
             json.dump(all_requests, f, ensure_ascii=False, indent=2)
-    return {"status": "deprioritized", "issue_key": body.issue_key, "removed": removed_count}
+    return {"status": "deprioritized", "issue_key": body.issue_key, "removed": removed_count, "reason": body.deprioritization_reason}
 
 
 @app.post(
