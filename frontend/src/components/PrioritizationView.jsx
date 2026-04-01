@@ -731,6 +731,11 @@ export default function PrioritizationView({ data, bus = [], user }) {
                                   Despriorizado por <strong>{r.deprioritized_by}</strong>
                                   {r.deprioritized_at && ` em ${new Date(r.deprioritized_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
                                 </span>
+                                {r.deprioritization_reason && (
+                                  <span className="prio-deprio-reason">
+                                    "{r.deprioritization_reason}"
+                                  </span>
+                                )}
                                 <span className="prio-deprio-original">solicitado por {r.requester_name}</span>
                               </div>
                             ))}

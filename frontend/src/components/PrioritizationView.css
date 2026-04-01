@@ -611,6 +611,21 @@
   font-style: italic;
 }
 
+.prio-deprio-reason {
+  display: block;
+  margin-top: 6px;
+  font-style: italic;
+  color: #666;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .prio-deprio-reason {
+    color: #aaa;
+  }
+}
+
 /* Mensageria sidebar */
 .prio-mensageria-panel {
   background: var(--surface);
