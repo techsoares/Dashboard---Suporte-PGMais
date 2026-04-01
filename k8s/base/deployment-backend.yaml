@@ -1,0 +1,199 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgmais-backend
+  namespace: pgmais
+  labels:
+    app: pgmais-backend
+    version: v1
+spec:
+  replicas: 3  # Múltiplas réplicas para alta disponibilidade
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: pgmais-backend
+  template:
+    metadata:
+      labels:
+        app: pgmais-backend
+    spec:
+      serviceAccountName: pgmais-backend
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+      - name: backend
+        image: gcr.io/distroless/python3-debian12:nonroot
+        imagePullPolicy: IfNotPresent
+
+        # Non-root user (distroless)
+        securityContext:
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+
+        # Liveness probe — verifica se o pod ainda responde
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        # Readiness probe — verifica se está pronto para receber tráfego
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+
+        # Resource requests/limits
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+        # Variáveis de ambiente — secrets vêm do K8s Secret
+        env:
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: pgmais-backend-config
+              key: LOG_LEVEL
+
+        - name: JIRA_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: pgmais-secrets
+              key: jira-email
+
+        - name: JIRA_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: pgmais-secrets
+              key: jira-token
+
+        - name: JIRA_BASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: pgmais-secrets
+              key: jira-base-url
+
+        - name: JIRA_PROJECT
+          valueFrom:
+            secretKeyRef:
+              name: pgmais-secrets
+              key: jira-project
+
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: pgmais-secrets
+              key: jwt-secret
+
+        - name: REFRESH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: pgmais-secrets
+              key: refresh-secret
+
+        - name: POSTGRES_HOST
+          value: postgres.pgmais.svc.cluster.local
+
+        - name: POSTGRES_PORT
+          value: "5432"
+
+        - name: POSTGRES_DB
+          value: pgmais
+
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: pgmais-secrets
+              key: postgres-user
+
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pgmais-secrets
+              key: postgres-password
+
+        - name: OPENROUTER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pgmais-secrets
+              key: openrouter-api-key
+
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: pgmais-secrets
+              key: google-client-id
+
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: pgmais-secrets
+              key: google-client-secret
+
+        # Volume para arquivo temporário
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /var/cache/app
+
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 100Mi
+      - name: cache
+        emptyDir:
+          sizeLimit: 500Mi
+
+      # Termination grace period para shutdown limpo
+      terminationGracePeriodSeconds: 30
+
+      # Affinity rules (não espalhar pods no mesmo node)
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - pgmais-backend
+              topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pgmais-backend
+  namespace: pgmais

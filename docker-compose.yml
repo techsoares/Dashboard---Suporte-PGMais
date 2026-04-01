@@ -1,13 +1,25 @@
 version: '3.8'
 
+# ============================================================================
+# SECURITY: Secrets não devem ser hardcoded aqui.
+#
+# Para usar Docker Secrets localmente:
+# 1. Crie arquivo: secrets/postgres_password.txt com a senha
+# 2. Descomente a seção 'secrets:' abaixo
+# 3. Use `echo "sua_senha" | docker secret create postgres_password -`
+#
+# Para desenvolvimento seguro: use um .env file
+# export POSTGRES_PASSWORD=seu_valor_seguro
+# ============================================================================
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: pgmais-db
     environment:
-      POSTGRES_USER: pgmais
-      POSTGRES_PASSWORD: pgmais_dev_password
-      POSTGRES_DB: pgmais_dashboard
+      POSTGRES_USER: ${POSTGRES_USER:-pgmais}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pgmais_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-pgmais_dashboard}
     ports:
       - "5432:5432"
     volumes:
@@ -32,7 +44,14 @@ services:
       JIRA_PROJECT: ${JIRA_PROJECT:-ON}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       REFRESH_SECRET: ${REFRESH_SECRET}
-      DATABASE_URL: postgresql://pgmais:pgmais_dev_password@postgres:5432/pgmais_dashboard
+      # DATABASE_URL: construído dinamicamente a partir de variáveis de ambiente
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-pgmais_dashboard}
+      POSTGRES_USER: ${POSTGRES_USER:-pgmais}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pgmais_dev_password}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
     ports:
       - "8000:8000"
     depends_on:

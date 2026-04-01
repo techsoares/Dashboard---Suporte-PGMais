@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pgmais
+
+bases:
+- ../../base
+
+replicas:
+- name: pgmais-backend
+  count: 3
+- name: pgmais-frontend
+  count: 2
+
+# Production-specific patches
+patches:
+- target:
+    kind: Deployment
+    name: pgmais-backend
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/cpu
+      value: 1000m
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/limits/memory
+      value: 1Gi
+    - op: replace
+      path: /spec/strategy/rollingUpdate/maxUnavailable
+      value: 0
+
+commonLabels:
+  environment: production
+
+commonAnnotations:
+  managed-by: kustomize
+  config.kubernetes.io/version: "1.0"

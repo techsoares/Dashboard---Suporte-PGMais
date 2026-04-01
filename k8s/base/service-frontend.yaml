@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgmais-frontend
+  namespace: pgmais
+  labels:
+    app: pgmais-frontend
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+    protocol: TCP
+  selector:
+    app: pgmais-frontend
+  sessionAffinity: None

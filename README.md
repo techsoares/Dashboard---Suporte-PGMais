@@ -1,235 +1,435 @@
-# PGMais Dashboard
+# 🎯 PGMais Dashboard
 
-Dashboard de gestão de equipe integrado com Jira Cloud com autenticação JWT, gestão de unidades de negócio e priorização inteligente de chamados.
+**Gerenciador de equipes integrado com Jira Cloud** — FastAPI + React 19 + PostgreSQL + Kubernetes
 
-## 🚀 Início Rápido
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org)
+[![React 19](https://img.shields.io/badge/React-19-61dafb)](https://react.dev)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)](https://fastapi.tiangolo.com)
+[![Kubernetes Ready](https://img.shields.io/badge/Kubernetes-Ready-326ce5)](https://kubernetes.io)
+[![Security](https://img.shields.io/badge/Security-Enterprise-red)](#segurança)
+
+---
+
+## 📋 Índice
+
+- [Visão Geral](#visão-geral)
+- [Arquitetura](#arquitetura)
+- [Quickstart](#quickstart)
+- [Instalação Completa](#instalação-completa)
+- [API Documentation](#api-documentation)
+- [Segurança](#segurança)
+- [Deployment](#deployment)
+- [Desenvolvimento](#desenvolvimento)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+
+---
+
+## 🚀 Visão Geral
+
+**PGMais Dashboard** é uma plataforma web de gerenciamento de equipes conectada a Jira Cloud, permitindo:
+
+✅ **Dashboard Unificado** — Visualize issues ativas, concluídas e prioridades em tempo real  
+✅ **Múltiplas Views** — Kanban, Timeline, Produto, Priorização com filtros avançados  
+✅ **Priorização Dinâmica** — Deprioritize issues com motivos auditados  
+✅ **IA Insights** — Análise automática de throughput e aging com Claude Sonnet (OpenRouter)  
+✅ **Autenticação Segura** — JWT local + Google OAuth2, rate limiting, bcrypt  
+✅ **Enterprise-Ready** — Docker multi-stage hardened, K8s NetworkPolicies, compliance-focused
+
+**Casos de uso:**
+- Gerenciar workflows de desenvolvimento
+- Acompanhar KPIs (throughput, velocity, aging)
+- Priorizar issues em tempo real
+- Auditar ações (quem deprioritizou e por quê)
+
+---
+
+## 🏗️ Arquitetura
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                     PGMais Dashboard                         │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│   [Frontend]              [Backend]              [External]  │
+│   React 19 SPA   ←────→   FastAPI         ←────→  Jira      │
+│   - DashboardHome          - REST API            Cloud      │
+│   - KanbanView             - Auth (JWT)          API        │
+│   - ProductView            - Cache               OpenRouter │
+│   - TimelineView           - Rate Limiting       (IA)       │
+│   - etc. (8 views)         - Logging                        │
+│                                                              │
+│       ↓                         ↓                            │
+│   localStorage          PostgreSQL / SQLite                  │
+│   (JWT + refresh)       (prod / dev)                         │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Mais detalhes:** Veja [docs/architecture.md](docs/architecture.md)
+
+---
+
+## 🏃 Quickstart (5 minutos)
 
 ### Pré-requisitos
-- Python 3.11+
-- Node.js 18+ (testado com Node 20.18)
+- **Python 3.11+** e **Node.js 18+**
+- **Git**
+- **Credenciais Jira Cloud** (email + token)
 
-### 1️⃣ Primeira vez - Configurar (apenas uma vez)
+### 1. Clone e Setup Inicial
 
-**Windows:**
 ```bash
-setup.bat
+git clone https://github.com/pgmais/dashboard.git
+cd dashboard
+./scripts/setup-dev.sh
 ```
 
-**Linux/Mac:**
+### 2. Configure Variáveis
+
 ```bash
-chmod +x setup.sh
-./setup.sh
+# Backend
+cd backend
+cp .env.example .env
+# Edite .env com suas credenciais:
+# - JIRA_EMAIL=seu-email@pgmais.dev
+# - JIRA_TOKEN=seu-token-api-jira
+# - JWT_SECRET=gere-um-aleatório-32-bytes
+# - GOOGLE_CLIENT_ID=seu-google-id (opcional)
 ```
 
-### 2️⃣ Usar o Dashboard
+### 3. Inicie os Serviços
 
-**Iniciar:**
-- Windows: Clique 2x em `🚀 INICIAR DASHBOARD.bat`
+```bash
+# Terminal 1 — Backend
+cd backend
+source .venv/bin/activate  # ou: . .venv/Scripts/activate (Windows)
+python main.py
+# Backend running on http://localhost:8000
+
+# Terminal 2 — Frontend
+cd frontend
+npm run dev
+# Frontend running on http://localhost:5173
+```
+
+### 4. Login
+
+Acesse http://localhost:5173 e faça login com:
+- Email registrado no `.env` (ADMIN_EMAIL)
+- Senha correspondente ao `ADMIN_PASSWORD_HASH` (salted bcrypt)
+
+Ou use **Google OAuth** (se configurado).
+
+---
+
+## 📦 Instalação Completa
+
+### Opção 1: Docker Compose (Recommended for Dev)
+
+```bash
+# Build images
+docker-compose build
+
+# Crie arquivo de secrets (não comita!)
+mkdir -p secrets
+echo "sua_senha_postgres" > secrets/postgres_password.txt
+
+# Inicie
+docker-compose up -d
+
+# Acesse
+# Frontend: http://localhost:5173
+# Backend: http://localhost:8000
+# Postgres: localhost:5432
+```
 
 **Parar:**
-- Windows: Clique 2x em `⛔ PARAR DASHBOARD.bat`
-- Ou feche as janelas do Backend e Frontend
-
-**Verificar:**
-- Windows: Clique 2x em `VERIFICAR.bat`
-
-> 💡 O script abre automaticamente 2 janelas (Backend + Frontend). Não precisa digitar nada!
-
-### 🔧 Setup Manual (alternativa)
-
-<details>
-<summary>Clique para expandir</summary>
-
-#### Backend
 ```bash
-cd backend
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-# ou
-source .venv/bin/activate  # Linux/Mac
-
-pip install -r requirements.txt
-
-# Copiar e configurar .env
-copy .env.example .env  # Windows
-# ou
-cp .env.example .env  # Linux/Mac
-
-# Editar .env com suas credenciais Jira
-python main.py
+docker-compose down -v  # -v remove volumes
 ```
 
-#### Frontend
+### Opção 2: Local (Desenvolvimento avançado)
+
+**Pré-requisitos:** PostgreSQL 16+ instalado e rodando
+
 ```bash
+# Backend
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Crie arquivo .env
+cp .env.example .env
+# Edite com suas credenciais
+
+# Inicie backend (Uvicorn)
+python main.py
+
+# Frontend (em outro terminal)
 cd frontend
-npm install
+npm ci  # install usando package-lock
 npm run dev
 ```
 
-</details>
+### Opção 3: Kubernetes (Produção)
 
-## 🌐 Acessos
+**Pré-requisitos:** `kubectl` configurado, cluster K8s disponível
 
-- **Dashboard**: http://localhost:5173
-- **API Docs**: http://localhost:8000/docs
-- **API Health**: http://localhost:8000/api/health
+```bash
+# 1. Build e push de imagens
+docker build -f backend/Dockerfile -t seu-registro/pgmais-backend:latest backend/
+docker push seu-registro/pgmais-backend:latest
 
-## 💾 Banco de Dados
+# 2. Crie secrets
+./scripts/generate-secrets.sh --env backend/.env --namespace pgmais
 
-O sistema utiliza **SQLite** (`backend/pgmais.db`) para armazenamento local.
-Não é necessário configurar nenhum banco de dados externo.
+# 3. Deploy (development)
+kubectl apply -k k8s/overlays/development/
 
-## 📝 Configuração
+# 3. Deploy (production)
+kubectl apply -k k8s/overlays/production/
 
-### Backend (.env)
-```env
-JIRA_EMAIL=seu-email@empresa.com.br
-JIRA_TOKEN=seu-token-aqui
-JIRA_BASE_URL=https://sua-empresa.atlassian.net
-JIRA_PROJECT=XX
-OPENROUTER_API_KEY=sua-chave-aqui
-JWT_SECRET=sua-chave-secreta-jwt
-REFRESH_SECRET=sua-chave-refresh
+# 4. Verifique
+kubectl get pods -n pgmais
+kubectl logs -n pgmais -l app=pgmais-backend
+
+# 5. Acesse via Ingress (configure seu hostname)
+curl https://api.pgmais.example.com/api/health
 ```
 
-### Frontend (.env.local)
-```env
-# Deixe vazio para usar http://localhost:8000 automaticamente
-VITE_API_URL=
-VITE_REFRESH_SECRET=sua-chave-refresh
+**Limpeza:**
+```bash
+kubectl delete -k k8s/overlays/production/
 ```
 
-## 🔐 Autenticação
+---
 
-O sistema utiliza **autenticação JWT** com login via email corporativo.
+## 📚 API Documentation
 
-### Login
-- **Domínios permitidos**: @pgmais ou @ciclo
-- **Auto-cadastro**: Usuários são criados automaticamente no primeiro login
-- **Admins**: Requerem senha obrigatória configurada no painel administrativo
+### Base URL
 
-### Primeiro Admin
-Para criar o primeiro administrador, adicione suas credenciais em `backend/auth.py`:
+```
+Development:  http://localhost:8000
+Production:   https://api.pgmais.example.com
+```
 
-```python
-ADMIN_CREDENTIALS = {
-    "seu-email@pgmais.com.br": "SuaSenhaSegura123",
+### Authentication
+
+Todos os endpoints exceto `/api/auth/login` requerem **JWT Bearer Token**:
+
+```http
+GET /api/dashboard
+Authorization: Bearer <access_token>
+```
+
+### Core Endpoints
+
+#### 1. **Health Check** (sem auth)
+
+```http
+GET /api/health
+
+Response (200 OK):
+{
+  "status": "healthy",
+  "version": "1.0.0",
+  "timestamp": "2026-04-01T12:00:00Z"
 }
 ```
 
-Após o primeiro login como admin, você pode gerenciar outros administradores pelo painel.
+#### 2. **Login** (sem auth)
 
-## 👥 Gestão de Usuários e BUs
+```http
+POST /api/auth/login
+Content-Type: application/json
 
-### Painel Administrativo
-Acesse o painel admin clicando no ícone ⚙️ no header (disponível apenas para admins).
+{
+  "email": "user@pgmais.dev",
+  "password": "senha_segura"
+}
 
-**Funcionalidades:**
-- ✅ Criar e gerenciar Unidades de Negócio (BUs)
-- ✅ Vincular usuários do Jira às BUs
-- ✅ Definir tipo de BU (Operacional ou Gestão)
-- ✅ Visualizar usuários sem BU vinculada
-- ✅ Gerenciar administradores do sistema
-- ✅ Drag & drop para vincular usuários
+Response (200 OK):
+{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "refresh_token": "refresh_token_value",
+  "token_type": "bearer",
+  "expires_in": 28800
+}
+```
 
-### Tipos de BU
-- **Operacional**: Equipes de desenvolvimento e suporte
-- **Gestão**: Diretoria e C-Level (podem despriorizar chamados)
+#### 3. **Get Dashboard** (com JWT)
 
-## 🎯 Priorização Inteligente
+```http
+GET /api/dashboard
+Authorization: Bearer <access_token>
 
-O sistema utiliza **IA (Claude Sonnet 4.6)** para avaliar solicitações de prioridade.
+Response (200 OK):
+{
+  "devs": [
+    {
+      "name": "João Silva",
+      "email": "joao@pgmais.dev",
+      "active_issues": 5,
+      "done_this_week": 3,
+      "done_last_week": 8,
+      "bu": "Operacional"
+    }
+  ],
+  "backlog": [...],
+  "done_issues": [...],
+  "kpis": {
+    "total_throughput": 42,
+    "weekly_average": 10.5,
+    "aging_analysis": {...}
+  },
+  "timestamp": "2026-04-01T12:00:00Z",
+  "cached": true,
+  "cache_ttl_seconds": 300
+}
+```
 
-### Como funciona
-1. Usuário solicita priorização de um chamado com justificativa
-2. IA avalia urgência e atribui boost (0-500 pontos)
-3. BUs de Gestão recebem multiplicador 1.5x (até 750 pontos)
-4. Chamados são reordenados automaticamente por score
+#### 4. **Deprioritize Issue** (Gestao/Admin)
 
-### Critérios de Avaliação
-- **400-500**: Produção parada, perda financeira imediata
-- **250-399**: Impacto significativo em cliente grande
-- **100-249**: Impacto moderado, cliente insatisfeito
-- **0-99**: Baixa urgência, sem impacto real
+```http
+POST /api/priority-requests/deprioritize
+Authorization: Bearer <access_token>
+Content-Type: application/json
 
-## 📊 Funcionalidades
+{
+  "issue_key": "ON-123",
+  "deprioritization_reason": "Issue foi resolvida em paralelo"
+}
 
-### Dashboard Principal
-- KPIs em tempo real (total sprint, em progresso, aguardando, concluídos, atrasados)
-- Grid de desenvolvedores com issues ativas
-- Backlog lateral com filtros avançados
-- Notificações de novos chamados
-- Modo noturno/resumo
+Response (200 OK):
+{
+  "status": "deprioritized",
+  "issue_key": "ON-123",
+  "removed": 1,
+  "reason": "Issue foi resolvida em paralelo"
+}
+```
 
-### Análise
-- **Gestão**: Dados históricos de entrega e SLA
-- **IA Insights**: Análise inteligente do backlog
-- **Produto**: Visão por produto/account
+---
 
-### Visualização
-- **Kanban**: Board visual por status
-- **Priorização**: Gestão de solicitações de prioridade
+## 🔐 Segurança
 
-### Filtros
-- Por BU, responsável, account, produto, tipo e status
-- Busca por chave, título ou pessoa
-- Filtros persistem entre visualizações
+### Overview
 
-## 🛠️ Tecnologias
+✅ **Non-root Docker** — Roda com UID 1000  
+✅ **Distroless Image** — Sem shell, sem curl/wget  
+✅ **Secrets Management** — Via env vars ou K8s Secrets  
+✅ **Rate Limiting** — 100 req/min, 15 login/15min  
+✅ **Input Validation** — Pydantic + regex  
+✅ **JWT Auth** — HS256, 8h TTL  
+✅ **HTTPS/TLS** — Obrigatório em produção  
+✅ **NetworkPolicy** — Deny-all por padrão, whitelist explícito  
+✅ **OWASP Compliance** — Top 10 mitigado
 
-### Backend
-- **Framework**: FastAPI + Python 3.11
-- **Autenticação**: JWT (PyJWT)
-- **Banco**: SQLite
-- **API Externa**: Jira Cloud REST API
-- **IA**: OpenRouter (Claude Sonnet 4.6)
-- **Cache**: Sistema de cache em memória com TTL
+### How to Report Security Issues
 
-### Frontend
-- **Framework**: React 18 + Vite
-- **Estilo**: CSS Modules com variáveis CSS
-- **Estado**: React Hooks (useState, useEffect, useMemo)
-- **HTTP**: Fetch API nativa
-- **Autenticação**: JWT em localStorage
+**NÃO crie issues públicas!**
 
-## 🔒 Segurança
+📧 Envie para: `security@pgmais.dev`  
+Inclua:
+- Descrição clara da vulnerabilidade
+- Passos para reproduzir
+- Impacto estimado
 
-- ✅ Autenticação JWT com tokens Bearer
-- ✅ Validação de entrada em todos os endpoints
-- ✅ Sanitização de dados
-- ✅ Headers de segurança (CSP, X-Frame-Options, etc)
-- ✅ Rate limiting em endpoints críticos
-- ✅ CORS configurado para origens permitidas
-- ✅ Senhas obrigatórias para administradores
+**Prazo de resposta:** 48 horas  
+**Divulgação:** Aguarde 90 dias após patch
 
-## 📈 Performance
+**Veja [docs/security.md](docs/security.md) para mais detalhes.**
 
-- Cache inteligente de 5 minutos para dados do dashboard
-- Cache de 1 hora para dados históricos
-- Paginação e lazy loading
-- Filtros client-side para melhor UX
-- Requisições paralelas ao Jira
+---
 
-## 🎨 UI/UX
+## 🚀 Deployment
 
-- Design system baseado na identidade visual PGMais
-- Modo claro e escuro
-- Responsivo (desktop, tablet, mobile)
-- Atalhos de teclado (Ctrl+K para busca, Esc para fechar)
-- Notificações toast para novos chamados
-- Drag & drop para gestão de BUs
+### Manual Deploy Checklist
 
-## 📝 Logs e Monitoramento
+- [ ] Todos os testes passam localmente
+- [ ] `.env` e `secrets/` foram removidos (gitignored)
+- [ ] `pip-audit` não encontra vulnerabilidades
+- [ ] Dockerfile build bem-sucedido
+- [ ] Docker image roda sem erros
+- [ ] K8s manifests validam com `kubectl apply --dry-run=client`
+- [ ] Backup do banco de dados feito
+- [ ] HTTPS/TLS configurado
+- [ ] DNS apontando para Ingress
 
-- Logs estruturados com níveis (INFO, WARNING, ERROR)
-- Arquivo `backend.log` com histórico de operações
-- Endpoint `/api/health` para healthcheck
-- Métricas de cache e performance
+---
 
-## 🤝 Contribuindo
+## 🛠️ Desenvolvimento
 
-Desenvolvido e mantido por **Andressa Soares**.
+### Project Structure
+
+```
+Dashboards-pgmais/
+├── backend/
+│   ├── src/              (em breve: modularização)
+│   ├── tests/            (em breve: pytest)
+│   ├── Dockerfile        (multi-stage, distroless)
+│   ├── main.py           (~1068 lines)
+│   ├── auth.py, cache.py, database.py, jira_client.py, ...
+│   ├── requirements.txt   (versões exatas, locked)
+│   └── pyproject.toml     (PEP 518 compliant)
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/    (8 views)
+│   │   └── styles/
+│   └── vite.config.js
+│
+├── k8s/
+│   ├── base/             (manifests base)
+│   └── overlays/
+│       ├── development/
+│       └── production/
+│
+├── scripts/
+│   ├── healthcheck.sh
+│   ├── setup-dev.sh
+│   └── generate-secrets.sh
+│
+├── docs/
+│   ├── architecture.md
+│   ├── security.md
+│   └── manual_tecnico.html
+│
+└── docker-compose.yml
+```
+
+---
+
+## 🐛 Troubleshooting
+
+Veja [docs/security.md#troubleshooting](docs/security.md) para soluções comuns.
+
+---
+
+## 👥 Contributing
+
+- **Code Standards:** PEP 8 (black + ruff), ESLint
+- **Commits:** Conventional Commits (`feat:`, `fix:`, `docs:`)
+- **Security:** Reporte privado para security@pgmais.dev
+
+---
+
+## 📞 Contato & Suporte
+
+- **Email:** team@pgmais.dev
+- **Docs:** [GitHub Wiki](https://github.com/pgmais/dashboard/wiki)
+- **Issues:** [GitHub Issues](https://github.com/pgmais/dashboard/issues)
+- **Security:** security@pgmais.dev
+
+---
 
 ## 📄 Licença
 
-Uso interno PGMais.
+MIT License — Uso interno PGMais
+
+---
+
+**Mantido com ❤️ pelo PGMais Team**  
+**Última atualização:** Abril 2026

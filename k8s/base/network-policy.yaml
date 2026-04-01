@@ -1,0 +1,118 @@
+---
+# Default Deny All — nenhum tráfego é permitido exceto o explicitamente declarado
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: pgmais
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Permitem frontend receber tráfego de Ingress Controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-allow-ingress
+  namespace: pgmais
+spec:
+  podSelector:
+    matchLabels:
+      app: pgmais-frontend
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 3000
+
+---
+# Frontend pode falar com backend (para API calls)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-to-backend
+  namespace: pgmais
+spec:
+  podSelector:
+    matchLabels:
+      app: pgmais-frontend
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: pgmais-backend
+    ports:
+    - protocol: TCP
+      port: 8000
+  # DNS resolution (required for any egress)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53
+
+---
+# Backend pode receber do frontend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-allow-from-frontend
+  namespace: pgmais
+spec:
+  podSelector:
+    matchLabels:
+      app: pgmais-backend
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: pgmais-frontend
+    ports:
+    - protocol: TCP
+      port: 8000
+
+---
+# Backend pode falar com banco de dados (PostgreSQL)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-to-database
+  namespace: pgmais
+spec:
+  podSelector:
+    matchLabels:
+      app: pgmais-backend
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Jira Cloud API (external)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+  # DNS
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53
